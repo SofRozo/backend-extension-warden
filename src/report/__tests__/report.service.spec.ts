@@ -41,8 +41,8 @@ describe('ReportService', () => {
         'job-1', 'abcdefghijklmnopqrstuvwxyzabcdef',
         makeStaticResult(), null, [], 5000,
       );
-      expect(report.overallRisk).toBe(RiskLevel.INFORMATIONAL);
-      expect(report.recommendation).toContain('NO SIGNIFICANT RISKS');
+      expect(report.overallRisk).toBe(RiskLevel.NONE);
+      expect(report.recommendation).toContain('NO_SIGNIFICANT_RISKS');
     });
 
     it('should return CRITICAL risk when critical findings + restricted domains', () => {
@@ -65,7 +65,7 @@ describe('ReportService', () => {
 
       const report = service.generateReport('job-2', 'ext123', result, null, [], 5000);
       expect(report.overallRisk).toBe(RiskLevel.CRITICAL);
-      expect(report.recommendation).toContain('UNINSTALL IMMEDIATELY');
+      expect(report.recommendation).toContain('UNINSTALL_IMMEDIATELY');
     });
 
     it('should return CRITICAL risk when threat intel flags domain', () => {

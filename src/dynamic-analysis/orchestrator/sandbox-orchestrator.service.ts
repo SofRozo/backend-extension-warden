@@ -53,14 +53,31 @@ export class SandboxOrchestratorService {
     );
 
     const plans = this.detonationStrategy.selectStrategy(staticResult);
+
+    // If Agent 2 produced a categorized domain list for Playwright, inject a
+    // DIRECT_NAVIGATION plan so that list always gets exercised — even when the
+    // static domain classifier found no Level-1 public domains to navigate.
+    // executeDirectNavigation reads dominios_para_playwright from agentAnalysis
+    // directly, so targetUrls can be empty here.
+    const agent2Domains = (agentAnalysis?.agent2 as any)?.dominios_para_playwright ?? [];
+    const hasDirectNav = plans.some(p => p.strategy === DetonationStrategy.DIRECT_NAVIGATION);
+    if (agent2Domains.length > 0 && !hasDirectNav) {
+      plans.unshift({
+        strategy: DetonationStrategy.DIRECT_NAVIGATION,
+        targetUrls: [],
+        waitTimeMs: 10000,
+      });
+    }
+
     this.logger.logWithJob(
       jobId,
       'info',
-      `Selected ${plans.length} detonation plan(s)`,
+      `Selected ${plans.length} detonation plan(s)${agent2Domains.length > 0 ? ` (${agent2Domains.length} domains from Agent 2)` : ''}`,
       'SandboxOrchestrator',
     );
 
     const collector = this.networkInterceptor.createEvidenceCollector(extensionId);
+    const domainObservations: import('../../common/interfaces/analysis.interfaces.js').SandboxDomainObservation[] = [];
     let timedOut = false;
     let primaryStrategy = plans[0]?.strategy || DetonationStrategy.PASSIVE_TRIGGER;
 
@@ -147,6 +164,7 @@ export class SandboxOrchestratorService {
             jobId,
             demoMode,
             agentAnalysis,
+            domainObservations,
           );
         }
       } finally {
@@ -168,6 +186,7 @@ export class SandboxOrchestratorService {
       evidence: collector.getEvidence(),
       duration,
       timedOut,
+      domainObservations: domainObservations.length > 0 ? domainObservations : undefined,
     };
   }
 
@@ -180,6 +199,7 @@ export class SandboxOrchestratorService {
     jobId: string,
     demoMode: boolean,
     agentAnalysis?: AgentAnalysisResult,
+    domainObservations?: import('../../common/interfaces/analysis.interfaces.js').SandboxDomainObservation[],
   ): Promise<void> {
     this.logger.logWithJob(
       jobId,
@@ -201,7 +221,7 @@ export class SandboxOrchestratorService {
         await this.executeDomFalsification(browser, plan, collector, extensionId, extensionPath, jobId, demoMode);
         break;
       case DetonationStrategy.DIRECT_NAVIGATION:
-        await this.executeDirectNavigation(browser, plan, collector, extensionId, extensionPath, jobId, demoMode, agentAnalysis);
+        await this.executeDirectNavigation(browser, plan, collector, extensionId, extensionPath, jobId, demoMode, agentAnalysis, domainObservations);
         break;
     }
   }
@@ -363,55 +383,51 @@ export class SandboxOrchestratorService {
     jobId: string,
     demoMode: boolean,
     agentAnalysis?: AgentAnalysisResult,
+    domainObservations?: import('../../common/interfaces/analysis.interfaces.js').SandboxDomainObservation[],
   ): Promise<void> {
-    // 1. Determine the intent/purpose from Agent 1
     const agent1 = agentAnalysis?.agent1 as any;
     const proposito = agent1?.proposito || 'Analizar comportamiento de la extensión';
 
-    // 2. Identify target domains. Use Agent 2 findings if available.
+    // Agent 2 domains take priority; fall back to plan URLs when Agent 2 didn't run.
     const agent2 = agentAnalysis?.agent2 as any;
-    const targets = agent2?.dominios_para_playwright && agent2.dominios_para_playwright.length > 0
-      ? agent2.dominios_para_playwright
-      : plan.targetUrls.map(url => ({
-          domain: new URL(url).hostname,
-          category: (plan as any).category || 'desconocido'
-        }));
+    const targets: Array<{ domain: string; category: string }> =
+      agent2?.dominios_para_playwright?.length > 0
+        ? agent2.dominios_para_playwright
+        : plan.targetUrls
+            .map((url: string) => {
+              try {
+                return { domain: new URL(url).hostname, category: 'desconocido' };
+              } catch {
+                return { domain: url, category: 'desconocido' };
+              }
+            })
+            .filter((t: { domain: string }) => !!t.domain);
+
+    const useStagehand = this.config.get<boolean>('analysis.useStagehand') || false;
 
     for (const target of targets) {
       try {
-        const domain = target.domain;
         const page = await browser.newPage();
         this.setupPageInterception(page, collector, demoMode);
-
         await this.setupScreenshots(page, jobId, DetonationStrategy.DIRECT_NAVIGATION, collector);
         await this.setupApiInterception(page, extensionId, demoMode);
 
-        // 3. Navigate using the best tool available
-        const useStagehand = this.config.get<boolean>('analysis.useStagehand') || false;
-        
         let observation;
         if (useStagehand) {
           observation = await this.stagehand.navigateDomain(
-            page,
-            domain,
-            target.category,
-            proposito,
-            jobId,
+            page, target.domain, target.category as any, proposito, jobId,
           );
         } else {
           observation = await this.intelligentNavigator.navigateDomain(
-            page,
-            domain,
-            target.category,
-            proposito,
-            jobId,
+            page, target.domain, target.category as any, proposito, jobId,
           );
         }
 
-        // Feed observations back into collector
+        // Log observations AND store them for Agent 4
         for (const obs of observation.observations) {
           collector.onLog('IntelligentNavigator', obs, 'info');
         }
+        domainObservations?.push(observation);
 
         await page.close();
       } catch (err) {
@@ -421,6 +437,16 @@ export class SandboxOrchestratorService {
           `Dynamic navigation failed for ${target.domain}: ${err instanceof Error ? err.message : String(err)}`,
           'SandboxOrchestrator',
         );
+        domainObservations?.push({
+          domain: target.domain,
+          url: `https://${target.domain}`,
+          observations: [`Error: ${err instanceof Error ? err.message : String(err)}`],
+          actionsPerformed: [],
+          requestsToThisDomain: 0,
+          domModificationsDetected: false,
+          credentialsSubmitted: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
   }

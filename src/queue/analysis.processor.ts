@@ -11,6 +11,7 @@ import { SandboxOrchestratorService } from '../dynamic-analysis/orchestrator/san
 import { ThreatIntelService } from '../threat-intel/threat-intel.service.js';
 import { ReportService } from '../report/report.service.js';
 import { AgentsOrchestratorService } from '../agents/agents-orchestrator.service.js';
+import { Agent4DynamicService } from '../agents/agent4/agent4-dynamic.service.js';
 import { StructuredLogger } from '../common/logger/logger.service.js';
 import { AnalysisStatus } from '../common/enums/risk-level.enum.js';
 import { ConfigService } from '@nestjs/config';
@@ -38,6 +39,7 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly downloader: DownloaderService,
     private readonly preprocessor: PreprocessorService,
     private readonly agentsOrchestrator: AgentsOrchestratorService,
+    private readonly agent4: Agent4DynamicService,
     private readonly staticAnalysis: StaticAnalysisService,
     private readonly dynamicAnalysis: SandboxOrchestratorService,
     private readonly threatIntel: ThreatIntelService,
@@ -141,6 +143,40 @@ export class AnalysisProcessor extends WorkerHost {
           'AnalysisProcessor',
         );
         this.forceKillBrowserProcesses(jobId);
+      }
+
+      // Step 4.5: Agent 4 — Dynamic Log Analysis
+      // Called after dynamic analysis if Stagehand/navigator produced domain
+      // observations AND Agent 1 ran (we need the extension's stated purpose).
+      if (dynamicResult?.domainObservations?.length && agentAnalysis?.agent1) {
+        try {
+          const veredictoEstatico =
+            agentAnalysis.agent3?.veredicto_preliminar ?? 'sospechosa';
+          const agent4 = await this.withTimeout(
+            this.agent4.analyze(
+              agentAnalysis.agent1.proposito,
+              veredictoEstatico,
+              dynamicResult.domainObservations,
+              jobId,
+            ),
+            30_000,
+            'Agent 4 timeout',
+          );
+          agentAnalysis = { ...agentAnalysis, agent4 };
+          this.logger.logWithJob(
+            jobId,
+            'info',
+            `Agent 4 complete: veredicto_dinamico=${agent4.veredicto_dinamico}, confirma_estatico=${agent4.confirma_hallazgos_estaticos}`,
+            'AnalysisProcessor',
+          );
+        } catch (err) {
+          this.logger.logWithJob(
+            jobId,
+            'warn',
+            `Agent 4 skipped: ${err instanceof Error ? err.message : String(err)}`,
+            'AnalysisProcessor',
+          );
+        }
       }
 
       // Step 5: Threat Intelligence

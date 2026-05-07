@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { AnalysisProcessor } from '../analysis.processor.js';
 import { AnalysisJob } from '../../analysis/entities/analysis-job.entity.js';
 import { DownloaderService } from '../../downloader/downloader.service.js';
+import { PreprocessorService } from '../../preprocessor/preprocessor.service.js';
+import { AgentsOrchestratorService } from '../../agents/agents-orchestrator.service.js';
+import { Agent4DynamicService } from '../../agents/agent4/agent4-dynamic.service.js';
 import { StaticAnalysisService } from '../../static-analysis/static-analysis.service.js';
 import { SandboxOrchestratorService } from '../../dynamic-analysis/orchestrator/sandbox-orchestrator.service.js';
 import { ThreatIntelService } from '../../threat-intel/threat-intel.service.js';
@@ -92,6 +95,9 @@ describe('AnalysisProcessor', () => {
         StructuredLogger,
         { provide: getRepositoryToken(AnalysisJob), useValue: mockRepository },
         { provide: DownloaderService, useValue: mockDownloader },
+        { provide: PreprocessorService, useValue: { preprocess: jest.fn().mockResolvedValue({ files: [], manifest: { name: 'T', version: '1', manifestVersion: 2, apiPermissions: [], hostPermissions: [], contentScripts: [], backgroundScripts: [], rawManifest: {} }, crxHash: 'abc', extractPath: '/tmp', obfuscatedFileCount: 0, hasObfuscation: false }) } },
+        { provide: AgentsOrchestratorService, useValue: { runAgentPipeline: jest.fn().mockResolvedValue(null) } },
+        { provide: Agent4DynamicService, useValue: { analyze: jest.fn().mockResolvedValue(null) } },
         { provide: StaticAnalysisService, useValue: mockStatic },
         { provide: SandboxOrchestratorService, useValue: mockDynamic },
         { provide: ThreatIntelService, useValue: mockThreatIntel },
@@ -141,7 +147,7 @@ describe('AnalysisProcessor', () => {
       expect(statusCalls).toContain(AnalysisStatus.GENERATING_REPORT);
     });
 
-    it('should skip dynamic analysis when critical static verdict (B.1)', async () => {
+    it('should still run dynamic analysis even with critical static findings', async () => {
       mockStatic.analyze.mockResolvedValue({
         ...mockStaticResult,
         findings: [{
@@ -162,7 +168,9 @@ describe('AnalysisProcessor', () => {
 
       await processor.process(mockJob);
 
-      expect(mockDynamic.executeDynamicAnalysis).not.toHaveBeenCalled();
+      // Dynamic analysis always runs regardless of static verdict — more evidence = better accuracy
+      expect(mockDynamic.executeDynamicAnalysis).toHaveBeenCalled();
+      expect(mockReport.generateReport).toHaveBeenCalled();
     });
 
     it('should handle dynamic analysis failure gracefully', async () => {

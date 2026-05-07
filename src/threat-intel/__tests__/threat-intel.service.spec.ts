@@ -10,6 +10,12 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('ThreatIntelService', () => {
   let service: ThreatIntelService;
 
+  afterEach(() => {
+    // Reset the axios mock's implementation queue after each test so pending
+    // mockResolvedValueOnce calls don't leak into subsequent tests.
+    mockedAxios.get.mockReset();
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -120,9 +126,14 @@ describe('ThreatIntelService', () => {
         data: { data: { attributes: { last_analysis_stats: {}, categories: {} } }, results: [] },
       });
 
-      await service.queryDomains(['a.com', 'a.com', 'b.com'], 'job-1');
-      // Should only query unique domains (a.com and b.com)
-      // Each domain triggers 2 API calls (VT + URLScan), AbuseIPDB skipped (no key)
+      // Use fake timers to skip the 16s VT rate-limit delay between sequential domain queries
+      jest.useFakeTimers();
+      const queryPromise = service.queryDomains(['a.com', 'a.com', 'b.com'], 'job-1');
+      await jest.advanceTimersByTimeAsync(30_000);
+      await queryPromise;
+      jest.useRealTimers();
+
+      // Should only query unique domains (a.com and b.com) — 1 VT call each = 2 total
       expect(mockedAxios.get.mock.calls.length).toBeLessThanOrEqual(4);
     });
 

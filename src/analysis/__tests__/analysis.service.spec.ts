@@ -34,6 +34,10 @@ describe('AnalysisService', () => {
           provide: getQueueToken('analysis'),
           useValue: mockQueue,
         },
+        {
+          provide: getQueueToken('analysis-demo'),
+          useValue: mockQueue,
+        },
       ],
     }).compile();
 

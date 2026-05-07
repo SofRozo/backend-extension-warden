@@ -174,7 +174,7 @@ export class ReportService {
     );
     const score1 = this.calculateScore1(staticResult.manifestPermissions);
     const score2 = this.calculateScore2(score1, agentAnalysis);
-    const score3 = this.calculateScore3(score2, dynamicResult);
+    const score3 = this.calculateScore3(score2, dynamicResult, agentAnalysis);
 
     const recommendation = this.generateRecommendation(overallRisk);
     const confidence = this.calculateConfidence(staticResult, dynamicResult);
@@ -710,24 +710,40 @@ export class ReportService {
 
   /**
    * Score 3: Confirmed Risk
-   * Score 2 adjusted by dynamic analysis (Agent 4).
+   * Score 2 adjusted by Agent 4 verdict when available, falling back to
+   * honeypot-based heuristic when Agent 4 did not run.
    */
-  private calculateScore3(score2: number, dynamicResult: DynamicAnalysisResult | null): number {
+  private calculateScore3(
+    score2: number,
+    dynamicResult: DynamicAnalysisResult | null,
+    agentAnalysis?: AgentAnalysisResult,
+  ): number {
     if (!dynamicResult) return score2;
-    
-    // Check if any domain observation was maliciosa
-    const observations = dynamicResult.evidence.networkRequests; // Use network evidence too
-    const honeypotHit = dynamicResult.evidence.networkRequests.some(r => r.context === 'DOM_FALSIFICATION');
-    
-    let adjustment = 0;
-    if (honeypotHit) {
-      adjustment = 40; // Critical confirmation
-    } else if (dynamicResult.evidence.networkRequests.length > 0) {
-      adjustment = 5; // Suspicious but not confirmed
-    } else {
-      adjustment = -25; // Benign behavior confirmed in execution
+
+    // Primary signal: Agent 4 veredicto_dinamico (plan §10)
+    const agent4Verdict = agentAnalysis?.agent4?.veredicto_dinamico;
+    if (agent4Verdict) {
+      let adjustment = 0;
+      switch (agent4Verdict) {
+        case 'benigna':   adjustment = -25; break;
+        case 'sospechosa': adjustment = 5;  break;
+        case 'maliciosa': adjustment = 40;  break;
+      }
+      return Math.min(100, Math.max(0, score2 + adjustment));
     }
 
+    // Fallback: heuristic when Agent 4 did not run
+    const honeypotHit = dynamicResult.evidence.networkRequests.some(
+      r => r.context === 'DOM_FALSIFICATION',
+    );
+    let adjustment = 0;
+    if (honeypotHit) {
+      adjustment = 40;
+    } else if (dynamicResult.evidence.networkRequests.length > 0) {
+      adjustment = 5;
+    } else {
+      adjustment = -25;
+    }
     return Math.min(100, Math.max(0, score2 + adjustment));
   }
 }

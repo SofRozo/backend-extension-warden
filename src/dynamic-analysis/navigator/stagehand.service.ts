@@ -1,20 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { Stagehand } from '@browserbasehq/stagehand';
+import { ConfigService } from '@nestjs/config';
+import { Stagehand, AISdkClient } from '@browserbasehq/stagehand';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { z } from 'zod';
-import { LlmClientService } from '../../agents/llm/llm-client.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type { DomainCategory } from '../../agents/interfaces/agents.interfaces.js';
 import type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
 
-/**
- * Implementation of Agent 4 using the official Stagehand library.
- */
 @Injectable()
 export class StagehandService {
+  private readonly usarOllama: boolean;
+  private readonly modeloOllama: string;
+  private readonly ollamaHost: string;
+  private readonly googleApiKey: string | undefined;
+
   constructor(
-    private readonly llm: LlmClientService,
+    private readonly config: ConfigService,
     private readonly logger: StructuredLogger,
-  ) {}
+  ) {
+    this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
+    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:8b';
+    this.ollamaHost = (config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434').replace(/\/$/, '');
+    this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
+  }
 
   async navigateDomain(
     page: any,
@@ -29,59 +37,77 @@ export class StagehandService {
     const observations: string[] = [];
     const actionsPerformed: string[] = [];
 
+    let stagehand: Stagehand | undefined;
     try {
-      const stagehand = new Stagehand({
-        env: 'LOCAL',
-        apiKey: 'not-needed-for-local',
-      }) as any;
-
+      const stagehandOpts = this.buildStagehandOptions();
+      stagehand = new Stagehand(stagehandOpts);
+      // init() bootstraps the LLM client and its own internal browser.
+      // We pass { page } to each method to target the sandbox page (extension loaded).
       await stagehand.init();
-      // Use the provided page
-      stagehand.page = page;
 
-      // Step 1: Observe the landing page
-      this.logger.logWithJob(jobId, 'info', 'Stagehand — observing landing page', 'StagehandService');
-      const observation = await stagehand.observe(
-        `Identifica elementos de login o formularios sensibles en ${domain} relacionados con el propósito: ${proposito}`
-      );
-      observations.push(`Observación inicial: ${observation.length} elementos de interés encontrados.`);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {});
 
-      // Step 2: Act based on the category
-      if (category === 'sensible_financiero' || category === 'sensible_identidad') {
-        this.logger.logWithJob(jobId, 'info', 'Stagehand — attempting to find login form', 'StagehandService');
-        
-        await stagehand.act(
-          'Busca el campo de correo electrónico o usuario y escribe "test_extwarden@mailtest.com"'
-        );
-        actionsPerformed.push('type:honeypot_email');
+      // observe() returns Action[] — potential actions identified on the page
+      this.logger.logWithJob(jobId, 'info', `Stagehand — observing ${domain}`, 'StagehandService');
+      const actions = await stagehand.observe(
+        `Identifica elementos de login, formularios sensibles o campos de datos personales en ${domain} ` +
+        `relacionados con el propósito declarado: "${proposito}"`,
+        { page },
+      ).catch(() => []);
 
-        await stagehand.act(
-          'Busca el campo de contraseña y escribe "ExTw4rd3n_F4ke!"'
-        );
-        actionsPerformed.push('type:honeypot_password');
+      if (actions.length > 0) {
+        const summary = actions
+          .slice(0, 5)
+          .map(a => a.description)
+          .join('; ');
+        observations.push(`Elementos identificados: ${summary}`);
+      }
 
-        await stagehand.act(
-          'Haz clic en el botón de Iniciar Sesión o Continuar'
-        );
-        actionsPerformed.push('click:submit');
+      const isSensitive = category === 'sensible_financiero' || category === 'sensible_identidad';
+
+      if (isSensitive) {
+        this.logger.logWithJob(jobId, 'info', 'Stagehand — testing login form with honeypot credentials', 'StagehandService');
+
+        const emailAct = await stagehand.act(
+          'Busca el campo de correo electrónico o nombre de usuario y escribe "test_extwarden@mailtest.com"',
+          { page },
+        ).catch(() => ({ success: false }));
+
+        if (emailAct.success) {
+          actionsPerformed.push('type:honeypot_email');
+
+          const passAct = await stagehand.act(
+            'Busca el campo de contraseña y escribe "ExTw4rd3n_F4ke!"',
+            { page },
+          ).catch(() => ({ success: false }));
+
+          if (passAct.success) {
+            actionsPerformed.push('type:honeypot_password');
+            await stagehand.act('Haz clic en el botón de Iniciar Sesión, Login o Continuar', { page }).catch(() => {});
+            actionsPerformed.push('click:submit');
+          }
+        }
       } else {
-        // Generic exploration for other categories
         await stagehand.act(
-          'Explora la página principal buscando secciones de configuración o perfil de usuario.'
-        );
+          'Explora la página principal buscando secciones de configuración, perfil de usuario o paneles de control.',
+          { page },
+        ).catch(() => {});
         actionsPerformed.push('act:exploration');
       }
 
-      const finalSummary = await stagehand.page.extract({
-        instruction: '¿La extensión inyectó algún elemento visual o modificó el comportamiento de la página?',
-        schema: z.object({
-          detectado: z.boolean(),
-          descripcion: z.string(),
-        })
+      const ExtensionImpactSchema = z.object({
+        detectado: z.boolean(),
+        descripcion: z.string(),
       });
 
+      const finalSummary = await stagehand.extract(
+        '¿La extensión del navegador inyectó algún elemento visual, modificó formularios, o alteró el comportamiento de la página?',
+        ExtensionImpactSchema,
+        { page },
+      ).catch(() => ({ detectado: false, descripcion: '' }));
+
       if (finalSummary.detectado) {
-        observations.push(`Detección de Stagehand: ${finalSummary.descripcion}`);
+        observations.push(`Comportamiento detectado: ${finalSummary.descripcion}`);
       }
 
       return {
@@ -89,9 +115,9 @@ export class StagehandService {
         url,
         observations,
         actionsPerformed,
-        requestsToThisDomain: 0, // Tracked via network interceptor
+        requestsToThisDomain: 0,
         domModificationsDetected: !!finalSummary.detectado,
-        credentialsSubmitted: category === 'sensible_financiero',
+        credentialsSubmitted: isSensitive && actionsPerformed.includes('click:submit'),
       };
 
     } catch (err) {
@@ -107,6 +133,35 @@ export class StagehandService {
         credentialsSubmitted: false,
         error: msg,
       };
+    } finally {
+      await stagehand?.close().catch(() => {});
     }
+  }
+
+  private buildStagehandOptions(): ConstructorParameters<typeof Stagehand>[0] {
+    const base = {
+      env: 'LOCAL' as const,
+      verbose: 0 as const,
+      localBrowserLaunchOptions: { headless: true },
+      disablePino: true,
+    };
+
+    if (this.usarOllama) {
+      // Use @ai-sdk/openai-compatible to talk to Ollama's OpenAI-compatible endpoint.
+      // AISdkClient bridges the AI SDK model interface into Stagehand's LLMClient contract.
+      const ollamaProvider = createOpenAICompatible({
+        name: 'ollama',
+        baseURL: `${this.ollamaHost}/v1`,
+      });
+      const llmClient = new AISdkClient({ model: ollamaProvider.chatModel(this.modeloOllama) });
+      return { ...base, llmClient };
+    }
+
+    // Gemini: "gemini-2.0-flash" is a known model string, Stagehand resolves provider via AI SDK.
+    return {
+      ...base,
+      model: 'gemini-2.0-flash',
+      apiKey: this.googleApiKey,
+    };
   }
 }

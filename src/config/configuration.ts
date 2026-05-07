@@ -47,6 +47,7 @@ export default () => ({
     screenshotsDir:
       process.env.SCREENSHOTS_DIR ||
       path.join(defaultEphemeralBase(), 'screenshots'),
+    useStagehand: process.env.ANALYSIS_USE_STAGEHAND === 'true',
   },
   threatIntel: {
     virusTotalApiKey: process.env.VIRUSTOTAL_API_KEY || '',

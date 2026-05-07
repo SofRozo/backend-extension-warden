@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { SandboxOrchestratorService } from '../orchestrator/sandbox-orchestrator.service.js';
 import { NetworkInterceptorService, EvidenceCollector } from '../network-interceptor/network-interceptor.service.js';
 import { DetonationStrategyService } from '../detonation-strategies/detonation-strategy.service.js';
+import { IntelligentNavigatorService } from '../navigator/intelligent-navigator.service.js';
+import { StagehandService } from '../navigator/stagehand.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import { DetonationStrategy, PlatformLevel } from '../../common/enums/risk-level.enum.js';
 
@@ -45,6 +47,14 @@ describe('SandboxOrchestratorService', () => {
               return undefined;
             }),
           },
+        },
+        {
+          provide: IntelligentNavigatorService,
+          useValue: { navigateDomain: jest.fn().mockResolvedValue({ domain: '', url: '', observations: [], actionsPerformed: [], requestsToThisDomain: 0, domModificationsDetected: false, credentialsSubmitted: false }) },
+        },
+        {
+          provide: StagehandService,
+          useValue: { navigateDomain: jest.fn().mockResolvedValue({ domain: '', url: '', observations: [], actionsPerformed: [], requestsToThisDomain: 0, domModificationsDetected: false, credentialsSubmitted: false }) },
         },
       ],
     }).compile();

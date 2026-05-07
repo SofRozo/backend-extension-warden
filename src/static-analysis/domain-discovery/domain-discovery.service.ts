@@ -21,7 +21,7 @@ const RESTRICTED_PLATFORM_PATTERNS: {
     // Banking / Financial
     { pattern: /bancolombia|davivienda|bbva|nequi/i, category: 'banking', level: PlatformLevel.LEVEL_3_RESTRICTED },
     { pattern: /chase\.com|bankofamerica|wellsfargo|citibank/i, category: 'banking', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    { pattern: /paypal\.com|stripe\.com|mercadopago/i, category: 'monetization', level: PlatformLevel.LEVEL_1_PUBLIC },
+    { pattern: /paypal\.com|stripe\.com|mercadopago/i, category: 'financial', level: PlatformLevel.LEVEL_3_RESTRICTED },
     { pattern: /nubank|nu\.com\.co/i, category: 'banking', level: PlatformLevel.LEVEL_3_RESTRICTED },
     // Educational
     { pattern: /moodle|canvas|blackboard|brightspace/i, category: 'educational', level: PlatformLevel.LEVEL_3_RESTRICTED },
