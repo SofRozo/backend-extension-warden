@@ -1,0 +1,39 @@
+# ─── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM node:24-slim AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+# ─── Stage 2: Worker Sandbox con Playwright + Chromium ────────────────────────
+# Imagen oficial de Microsoft que incluye Playwright y los browsers preinstalados
+FROM mcr.microsoft.com/playwright:v1.59.1-noble AS production
+
+WORKDIR /app
+
+# Security: correr como usuario no-root
+RUN groupadd -r sandbox && useradd -r -g sandbox -s /bin/false sandboxuser
+
+# Copiar solo dependencias de producción
+COPY package*.json ./
+RUN npm install --omit=dev && npm cache clean --force
+
+# Copiar build compilado desde stage 1
+COPY --from=builder /app/dist ./dist
+
+# Directorios de trabajo efímeros (tmpfs en docker-compose, no persisten)
+RUN mkdir -p /tmp/ext-sandbox/crx /tmp/ext-sandbox/extracted \
+    && chown -R sandboxuser:sandbox /tmp/ext-sandbox /app
+
+# USER sandboxuser
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV NODE_ENV=production
+
+HEALTHCHECK NONE
+
+CMD ["node", "dist/src/main-worker.js"]

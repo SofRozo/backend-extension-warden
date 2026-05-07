@@ -1,0 +1,191 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Ext-Sandbox — Docker Compose
+#
+# Network topology (RNF01 — critical isolation rule):
+#   api_net:     Container1 (API) ↔ Container2 (Redis + PostgreSQL)
+#   sandbox_net: Container3 (Worker) → Internet + Redis (read-only)
+#
+# Container3 (Worker) has NO direct visibility to Container1 or PostgreSQL.
+# A malicious extension that escapes the browser cannot reach the core system.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+networks:
+  api_net:
+    driver: bridge
+    internal: false          # API needs Internet to download .crx files
+  sandbox_net:
+    driver: bridge
+    internal: false          # Worker needs Internet for dynamic navigation
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+
+volumes:
+  postgres_data:
+    driver: local
+  honeypot_states:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/honeypot/states
+  sandbox_screenshots:
+    driver: local
+
+services:
+
+  # ─── Container 2a: PostgreSQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ext-sandbox-postgres
+    restart: unless-stopped
+    networks:
+      - api_net
+      - sandbox_net          # Worker needs Postgres to write analysis results
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-extsandbox}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-extsandbox_secret}
+      POSTGRES_DB: ${DB_NAME:-extsandbox}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-extsandbox} -d ${DB_NAME:-extsandbox}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No port exposed to host — internal only
+    security_opt:
+      - no-new-privileges:true
+
+  # ─── Container 2b: Redis ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ext-sandbox-redis
+    restart: unless-stopped
+    networks:
+      - api_net
+      - sandbox_net          # Both API and Worker need Redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+      --requirepass ${REDIS_PASSWORD:-redis_secret}
+      --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+  # ─── Container 1: API & Core ─────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: ext-sandbox-api
+    user: root
+    restart: unless-stopped
+    networks:
+      - api_net
+    ports:
+      - "${API_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-extsandbox}
+      DB_PASSWORD: ${DB_PASSWORD:-extsandbox_secret}
+      DB_NAME: ${DB_NAME:-extsandbox}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      URLSCAN_API_KEY: ${URLSCAN_API_KEY:-}
+      ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      STATIC_TIMEOUT_MS: ${STATIC_TIMEOUT_MS:-60000}
+      DYNAMIC_TIMEOUT_MS: ${DYNAMIC_TIMEOUT_MS:-180000}
+      MAX_CONCURRENT_WORKERS: ${MAX_CONCURRENT_WORKERS:-10}
+      HONEYPOT_ENCRYPTION_KEY: ${HONEYPOT_ENCRYPTION_KEY:-}
+      STORAGE_STATE_PATH: /data/honeypot/states
+    volumes:
+      - honeypot_states:/data/honeypot/states
+      - sandbox_screenshots:/tmp/ext-sandbox/screenshots:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 60s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    # No bind mounts to host (RNF01)
+
+  # ─── Container 3: Worker Sandbox ─────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ext-sandbox-worker
+    user: root
+    restart: unless-stopped
+    networks:
+      - sandbox_net           # Isolated — no visibility to api_net or postgres
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      # Worker reads jobs from Redis only
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-extsandbox}
+      DB_PASSWORD: ${DB_PASSWORD:-extsandbox_secret}
+      DB_NAME: ${DB_NAME:-extsandbox}
+      STATIC_TIMEOUT_MS: ${STATIC_TIMEOUT_MS:-60000}
+      DYNAMIC_TIMEOUT_MS: ${DYNAMIC_TIMEOUT_MS:-180000}
+      THREAT_INTEL_TIMEOUT_MS: ${THREAT_INTEL_TIMEOUT_MS:-10000}
+      THREAT_INTEL_CACHE_TTL: ${THREAT_INTEL_CACHE_TTL:-86400}
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      URLSCAN_API_KEY: ${URLSCAN_API_KEY:-}
+      ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      HONEYPOT_ENCRYPTION_KEY: ${HONEYPOT_ENCRYPTION_KEY:-}
+      STORAGE_STATE_PATH: /data/honeypot/states
+      DEMO_STORAGE_STATE_PATH: /data/honeypot/states
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    volumes:
+      # No bind mounts to host (RNF01)
+      # Ephemeral temp space only
+      - type: tmpfs
+        target: /tmp/ext-sandbox
+        tmpfs:
+          size: 512m
+          mode: 0777
+      - sandbox_screenshots:/tmp/ext-sandbox/screenshots
+      - honeypot_states:/data/honeypot/states:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./seccomp/chrome.json   # Restrict syscalls for browser sandbox
+    # cgroups resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          memory: 512M
+    # SHM size needed by Chromium
+    shm_size: 1gb

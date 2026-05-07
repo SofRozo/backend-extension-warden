@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.github
+coverage
+*.log
+.env
+.env.local
+.env.*.local
+_extract_pdf*
+_pdf_text*
+*.tsbuildinfo
+.vscode
+.idea
+Thumbs.db
+.DS_Store
