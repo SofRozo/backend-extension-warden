@@ -95,7 +95,7 @@ describe('AnalysisProcessor', () => {
         StructuredLogger,
         { provide: getRepositoryToken(AnalysisJob), useValue: mockRepository },
         { provide: DownloaderService, useValue: mockDownloader },
-        { provide: PreprocessorService, useValue: { preprocess: jest.fn().mockResolvedValue({ files: [], manifest: { name: 'T', version: '1', manifestVersion: 2, apiPermissions: [], hostPermissions: [], contentScripts: [], backgroundScripts: [], rawManifest: {} }, crxHash: 'abc', extractPath: '/tmp', obfuscatedFileCount: 0, hasObfuscation: false }) } },
+        { provide: PreprocessorService, useValue: { preprocess: jest.fn().mockResolvedValue({ files: [], manifest: { name: 'T', version: '1', manifestVersion: 2, apiPermissions: [], hostPermissions: [], contentScripts: [], backgroundScripts: [], rawManifest: {} }, crxHash: 'abc', extractPath: '/tmp', obfuscatedFileCount: 0, hasObfuscation: false, remoteCodeViolations: [] }) } },
         { provide: AgentsOrchestratorService, useValue: { runAgentPipeline: jest.fn().mockResolvedValue(null) } },
         { provide: Agent4DynamicService, useValue: { analyze: jest.fn().mockResolvedValue(null) } },
         { provide: StaticAnalysisService, useValue: mockStatic },

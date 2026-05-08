@@ -110,6 +110,10 @@ services:
       MAX_CONCURRENT_WORKERS: ${MAX_CONCURRENT_WORKERS:-10}
       HONEYPOT_ENCRYPTION_KEY: ${HONEYPOT_ENCRYPTION_KEY:-}
       STORAGE_STATE_PATH: /data/honeypot/states
+      USAR_OLLAMA: ${USAR_OLLAMA:-false}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:8b}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       - honeypot_states:/data/honeypot/states
       - sandbox_screenshots:/tmp/ext-sandbox/screenshots:ro
@@ -161,6 +165,10 @@ services:
       STORAGE_STATE_PATH: /data/honeypot/states
       DEMO_STORAGE_STATE_PATH: /data/honeypot/states
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      USAR_OLLAMA: ${USAR_OLLAMA:-false}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:8b}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       # No bind mounts to host (RNF01)
       # Ephemeral temp space only

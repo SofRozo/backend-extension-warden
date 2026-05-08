@@ -52,6 +52,11 @@ export interface ManifestInfo {
   rawManifest: Record<string, unknown>;
 }
 
+export interface RemoteCodeViolation {
+  htmlFile: string;
+  externalSrc: string;
+}
+
 export interface PreprocessorOutput {
   crxHash: string;
   extractPath: string;
@@ -59,6 +64,8 @@ export interface PreprocessorOutput {
   files: ProcessedFile[];
   obfuscatedFileCount: number;
   hasObfuscation: boolean;
+  /** MV3 policy violations: HTML files that load external <script src="https://..."> */
+  remoteCodeViolations: RemoteCodeViolation[];
 }
 
 export interface StaticFinding {

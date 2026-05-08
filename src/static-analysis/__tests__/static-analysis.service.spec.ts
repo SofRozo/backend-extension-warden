@@ -50,6 +50,7 @@ function makePreprocessed(
     files,
     obfuscatedFileCount: files.filter((f) => f.isObfuscated).length,
     hasObfuscation,
+    remoteCodeViolations: [],
   };
 }
 

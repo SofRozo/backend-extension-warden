@@ -5,8 +5,10 @@ import { DetonationStrategyService } from './detonation-strategies/detonation-st
 import { IntelligentNavigatorService } from './navigator/intelligent-navigator.service.js';
 import { StagehandService } from './navigator/stagehand.service.js';
 import { StructuredLogger } from '../common/logger/logger.service.js';
+import { AgentsModule } from '../agents/agents.module.js';
 
 @Module({
+  imports: [AgentsModule],
   providers: [
     SandboxOrchestratorService,
     NetworkInterceptorService,

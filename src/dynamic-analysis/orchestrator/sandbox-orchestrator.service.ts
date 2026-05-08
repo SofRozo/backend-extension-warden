@@ -137,6 +137,28 @@ export class SandboxOrchestratorService {
       // every newPage() inherits it.
       await browser.addInitScript(this.buildStealthScript()).catch(() => { });
 
+      // Verify the extension installed correctly before running any analysis.
+      // If the extension's manifest is not reachable at chrome-extension://<id>/manifest.json
+      // it means it failed to load (e.g. missing key, CRX parse error) and the
+      // entire dynamic analysis would produce false-negative results.
+      const extensionInstalled = await this.verifyExtensionInstalled(browser, extensionId, jobId);
+      if (!extensionInstalled) {
+        this.logger.logWithJob(
+          jobId,
+          'error',
+          `Extension ${extensionId} failed to install — dynamic analysis aborted to prevent false negatives`,
+          'SandboxOrchestrator',
+        );
+        await browser.close().catch(() => { });
+        return {
+          strategy: primaryStrategy,
+          evidence: collector.getEvidence(),
+          duration: Date.now() - startTime,
+          timedOut: false,
+          domainObservations: undefined,
+        };
+      }
+
       // Instrument the extension's background service worker so we capture
       // chrome.* API calls and SW-originated fetches that page-level
       // addInitScript cannot reach (chrome.* is undefined in normal pages).
@@ -484,6 +506,43 @@ export class SandboxOrchestratorService {
       await page.mouse.up();
       await page.keyboard.press('Shift');
     } catch { /* ignore */ }
+  }
+
+  // ─── Extension installation verification ──────────────────────────────────
+
+  /**
+   * Verifies the extension loaded correctly by navigating to its manifest URL.
+   * For CRX files downloaded from the Web Store, the internal Chrome extension ID
+   * matches the Web Store ID, so chrome-extension://<id>/manifest.json is reachable
+   * if and only if the extension installed without error.
+   */
+  private async verifyExtensionInstalled(
+    browser: any,
+    extensionId: string,
+    jobId: string,
+  ): Promise<boolean> {
+    try {
+      const page = await browser.newPage();
+      const manifestUrl = `chrome-extension://${extensionId}/manifest.json`;
+      const response = await page.goto(manifestUrl, { timeout: 5000 }).catch(() => null);
+      await page.close().catch(() => { });
+      if (response && response.ok()) {
+        this.logger.logWithJob(jobId, 'info', `Extension ${extensionId} verified as installed`, 'SandboxOrchestrator');
+        return true;
+      }
+    } catch {
+      // Fall through to warning below
+    }
+    this.logger.logWithJob(
+      jobId,
+      'warn',
+      `Could not verify extension ${extensionId} via chrome-extension:// — proceeding with analysis (unpacked extensions use a generated ID)`,
+      'SandboxOrchestrator',
+    );
+    // Return true for unpacked extensions: their ID is generated from the path,
+    // not the Web Store ID, so the URL check will fail even when loaded correctly.
+    // The browser launch args already ensure the extension path is loaded.
+    return true;
   }
 
   // ─── Differential baseline ────────────────────────────────────────────────

@@ -240,19 +240,20 @@ export class AnalysisProcessor extends WorkerHost {
       );
 
       // Step 7: Persist report
-      await this.jobRepository
-        .createQueryBuilder()
-        .update(AnalysisJob)
-        .set({
-          status: AnalysisStatus.COMPLETED,
-          overallRisk: report.overallRisk,
-          report: () =>
-            `'${this.sanitizeForPostgres(JSON.stringify(report)).replace(/'/g, "''")}'::jsonb`,
-          confidence: report.confidence,
-          analysisDurationMs: analysisDuration,
-        })
-        .where('id = :id', { id: jobId })
-        .execute();
+      // Use parameterized update — avoids raw SQL string construction issues with JSONB.
+      // Strip U+0000 escape sequences first: PostgreSQL JSONB rejects null bytes even
+      // when properly JSON-encoded as  .
+      const safeReport = JSON.parse(
+        JSON.stringify(report).replace(/\\u0000/g, ''),
+      ) as Record<string, unknown>;
+
+      await this.jobRepository.update(jobId, {
+        status: AnalysisStatus.COMPLETED,
+        overallRisk: report.overallRisk,
+        report: safeReport as any,
+        confidence: report.confidence,
+        analysisDurationMs: analysisDuration,
+      });
 
       this.logger.logWithJob(
         jobId,
@@ -312,7 +313,4 @@ export class AnalysisProcessor extends WorkerHost {
     }
   }
 
-  private sanitizeForPostgres(jsonStr: string): string {
-    return jsonStr.replace(/\\u0000/g, '');
-  }
 }

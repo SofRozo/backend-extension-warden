@@ -10,6 +10,7 @@ import type {
   FileRole,
   ExtractedChromeApi,
   ExtractedDomain,
+  RemoteCodeViolation,
 } from '../common/interfaces/analysis.interfaces.js';
 
 @Injectable()
@@ -45,13 +46,26 @@ export class PreprocessorService {
 
     const manifest = this.parseManifest(rawManifest);
     const roleMap = this.buildRoleMap(manifest);
+    const remoteCodeViolations: RemoteCodeViolation[] = [];
 
     // Classify JS files referenced from the popup HTML that are not declared
     // in the manifest directly (e.g. bundled via <script src="...">) as 'popup'.
-    // Manifest-explicit entries take priority, so we only set here if not already mapped.
-    for (const scriptPath of this.parsePopupScripts(extractPath, manifest.popupUrl)) {
+    // Also collect external <script src="https://..."> tags as MV3 policy violations.
+    const { localScripts, externalScripts } = this.parsePopupScripts(extractPath, manifest.popupUrl);
+    for (const scriptPath of localScripts) {
       if (!roleMap.has(scriptPath)) {
         roleMap.set(scriptPath, 'popup');
+      }
+    }
+    for (const src of externalScripts) {
+      remoteCodeViolations.push({ htmlFile: manifest.popupUrl ?? 'popup.html', externalSrc: src });
+      if (manifest.manifestVersion === 3) {
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `MV3 policy violation: external script "${src}" loaded from "${manifest.popupUrl}" — remote code execution is forbidden in Manifest V3`,
+          'PreprocessorService',
+        );
       }
     }
 
@@ -136,6 +150,7 @@ export class PreprocessorService {
       files,
       obfuscatedFileCount,
       hasObfuscation: obfuscatedFileCount > 0,
+      remoteCodeViolations,
     };
   }
 
@@ -262,30 +277,38 @@ export class PreprocessorService {
   // ─── Popup HTML parsing ───────────────────────────────────────────────────────
 
   /**
-   * Reads the popup HTML and returns relative paths (from extension root) of every
-   * local <script src="..."> it references.  External CDN scripts are skipped.
-   * This lets buildRoleMap() assign 'popup' to bundled JS that the manifest only
-   * references indirectly through the HTML page, not via a dedicated manifest field.
+   * Reads the popup HTML and returns:
+   * - localScripts: relative paths (from extension root) of local <script src="..."> tags,
+   *   used to assign the 'popup' role to bundled JS not declared directly in the manifest.
+   * - externalScripts: full URLs of external <script src="https://..."> tags.
+   *   In MV3, loading remote code from HTML is a policy violation and must be flagged.
    */
-  private parsePopupScripts(extractPath: string, popupUrl: string | undefined): string[] {
-    if (!popupUrl) return [];
+  private parsePopupScripts(
+    extractPath: string,
+    popupUrl: string | undefined,
+  ): { localScripts: string[]; externalScripts: string[] } {
+    if (!popupUrl) return { localScripts: [], externalScripts: [] };
 
     const htmlPath = path.join(extractPath, popupUrl);
     let html: string;
     try {
       html = fs.readFileSync(htmlPath, 'utf-8');
     } catch {
-      return [];
+      return { localScripts: [], externalScripts: [] };
     }
 
     const popupDir = path.dirname(popupUrl).replace(/\\/g, '/');
-    const scripts: string[] = [];
+    const localScripts: string[] = [];
+    const externalScripts: string[] = [];
     const scriptSrcRegex = /<script[^>]+src=['"]([^'"]+\.(?:js|mjs))(?:\?[^'"]*)?['"]/gi;
     let m: RegExpExecArray | null;
 
     while ((m = scriptSrcRegex.exec(html)) !== null) {
       const srcRaw = m[1];
-      if (/^https?:\/\//.test(srcRaw)) continue; // external CDN — skip
+      if (/^https?:\/\//.test(srcRaw)) {
+        externalScripts.push(srcRaw); // MV3 policy violation — remote code
+        continue;
+      }
 
       let scriptPath: string;
       if (srcRaw.startsWith('/')) {
@@ -293,10 +316,10 @@ export class PreprocessorService {
       } else {
         scriptPath = popupDir === '.' ? srcRaw : `${popupDir}/${srcRaw}`;
       }
-      scripts.push(scriptPath.replace(/\\/g, '/'));
+      localScripts.push(scriptPath.replace(/\\/g, '/'));
     }
 
-    return scripts;
+    return { localScripts, externalScripts };
   }
 
   // ─── Obfuscation / minification detection ────────────────────────────────────

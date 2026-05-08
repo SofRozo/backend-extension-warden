@@ -24,7 +24,7 @@ export class LlmClientService {
   private readonly timeoutMs: number;
 
   constructor(
-    private readonly config: ConfigService,
+    config: ConfigService,
     private readonly logger: StructuredLogger,
   ) {
     this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
@@ -65,10 +65,13 @@ export class LlmClientService {
       );
       return result;
     } catch (err) {
+      const detail = (err as any)?.response?.data
+        ? JSON.stringify((err as any).response.data).slice(0, 400)
+        : '';
       this.logger.logWithJob(
         jobId ?? '-',
         'error',
-        `LLM call failed after ${Date.now() - start}ms: ${err instanceof Error ? err.message : String(err)}`,
+        `LLM call failed after ${Date.now() - start}ms: ${err instanceof Error ? err.message : String(err)}${detail ? ` — ${detail}` : ''}`,
         'LlmClientService',
       );
       throw err;

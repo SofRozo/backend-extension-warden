@@ -47,8 +47,10 @@ Para los dominios sin clasificar, razona sobre cada uno:
 
 Categorías disponibles para la clasificación:
 - propio_extension: servidor del desarrollador
-- sensible_financiero: banco, fintech, cripto, pagos, carteras
+- sensible_financiero: banco, fintech, cripto, pagos, carteras digitales
 - sensible_gubernamental: portal de gobierno, impuestos, servicios ciudadanos
+- sensible_identidad: proveedor de autenticación u OAuth no listado en los obvios (Google, Microsoft, etc.)
+- sensible_correo_productividad: servicio de correo o suite de productividad no listado en los obvios
 - desconocido: no puedes clasificar con certeza
 
 Responde en JSON exactamente así (sin texto adicional):
@@ -66,7 +68,7 @@ Responde en JSON exactamente así (sin texto adicional):
   "dominios_clasificados_por_llm": [
     {
       "dominio": "ejemplo.com",
-      "categoria": "propio_extension|sensible_financiero|sensible_gubernamental|desconocido",
+      "categoria": "propio_extension|sensible_financiero|sensible_gubernamental|sensible_identidad|sensible_correo_productividad|desconocido",
       "razonamiento": "explicación de por qué esta categoría"
     }
   ],

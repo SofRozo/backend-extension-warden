@@ -40,6 +40,23 @@ export class StaticAnalysisService {
       preprocessed.files.map((f) => [f.path, f.role]),
     );
 
+    // Remote code violations (MV3 policy): external <script src="https://..."> in HTML pages.
+    // Loading remote code is strictly forbidden in Manifest V3 and is a critical finding
+    // regardless of whether the extension is MV2 (suspicious) or MV3 (policy violation).
+    for (const violation of preprocessed.remoteCodeViolations) {
+      allFindings.push({
+        category: FindingCategory.INJECTION,
+        pattern: 'remote_code_execution',
+        description:
+          preprocessed.manifest.manifestVersion === 3
+            ? `MV3 policy violation: "${violation.htmlFile}" loads remote script "${violation.externalSrc}". Remote code execution is strictly forbidden in Manifest V3 and violates Chrome Web Store policy.`
+            : `"${violation.htmlFile}" loads an external script from "${violation.externalSrc}". Remote code bypasses extension review and can be changed by the server at any time.`,
+        severity: RiskLevel.CRITICAL,
+        location: { file: violation.htmlFile, line: 1, column: 0 },
+        codeSnippet: `<script src="${violation.externalSrc}">`,
+      });
+    }
+
     // Obfuscated files: presence alone is a finding; skip semantic analysis per spec
     for (const file of preprocessed.files.filter((f) => f.isObfuscated)) {
       allFindings.push({
