@@ -14,23 +14,22 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Throttle } from '@nestjs/throttler';
 import { AnalysisService } from './analysis.service.js';
 import { AnalyzeRequestDto } from './dto/analyze-request.dto.js';
 import { AnalysisStatus } from '../common/enums/risk-level.enum.js';
 
 /** RF01: Porcentaje de progreso por estado — permite a clientes mostrar barra de progreso */
 const STATUS_PROGRESS: Record<AnalysisStatus, number> = {
-  [AnalysisStatus.QUEUED]:             5,
-  [AnalysisStatus.DOWNLOADING]:        15,
-  [AnalysisStatus.PREPROCESSING]:      25,
-  [AnalysisStatus.AI_ANALYSIS]:        38,
-  [AnalysisStatus.STATIC_ANALYSIS]:    50,
-  [AnalysisStatus.DYNAMIC_ANALYSIS]:   70,
-  [AnalysisStatus.THREAT_INTEL]:       85,
-  [AnalysisStatus.GENERATING_REPORT]:  92,
-  [AnalysisStatus.COMPLETED]:         100,
-  [AnalysisStatus.FAILED]:              0,
+  [AnalysisStatus.QUEUED]: 5,
+  [AnalysisStatus.DOWNLOADING]: 15,
+  [AnalysisStatus.PREPROCESSING]: 25,
+  [AnalysisStatus.AI_ANALYSIS]: 38,
+  [AnalysisStatus.STATIC_ANALYSIS]: 50,
+  [AnalysisStatus.DYNAMIC_ANALYSIS]: 70,
+  [AnalysisStatus.THREAT_INTEL]: 85,
+  [AnalysisStatus.GENERATING_REPORT]: 92,
+  [AnalysisStatus.COMPLETED]: 100,
+  [AnalysisStatus.FAILED]: 0,
 };
 
 @Controller()
@@ -99,7 +98,7 @@ export class AnalysisController {
       throw new NotFoundException(`Job ${jobId} not found`);
     }
 
-    if (job.status !== 'completed') {
+    if (job.status !== AnalysisStatus.COMPLETED) {
       return {
         jobId: job.id,
         status: job.status,
@@ -111,7 +110,7 @@ export class AnalysisController {
   }
 
   @Get('screenshot/:jobId/:filename')
-  async getScreenshot(
+  getScreenshot(
     @Param('jobId') jobId: string,
     @Param('filename') filename: string,
     @Res() res: Response,

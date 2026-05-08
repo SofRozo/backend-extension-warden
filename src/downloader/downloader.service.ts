@@ -57,12 +57,14 @@ export class DownloaderService {
       'DownloaderService',
     );
 
-    await this.extractCrx(crxPath, extExtractPath);
+    this.extractCrx(crxPath, extExtractPath);
 
     const manifestPath = path.join(extExtractPath, 'manifest.json');
     let manifestData: Record<string, unknown> = {};
     if (fs.existsSync(manifestPath)) {
-      manifestData = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      manifestData = JSON.parse(
+        fs.readFileSync(manifestPath, 'utf-8'),
+      ) as Record<string, unknown>;
     }
 
     return { crxPath, extractPath: extExtractPath, crxHash, manifestData };
@@ -176,7 +178,7 @@ export class DownloaderService {
     });
   }
 
-  private async extractCrx(crxPath: string, extractPath: string): Promise<void> {
+  private extractCrx(crxPath: string, extractPath: string): void {
     if (fs.existsSync(extractPath)) {
       fs.rmSync(extractPath, { recursive: true, force: true });
     }

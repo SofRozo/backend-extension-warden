@@ -28,14 +28,8 @@ export default () => ({
     password: process.env.REDIS_PASSWORD || '',
   },
   analysis: {
-    staticTimeoutMs: parseInt(
-      process.env.STATIC_TIMEOUT_MS || '60000',
-      10,
-    ),
-    dynamicTimeoutMs: parseInt(
-      process.env.DYNAMIC_TIMEOUT_MS || '180000',
-      10,
-    ),
+    staticTimeoutMs: parseInt(process.env.STATIC_TIMEOUT_MS || '60000', 10),
+    dynamicTimeoutMs: parseInt(process.env.DYNAMIC_TIMEOUT_MS || '180000', 10),
     maxConcurrentWorkers: parseInt(
       process.env.MAX_CONCURRENT_WORKERS || '10',
       10,
@@ -53,18 +47,14 @@ export default () => ({
     virusTotalApiKey: process.env.VIRUSTOTAL_API_KEY || '',
     urlScanApiKey: process.env.URLSCAN_API_KEY || '',
     abuseIpdbApiKey: process.env.ABUSEIPDB_API_KEY || '',
-    timeoutMs: parseInt(
-      process.env.THREAT_INTEL_TIMEOUT_MS || '10000',
-      10,
-    ),
+    timeoutMs: parseInt(process.env.THREAT_INTEL_TIMEOUT_MS || '10000', 10),
     cacheTtlSeconds: parseInt(
       process.env.THREAT_INTEL_CACHE_TTL || '86400',
       10,
     ),
   },
   honeypot: {
-    storageStatePath:
-      process.env.STORAGE_STATE_PATH || '/data/honeypot/states',
+    storageStatePath: process.env.STORAGE_STATE_PATH || '/data/honeypot/states',
     encryptionKey: process.env.HONEYPOT_ENCRYPTION_KEY || '',
   },
   demo: {

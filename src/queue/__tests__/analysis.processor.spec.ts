@@ -12,7 +12,10 @@ import { SandboxOrchestratorService } from '../../dynamic-analysis/orchestrator/
 import { ThreatIntelService } from '../../threat-intel/threat-intel.service.js';
 import { ReportService } from '../../report/report.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import { AnalysisStatus, RiskLevel } from '../../common/enums/risk-level.enum.js';
+import {
+  AnalysisStatus,
+  RiskLevel,
+} from '../../common/enums/risk-level.enum.js';
 
 describe('AnalysisProcessor', () => {
   let processor: AnalysisProcessor;
@@ -95,9 +98,37 @@ describe('AnalysisProcessor', () => {
         StructuredLogger,
         { provide: getRepositoryToken(AnalysisJob), useValue: mockRepository },
         { provide: DownloaderService, useValue: mockDownloader },
-        { provide: PreprocessorService, useValue: { preprocess: jest.fn().mockResolvedValue({ files: [], manifest: { name: 'T', version: '1', manifestVersion: 2, apiPermissions: [], hostPermissions: [], contentScripts: [], backgroundScripts: [], rawManifest: {} }, crxHash: 'abc', extractPath: '/tmp', obfuscatedFileCount: 0, hasObfuscation: false, remoteCodeViolations: [] }) } },
-        { provide: AgentsOrchestratorService, useValue: { runAgentPipeline: jest.fn().mockResolvedValue(null) } },
-        { provide: Agent4DynamicService, useValue: { analyze: jest.fn().mockResolvedValue(null) } },
+        {
+          provide: PreprocessorService,
+          useValue: {
+            preprocess: jest.fn().mockResolvedValue({
+              files: [],
+              manifest: {
+                name: 'T',
+                version: '1',
+                manifestVersion: 2,
+                apiPermissions: [],
+                hostPermissions: [],
+                contentScripts: [],
+                backgroundScripts: [],
+                rawManifest: {},
+              },
+              crxHash: 'abc',
+              extractPath: '/tmp',
+              obfuscatedFileCount: 0,
+              hasObfuscation: false,
+              remoteCodeViolations: [],
+            }),
+          },
+        },
+        {
+          provide: AgentsOrchestratorService,
+          useValue: { runAgentPipeline: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: Agent4DynamicService,
+          useValue: { analyze: jest.fn().mockResolvedValue(null) },
+        },
         { provide: StaticAnalysisService, useValue: mockStatic },
         { provide: SandboxOrchestratorService, useValue: mockDynamic },
         { provide: ThreatIntelService, useValue: mockThreatIntel },
@@ -126,7 +157,10 @@ describe('AnalysisProcessor', () => {
     it('should execute full pipeline successfully', async () => {
       await processor.process(mockJob);
 
-      expect(mockDownloader.downloadAndExtract).toHaveBeenCalledWith('ext-test', 'job-123');
+      expect(mockDownloader.downloadAndExtract).toHaveBeenCalledWith(
+        'ext-test',
+        'job-123',
+      );
       expect(mockStatic.analyze).toHaveBeenCalled();
       expect(mockDynamic.executeDynamicAnalysis).toHaveBeenCalled();
       expect(mockThreatIntel.queryDomains).toHaveBeenCalled();
@@ -150,20 +184,24 @@ describe('AnalysisProcessor', () => {
     it('should still run dynamic analysis even with critical static findings', async () => {
       mockStatic.analyze.mockResolvedValue({
         ...mockStaticResult,
-        findings: [{
-          category: 'data_theft',
-          pattern: 'password',
-          severity: RiskLevel.CRITICAL,
-          location: { file: 'bg.js', line: 1, column: 0 },
-          description: 'test',
-        }],
-        discoveredDomains: [{
-          domain: 'bank.com',
-          source: 'code',
-          context: 'bank',
-          platformLevel: 3,
-          category: 'banking',
-        }],
+        findings: [
+          {
+            category: 'data_theft',
+            pattern: 'password',
+            severity: RiskLevel.CRITICAL,
+            location: { file: 'bg.js', line: 1, column: 0 },
+            description: 'test',
+          },
+        ],
+        discoveredDomains: [
+          {
+            domain: 'bank.com',
+            source: 'code',
+            context: 'bank',
+            platformLevel: 3,
+            category: 'banking',
+          },
+        ],
       });
 
       await processor.process(mockJob);
@@ -199,7 +237,9 @@ describe('AnalysisProcessor', () => {
         new Error('Download failed'),
       );
 
-      await expect(processor.process(mockJob)).rejects.toThrow('Download failed');
+      await expect(processor.process(mockJob)).rejects.toThrow(
+        'Download failed',
+      );
 
       expect(mockRepository.update).toHaveBeenCalledWith('job-123', {
         status: AnalysisStatus.FAILED,

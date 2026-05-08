@@ -7,11 +7,11 @@ import {
   StaticFinding,
   DomSelector,
 } from '../../common/interfaces/analysis.interfaces.js';
+import { RISK_PATTERNS, type RiskPattern } from '../patterns/risk-patterns.js';
 import {
-  RISK_PATTERNS,
-  type RiskPattern,
-} from '../patterns/risk-patterns.js';
-import { FindingCategory, RiskLevel } from '../../common/enums/risk-level.enum.js';
+  FindingCategory,
+  RiskLevel,
+} from '../../common/enums/risk-level.enum.js';
 
 const traverse =
   typeof _traverse === 'function'
@@ -60,7 +60,7 @@ export class AstParserService {
           const node = nodePath.node;
           const isWriteTarget =
             t.isAssignmentExpression(nodePath.parent) &&
-            (nodePath.parent as t.AssignmentExpression).left === node;
+            nodePath.parent.left === node;
           this.checkMemberExpression(node, filename, findings, isWriteTarget);
         },
         AssignmentExpression: (nodePath) => {
@@ -95,7 +95,8 @@ export class AstParserService {
     if (taintedVars.size === 0) return findings;
 
     // Pass 2: find network sinks and check if tainted vars appear in context window
-    const SINK_RE = /\bfetch\s*\(|new\s+XMLHttpRequest\b|\.send\s*\(|navigator\.sendBeacon\s*\(/;
+    const SINK_RE =
+      /\bfetch\s*\(|new\s+XMLHttpRequest\b|\.send\s*\(|navigator\.sendBeacon\s*\(/;
     const CONTEXT_WINDOW = 15;
     const reported = new Set<string>();
 
@@ -150,7 +151,12 @@ export class AstParserService {
               astPattern.arguments?.includes(firstArg.value)
             ) {
               findings.push(
-                this.createFinding(pattern, astPattern.arguments![0], filename, node),
+                this.createFinding(
+                  pattern,
+                  astPattern.arguments[0],
+                  filename,
+                  node,
+                ),
               );
             }
           }
@@ -170,9 +176,7 @@ export class AstParserService {
             const firstArg = node.arguments[0];
             if (
               t.isStringLiteral(firstArg) &&
-              astPattern.arguments.some((a) =>
-                firstArg.value.includes(a),
-              )
+              astPattern.arguments.some((a) => firstArg.value.includes(a))
             ) {
               findings.push(
                 this.createFinding(pattern, calleeName, filename, node),
@@ -215,10 +219,16 @@ export class AstParserService {
           isWriteTarget &&
           pattern.category === FindingCategory.DATA_THEFT &&
           (propertyName === 'textContent' || propertyName === 'innerText')
-        ) continue;
+        )
+          continue;
 
         findings.push(
-          this.createFinding(pattern, `${objectName || '?'}.${propertyName}`, filename, node),
+          this.createFinding(
+            pattern,
+            `${objectName || '?'}.${propertyName}`,
+            filename,
+            node,
+          ),
         );
       }
     }
@@ -277,10 +287,12 @@ export class AstParserService {
     }
   }
 
-  private getCalleeName(callee: t.Expression | t.V8IntrinsicIdentifier): string | null {
+  private getCalleeName(
+    callee: t.Expression | t.V8IntrinsicIdentifier,
+  ): string | null {
     if (t.isIdentifier(callee)) return callee.name;
     if (t.isMemberExpression(callee)) {
-      const obj = this.getCalleeName(callee.object as t.Expression);
+      const obj = this.getCalleeName(callee.object);
       const prop = t.isIdentifier(callee.property)
         ? callee.property.name
         : t.isStringLiteral(callee.property)
@@ -295,10 +307,8 @@ export class AstParserService {
   private getObjectName(node: t.Expression | t.Super): string | null {
     if (t.isIdentifier(node)) return node.name;
     if (t.isMemberExpression(node)) {
-      const obj = this.getObjectName(node.object as t.Expression);
-      const prop = t.isIdentifier(node.property)
-        ? node.property.name
-        : null;
+      const obj = this.getObjectName(node.object);
+      const prop = t.isIdentifier(node.property) ? node.property.name : null;
       if (obj && prop) return `${obj}.${prop}`;
     }
     return null;

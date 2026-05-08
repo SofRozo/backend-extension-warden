@@ -21,7 +21,7 @@ export class EncryptionService {
   constructor(
     private readonly config: ConfigService,
     private readonly logger: StructuredLogger,
-  ) { }
+  ) {}
 
   private deriveKey(passphrase: string, salt: Buffer): Buffer {
     return crypto.pbkdf2Sync(
@@ -103,6 +103,6 @@ export class EncryptionService {
     }
     const encrypted = fs.readFileSync(statePath);
     const plaintext = this.decrypt(encrypted);
-    return JSON.parse(plaintext);
+    return JSON.parse(plaintext) as object;
   }
 }

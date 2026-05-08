@@ -1,4 +1,7 @@
-import type { FileRole, SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
+import type {
+  FileRole,
+  SandboxDomainObservation,
+} from '../../common/interfaces/analysis.interfaces.js';
 
 export type { SandboxDomainObservation };
 

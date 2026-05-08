@@ -10,8 +10,8 @@ import { StructuredLogger } from '../common/logger/logger.service.js';
   imports: [
     TypeOrmModule.forFeature([AnalysisJob]),
     BullModule.registerQueue(
-      { name: 'analysis' },        // headless / background (Docker worker)
-      { name: 'analysis-demo' },   // visual demo (host worker with DEMO_MODE=true)
+      { name: 'analysis' }, // headless / background (Docker worker)
+      { name: 'analysis-demo' }, // visual demo (host worker with DEMO_MODE=true)
     ),
   ],
   controllers: [AnalysisController],

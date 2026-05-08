@@ -24,12 +24,14 @@ export class LlmClientService {
   private readonly timeoutMs: number;
 
   constructor(
-    config: ConfigService,
+    private readonly config: ConfigService,
     private readonly logger: StructuredLogger,
   ) {
     this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
     this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:8b';
-    this.ollamaHost = (config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434').replace(/\/$/, '');
+    this.ollamaHost = (
+      config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434'
+    ).replace(/\/$/, '');
     this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
     this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 120_000;
   }
@@ -47,7 +49,7 @@ export class LlmClientService {
     if (!this.isConfigured()) {
       throw new Error(
         'No LLM configured: set USAR_OLLAMA=true and ensure Ollama is running, ' +
-        'or set USAR_OLLAMA=false and provide GOOGLE_API_KEY.',
+          'or set USAR_OLLAMA=false and provide GOOGLE_API_KEY.',
       );
     }
 
@@ -65,13 +67,10 @@ export class LlmClientService {
       );
       return result;
     } catch (err) {
-      const detail = (err as any)?.response?.data
-        ? JSON.stringify((err as any).response.data).slice(0, 400)
-        : '';
       this.logger.logWithJob(
         jobId ?? '-',
         'error',
-        `LLM call failed after ${Date.now() - start}ms: ${err instanceof Error ? err.message : String(err)}${detail ? ` — ${detail}` : ''}`,
+        `LLM call failed after ${Date.now() - start}ms: ${err instanceof Error ? err.message : String(err)}`,
         'LlmClientService',
       );
       throw err;
@@ -85,20 +84,25 @@ export class LlmClientService {
       `${this.ollamaHost}/api/generate`,
       {
         model: this.modeloOllama,
-        prompt: prompt + '\n\nResponde SOLO con JSON válido. Sin texto adicional ni bloques de código markdown.',
+        prompt:
+          prompt +
+          '\n\nResponde SOLO con JSON válido. Sin texto adicional ni bloques de código markdown.',
         stream: false,
         format: 'json',
       },
       { timeout: this.timeoutMs },
     );
-    return this.parseJsonResponse(response.data?.response as string | undefined);
+    const ollamaData = response.data as { response?: string };
+    return this.parseJsonResponse(ollamaData.response);
   }
 
   // ─── Gemini Flash ────────────────────────────────────────────────────────────
 
   private async callGemini(prompt: string): Promise<unknown> {
     if (!this.googleApiKey) {
-      throw new Error('GOOGLE_API_KEY is not set (required when USAR_OLLAMA=false)');
+      throw new Error(
+        'GOOGLE_API_KEY is not set (required when USAR_OLLAMA=false)',
+      );
     }
 
     const url =
@@ -114,7 +118,10 @@ export class LlmClientService {
       { timeout: this.timeoutMs },
     );
 
-    const raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
+    const geminiData = response.data as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const raw = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
     return this.parseJsonResponse(raw);
   }
 
@@ -139,7 +146,9 @@ export class LlmClientService {
       if (jsonMatch) {
         try {
           return JSON.parse(jsonMatch[0]);
-        } catch { /* fall through */ }
+        } catch {
+          /* fall through */
+        }
       }
       throw new Error(
         `LLM returned a response that could not be parsed as JSON: "${cleaned.slice(0, 300)}"`,

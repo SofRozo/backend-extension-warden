@@ -39,21 +39,30 @@ describe('DeobfuscatorService', () => {
     it('should decode Base64 atob() calls', () => {
       // "Hello" in base64
       const code = `var x = atob('SGVsbG8=');`;
-      const { code: result, wasObfuscated } = service.deobfuscate(code, 'test.js');
+      const { code: result, wasObfuscated } = service.deobfuscate(
+        code,
+        'test.js',
+      );
       expect(wasObfuscated).toBe(true);
       expect(result).toContain('Hello');
     });
 
     it('should decode hex-escaped strings', () => {
       const code = `var s = '\\x48\\x65\\x6c\\x6c\\x6f\\x57\\x6f\\x72\\x6c\\x64';`;
-      const { code: result, wasObfuscated } = service.deobfuscate(code, 'test.js');
+      const { code: result, wasObfuscated } = service.deobfuscate(
+        code,
+        'test.js',
+      );
       expect(wasObfuscated).toBe(true);
       expect(result).toContain('HelloWorld');
     });
 
     it('should return original code when nothing to deobfuscate', () => {
       const code = `console.log('clean code');`;
-      const { code: result, wasObfuscated } = service.deobfuscate(code, 'test.js');
+      const { code: result, wasObfuscated } = service.deobfuscate(
+        code,
+        'test.js',
+      );
       expect(wasObfuscated).toBe(false);
       expect(result).toBe(code);
     });

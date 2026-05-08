@@ -24,7 +24,12 @@ export class StaticAnalysisService {
     preprocessed: PreprocessorOutput,
     jobId: string,
   ): Promise<StaticAnalysisResult> {
-    this.logger.logWithJob(jobId, 'info', 'Starting static analysis', 'StaticAnalysisService');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      'Starting static analysis',
+      'StaticAnalysisService',
+    );
 
     const allFindings: StaticFinding[] = [];
     const allDomains: DiscoveredDomain[] = [];
@@ -32,7 +37,9 @@ export class StaticAnalysisService {
 
     // Manifest domains (secondary source — code takes priority)
     allDomains.push(
-      ...this.domainDiscovery.extractDomainsFromManifest(preprocessed.manifest.rawManifest),
+      ...this.domainDiscovery.extractDomainsFromManifest(
+        preprocessed.manifest.rawManifest,
+      ),
     );
 
     // Role lookup for findings calibration
@@ -99,7 +106,10 @@ export class StaticAnalysisService {
         }
 
         allDomains.push(
-          ...this.domainDiscovery.extractDomainsFromCode(file.cleanCode!, file.path),
+          ...this.domainDiscovery.extractDomainsFromCode(
+            file.cleanCode!,
+            file.path,
+          ),
         );
       } catch (err) {
         this.logger.logWithJob(
@@ -136,14 +146,14 @@ export class StaticAnalysisService {
     };
   }
 
-
-
   private adjustFindingsByRole(
     findings: StaticFinding[],
     roleByPath: Map<string, FileRole>,
   ): StaticFinding[] {
     return findings
-      .filter((f) => (roleByPath.get(f.location.file) ?? 'unknown') !== 'library')
+      .filter(
+        (f) => (roleByPath.get(f.location.file) ?? 'unknown') !== 'library',
+      )
       .map((f) =>
         this.applyRoleSeverity(f, roleByPath.get(f.location.file) ?? 'unknown'),
       );
@@ -156,10 +166,11 @@ export class StaticAnalysisService {
     // 0 = content_script / unknown (highest risk), 1 = background, 2 = popup
     const idx = role === 'popup' ? 2 : role === 'background' ? 1 : 0;
 
-
     switch (finding.category) {
       case FindingCategory.KEYLOGGER: {
-        const isFormEvent = ['submit', 'input', 'change'].includes(finding.pattern);
+        const isFormEvent = ['submit', 'input', 'change'].includes(
+          finding.pattern,
+        );
         const t: [RiskLevel, RiskLevel, RiskLevel] = isFormEvent
           ? [RiskLevel.MEDIUM, RiskLevel.LOW, RiskLevel.INFORMATIONAL]
           : [RiskLevel.HIGH, RiskLevel.LOW, RiskLevel.INFORMATIONAL];
@@ -168,7 +179,8 @@ export class StaticAnalysisService {
       case FindingCategory.DATA_THEFT: {
         if (idx === 0) return finding;
         const isSensitive =
-          finding.pattern.includes('cookie') || finding.description.includes('password');
+          finding.pattern.includes('cookie') ||
+          finding.description.includes('password');
         const t: [RiskLevel, RiskLevel, RiskLevel] = isSensitive
           ? [finding.severity, RiskLevel.HIGH, RiskLevel.MEDIUM]
           : [finding.severity, RiskLevel.LOW, RiskLevel.INFORMATIONAL];
@@ -177,7 +189,9 @@ export class StaticAnalysisService {
       case FindingCategory.INJECTION: {
         if (idx === 0) return finding;
         const t: [RiskLevel, RiskLevel, RiskLevel] = [
-          finding.severity, RiskLevel.MEDIUM, RiskLevel.INFORMATIONAL,
+          finding.severity,
+          RiskLevel.MEDIUM,
+          RiskLevel.INFORMATIONAL,
         ];
         return { ...finding, severity: t[idx] };
       }

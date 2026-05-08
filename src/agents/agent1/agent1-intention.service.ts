@@ -41,13 +41,18 @@ export class Agent1IntentionService {
     private readonly logger: StructuredLogger,
   ) {}
 
-  async analyze(preprocessed: PreprocessorOutput, jobId: string): Promise<Agent1Output> {
+  async analyze(
+    preprocessed: PreprocessorOutput,
+    jobId: string,
+  ): Promise<Agent1Output> {
     const { manifest, files } = preprocessed;
 
     // Build file list — exclude libraries, show role and obfuscation flag
     const fileList = files
       .filter((f) => f.role !== 'library')
-      .map((f) => `  - ${f.path} [${f.role}${f.isObfuscated ? ', OFUSCADO' : ''}]`)
+      .map(
+        (f) => `  - ${f.path} [${f.role}${f.isObfuscated ? ', OFUSCADO' : ''}]`,
+      )
       .join('\n');
 
     const datos = JSON.stringify(
@@ -57,8 +62,11 @@ export class Agent1IntentionService {
         manifest_version: manifest.manifestVersion,
         permisos_api: manifest.apiPermissions,
         host_permissions: manifest.hostPermissions,
-        content_scripts_activos_en: manifest.contentScripts.flatMap((cs) => cs.matches),
-        background: manifest.serviceWorker ?? manifest.backgroundScripts ?? null,
+        content_scripts_activos_en: manifest.contentScripts.flatMap(
+          (cs) => cs.matches,
+        ),
+        background:
+          manifest.serviceWorker ?? manifest.backgroundScripts ?? null,
         popup: manifest.popupUrl ?? null,
         archivos_clasificados: `\n${fileList}`,
       },
@@ -68,7 +76,12 @@ export class Agent1IntentionService {
 
     const prompt = PROMPT.replace('{datos}', datos);
 
-    this.logger.logWithJob(jobId, 'info', 'Agent 1 — analyzing intention', 'Agent1IntentionService');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      'Agent 1 — analyzing intention',
+      'Agent1IntentionService',
+    );
 
     const raw = await this.llm.callLLM(prompt, jobId);
     return this.validate(raw, jobId);
@@ -100,7 +113,7 @@ export class Agent1IntentionService {
       acciones_esperadas: toStringArray(r.acciones_esperadas),
       acciones_NO_esperadas: toStringArray(r.acciones_NO_esperadas),
       senales_alarma_manifest: toStringArray(r.senales_alarma_manifest),
-      nivel_riesgo_inicial: VALID_RISK_LEVELS.has(nivel) ? nivel as Agent1Output['nivel_riesgo_inicial'] : 'medio',
+      nivel_riesgo_inicial: VALID_RISK_LEVELS.has(nivel) ? nivel : 'medio',
       razon_nivel_riesgo: String(r.razon_nivel_riesgo ?? ''),
     };
   }

@@ -113,7 +113,9 @@ export class PlatformStateService {
       'PlatformStateService',
     );
 
-    const level2Platforms = await this.findByLevel(PlatformLevel.LEVEL_2_HONEYPOT);
+    const level2Platforms = await this.findByLevel(
+      PlatformLevel.LEVEL_2_HONEYPOT,
+    );
 
     if (level2Platforms.length === 0) {
       this.logger.log(
@@ -169,10 +171,7 @@ export class PlatformStateService {
       }
 
       // Update lastRenewal timestamp
-      await this.platformRepo.update(
-        { domain },
-        { lastRenewal: new Date() },
-      );
+      await this.platformRepo.update({ domain }, { lastRenewal: new Date() });
 
       this.logger.log(
         `§9.1 Honeypot session OK for ${domain} (${cookies.length} cookies, ${sessionCookies.length} active)`,
@@ -216,14 +215,17 @@ export class PlatformStateService {
     const existing = await this.findByDomain(data.domain);
 
     if (existing) {
-      await this.platformRepo.update({ domain: data.domain }, {
-        platformName: data.platformName,
-        level: data.level,
-        category: data.category,
-        loginUrl: data.loginUrl,
-        storageStatePath: data.storageStatePath ?? existing.storageStatePath,
-        isActive: true,
-      });
+      await this.platformRepo.update(
+        { domain: data.domain },
+        {
+          platformName: data.platformName,
+          level: data.level,
+          category: data.category,
+          loginUrl: data.loginUrl,
+          storageStatePath: data.storageStatePath ?? existing.storageStatePath,
+          isActive: true,
+        },
+      );
       return (await this.findByDomain(data.domain))!;
     }
 

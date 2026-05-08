@@ -20,7 +20,9 @@ export class StagehandService {
   ) {
     this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
     this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:8b';
-    this.ollamaHost = (config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434').replace(/\/$/, '');
+    this.ollamaHost = (
+      config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434'
+    ).replace(/\/$/, '');
     this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
   }
 
@@ -31,7 +33,12 @@ export class StagehandService {
     proposito: string,
     jobId: string,
   ): Promise<SandboxDomainObservation> {
-    this.logger.logWithJob(jobId, 'info', `Stagehand — starting analysis of ${domain}`, 'StagehandService');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Stagehand — starting analysis of ${domain}`,
+      'StagehandService',
+    );
 
     const url = `https://${domain}`;
     const observations: string[] = [];
@@ -45,53 +52,78 @@ export class StagehandService {
       // We pass { page } to each method to target the sandbox page (extension loaded).
       await stagehand.init();
 
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {});
+      await page
+        .goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 })
+        .catch(() => {});
 
       // observe() returns Action[] — potential actions identified on the page
-      this.logger.logWithJob(jobId, 'info', `Stagehand — observing ${domain}`, 'StagehandService');
-      const actions = await stagehand.observe(
-        `Identifica elementos de login, formularios sensibles o campos de datos personales en ${domain} ` +
-        `relacionados con el propósito declarado: "${proposito}"`,
-        { page },
-      ).catch(() => []);
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `Stagehand — observing ${domain}`,
+        'StagehandService',
+      );
+      const actions = await stagehand
+        .observe(
+          `Identifica elementos de login, formularios sensibles o campos de datos personales en ${domain} ` +
+            `relacionados con el propósito declarado: "${proposito}"`,
+          { page },
+        )
+        .catch(() => []);
 
       if (actions.length > 0) {
         const summary = actions
           .slice(0, 5)
-          .map(a => a.description)
+          .map((a) => a.description)
           .join('; ');
         observations.push(`Elementos identificados: ${summary}`);
       }
 
-      const isSensitive = category === 'sensible_financiero' || category === 'sensible_identidad';
+      const isSensitive =
+        category === 'sensible_financiero' || category === 'sensible_identidad';
 
       if (isSensitive) {
-        this.logger.logWithJob(jobId, 'info', 'Stagehand — testing login form with honeypot credentials', 'StagehandService');
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          'Stagehand — testing login form with honeypot credentials',
+          'StagehandService',
+        );
 
-        const emailAct = await stagehand.act(
-          'Busca el campo de correo electrónico o nombre de usuario y escribe "test_extwarden@mailtest.com"',
-          { page },
-        ).catch(() => ({ success: false }));
+        const emailAct = await stagehand
+          .act(
+            'Busca el campo de correo electrónico o nombre de usuario y escribe "test_extwarden@mailtest.com"',
+            { page },
+          )
+          .catch(() => ({ success: false }));
 
         if (emailAct.success) {
           actionsPerformed.push('type:honeypot_email');
 
-          const passAct = await stagehand.act(
-            'Busca el campo de contraseña y escribe "ExTw4rd3n_F4ke!"',
-            { page },
-          ).catch(() => ({ success: false }));
+          const passAct = await stagehand
+            .act('Busca el campo de contraseña y escribe "ExTw4rd3n_F4ke!"', {
+              page,
+            })
+            .catch(() => ({ success: false }));
 
           if (passAct.success) {
             actionsPerformed.push('type:honeypot_password');
-            await stagehand.act('Haz clic en el botón de Iniciar Sesión, Login o Continuar', { page }).catch(() => {});
+            await stagehand
+              .act(
+                'Haz clic en el botón de Iniciar Sesión, Login o Continuar',
+                { page },
+              )
+              .catch(() => {});
             actionsPerformed.push('click:submit');
           }
         }
       } else {
-        await stagehand.act(
-          'Explora la página principal buscando secciones de configuración, perfil de usuario o paneles de control.',
-          { page },
-        ).catch(() => {});
+        await stagehand
+          .act(
+            'Explora la página principal buscando secciones de configuración, perfil de usuario o paneles de control.',
+            { page },
+          )
+          .catch(() => {});
         actionsPerformed.push('act:exploration');
       }
 
@@ -100,14 +132,18 @@ export class StagehandService {
         descripcion: z.string(),
       });
 
-      const finalSummary = await stagehand.extract(
-        '¿La extensión del navegador inyectó algún elemento visual, modificó formularios, o alteró el comportamiento de la página?',
-        ExtensionImpactSchema,
-        { page },
-      ).catch(() => ({ detectado: false, descripcion: '' }));
+      const finalSummary = await stagehand
+        .extract(
+          '¿La extensión del navegador inyectó algún elemento visual, modificó formularios, o alteró el comportamiento de la página?',
+          ExtensionImpactSchema,
+          { page },
+        )
+        .catch(() => ({ detectado: false, descripcion: '' }));
 
       if (finalSummary.detectado) {
-        observations.push(`Comportamiento detectado: ${finalSummary.descripcion}`);
+        observations.push(
+          `Comportamiento detectado: ${finalSummary.descripcion}`,
+        );
       }
 
       return {
@@ -117,9 +153,9 @@ export class StagehandService {
         actionsPerformed,
         requestsToThisDomain: 0,
         domModificationsDetected: !!finalSummary.detectado,
-        credentialsSubmitted: isSensitive && actionsPerformed.includes('click:submit'),
+        credentialsSubmitted:
+          isSensitive && actionsPerformed.includes('click:submit'),
       };
-
     } catch (err) {
       const msg = `Stagehand failed for ${domain}: ${err instanceof Error ? err.message : String(err)}`;
       this.logger.logWithJob(jobId, 'warn', msg, 'StagehandService');
@@ -153,7 +189,9 @@ export class StagehandService {
         name: 'ollama',
         baseURL: `${this.ollamaHost}/v1`,
       });
-      const llmClient = new AISdkClient({ model: ollamaProvider.chatModel(this.modeloOllama) });
+      const llmClient = new AISdkClient({
+        model: ollamaProvider.chatModel(this.modeloOllama),
+      });
       return { ...base, llmClient };
     }
 

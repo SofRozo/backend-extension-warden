@@ -73,7 +73,13 @@ Responde en JSON exactamente así (sin texto adicional):
 // ─── Validation helpers ───────────────────────────────────────────────────────
 
 const VALID_VERDICTS = new Set(['benigna', 'sospechosa', 'maliciosa']);
-const VALID_SEVERITIES = new Set(['critica', 'alta', 'media', 'baja', 'falso_positivo']);
+const VALID_SEVERITIES = new Set([
+  'critica',
+  'alta',
+  'media',
+  'baja',
+  'falso_positivo',
+]);
 const VALID_CONFIDENCE = new Set(['alta', 'media', 'baja']);
 
 @Injectable()
@@ -100,7 +106,8 @@ export class Agent3AbuseService {
         evaluaciones: [],
         permisos_abusados: [],
         veredicto_preliminar: 'benigna',
-        razon_veredicto: 'El Agente 2 no identificó hallazgos de comportamiento sospechoso.',
+        razon_veredicto:
+          'El Agente 2 no identificó hallazgos de comportamiento sospechoso.',
       };
     }
 
@@ -142,14 +149,14 @@ export class Agent3AbuseService {
 
     // Only show sensitive domains that go to Playwright — these are the ones
     // that matter for evaluating if data is being sent to the wrong place
-    const dominiosSensibles = agent2.dominios_para_playwright.length > 0
-      ? agent2.dominios_para_playwright
-          .map((d) => `  - ${d.domain} [${d.category}]: ${d.reasoning}`)
-          .join('\n')
-      : '  (ninguno identificado)';
+    const dominiosSensibles =
+      agent2.dominios_para_playwright.length > 0
+        ? agent2.dominios_para_playwright
+            .map((d) => `  - ${d.domain} [${d.category}]: ${d.reasoning}`)
+            .join('\n')
+        : '  (ninguno identificado)';
 
-    const prompt = PROMPT
-      .replace('{output_agente_1}', outputAgente1)
+    const prompt = PROMPT.replace('{output_agente_1}', outputAgente1)
       .replace('{output_agente_2}', outputAgente2)
       .replace('{permisos}', permisos)
       .replace('{dominios_sensibles}', dominiosSensibles);
@@ -182,10 +189,12 @@ export class Agent3AbuseService {
           hallazgo: String(e.hallazgo),
           archivo: String(e.archivo ?? '(desconocido)'),
           es_abuso: Boolean(e.es_abuso),
-          confianza: VALID_CONFIDENCE.has(e.confianza ?? '') ? e.confianza as Agent3Evaluation['confianza'] : 'media',
+          confianza: VALID_CONFIDENCE.has(e.confianza ?? '')
+            ? (e.confianza as Agent3Evaluation['confianza'])
+            : 'media',
           razonamiento: String(e.razonamiento ?? ''),
           severidad_final: VALID_SEVERITIES.has(e.severidad_final ?? '')
-            ? e.severidad_final as Agent3Evaluation['severidad_final']
+            ? (e.severidad_final as Agent3Evaluation['severidad_final'])
             : 'media',
         });
       }
@@ -218,7 +227,7 @@ export class Agent3AbuseService {
       evaluaciones,
       permisos_abusados,
       veredicto_preliminar: VALID_VERDICTS.has(veredicto)
-        ? veredicto as Agent3Output['veredicto_preliminar']
+        ? (veredicto as Agent3Output['veredicto_preliminar'])
         : 'sospechosa',
       razon_veredicto: String(r.razon_veredicto ?? ''),
     };

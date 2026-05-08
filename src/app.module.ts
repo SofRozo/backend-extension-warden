@@ -54,13 +54,13 @@ import { EncryptionService } from './common/crypto/encryption.service.js';
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 10000,   // 10 segundos
-        limit: 5,     // max 5 req en 10s (burst protection)
+        ttl: 10000, // 10 segundos
+        limit: 5, // max 5 req en 10s (burst protection)
       },
       {
         name: 'medium',
-        ttl: 60000,   // 60 segundos
-        limit: 20,    // max 20 req/min por IP
+        ttl: 60000, // 60 segundos
+        limit: 20, // max 20 req/min por IP
       },
     ]),
     TypeOrmModule.forFeature([AnalysisJob]),

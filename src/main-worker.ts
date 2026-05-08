@@ -36,13 +36,19 @@ async function bootstrap() {
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
-    logger.log('SIGTERM received — shutting down worker gracefully...', 'WorkerBootstrap');
+    logger.log(
+      'SIGTERM received — shutting down worker gracefully...',
+      'WorkerBootstrap',
+    );
     await app.close();
     process.exit(0);
   });
 
   process.on('SIGINT', async () => {
-    logger.log('SIGINT received — shutting down worker gracefully...', 'WorkerBootstrap');
+    logger.log(
+      'SIGINT received — shutting down worker gracefully...',
+      'WorkerBootstrap',
+    );
     await app.close();
     process.exit(0);
   });

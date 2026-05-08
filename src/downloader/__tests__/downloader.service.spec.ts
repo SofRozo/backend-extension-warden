@@ -22,8 +22,10 @@ describe('DownloaderService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) => {
-              if (key === 'analysis.crxDownloadDir') return path.join(tempDir, 'crx');
-              if (key === 'analysis.extractDir') return path.join(tempDir, 'extracted');
+              if (key === 'analysis.crxDownloadDir')
+                return path.join(tempDir, 'crx');
+              if (key === 'analysis.extractDir')
+                return path.join(tempDir, 'extracted');
               return undefined;
             }),
           },

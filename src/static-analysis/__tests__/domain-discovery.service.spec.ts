@@ -18,7 +18,7 @@ describe('DomainDiscoveryService', () => {
     it('should extract hardcoded URL', () => {
       const code = `var endpoint = 'https://evil-collector.com/steal';`;
       const domains = service.extractDomainsFromCode(code, 'inject.js');
-      const found = domains.find(d => d.domain === 'evil-collector.com');
+      const found = domains.find((d) => d.domain === 'evil-collector.com');
       expect(found).toBeDefined();
       expect(found!.source).toBe('code');
     });
@@ -26,7 +26,7 @@ describe('DomainDiscoveryService', () => {
     it('should classify banking domains as Level 3', () => {
       const code = `fetch('https://www.bancolombia.com/transfers');`;
       const domains = service.extractDomainsFromCode(code, 'inject.js');
-      const banking = domains.find(d => d.domain.includes('bancolombia'));
+      const banking = domains.find((d) => d.domain.includes('bancolombia'));
       expect(banking).toBeDefined();
       expect(banking!.platformLevel).toBe(PlatformLevel.LEVEL_3_RESTRICTED);
       expect(banking!.category).toBe('banking');
@@ -35,7 +35,7 @@ describe('DomainDiscoveryService', () => {
     it('should classify government domains as Level 3', () => {
       const code = `var taxPortal = 'https://dian.gov.co/portales';`;
       const domains = service.extractDomainsFromCode(code, 'bg.js');
-      const gov = domains.find(d => d.domain.includes('dian.gov'));
+      const gov = domains.find((d) => d.domain.includes('dian.gov'));
       expect(gov).toBeDefined();
       expect(gov!.platformLevel).toBe(PlatformLevel.LEVEL_3_RESTRICTED);
     });
@@ -43,7 +43,7 @@ describe('DomainDiscoveryService', () => {
     it('should classify social media as Level 2', () => {
       const code = `var api = 'https://graph.facebook.com/v18.0/me';`;
       const domains = service.extractDomainsFromCode(code, 'social.js');
-      const fb = domains.find(d => d.domain.includes('facebook'));
+      const fb = domains.find((d) => d.domain.includes('facebook'));
       expect(fb).toBeDefined();
       expect(fb!.platformLevel).toBe(PlatformLevel.LEVEL_2_HONEYPOT);
     });
@@ -51,7 +51,7 @@ describe('DomainDiscoveryService', () => {
     it('should classify YouTube as Level 1', () => {
       const code = `var yt = 'https://www.youtube.com/api/v3/videos';`;
       const domains = service.extractDomainsFromCode(code, 'yt.js');
-      const youtube = domains.find(d => d.domain.includes('youtube'));
+      const youtube = domains.find((d) => d.domain.includes('youtube'));
       expect(youtube).toBeDefined();
       expect(youtube!.platformLevel).toBe(PlatformLevel.LEVEL_1_PUBLIC);
     });
@@ -59,7 +59,7 @@ describe('DomainDiscoveryService', () => {
     it('should extract domain from string literal', () => {
       const code = `var host = 'malicious-bank.com';`;
       const domains = service.extractDomainsFromCode(code, 'bg.js');
-      const found = domains.find(d => d.domain === 'malicious-bank.com');
+      const found = domains.find((d) => d.domain === 'malicious-bank.com');
       expect(found).toBeDefined();
     });
 
@@ -67,7 +67,7 @@ describe('DomainDiscoveryService', () => {
       const code = `var cdn = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js';`;
       const domains = service.extractDomainsFromCode(code, 'bg.js');
       // CDNs should be filtered
-      const cdnFound = domains.find(d => d.domain === 'cdnjs.cloudflare.com');
+      const cdnFound = domains.find((d) => d.domain === 'cdnjs.cloudflare.com');
       expect(cdnFound).toBeUndefined();
     });
 
@@ -89,11 +89,16 @@ describe('DomainDiscoveryService', () => {
   describe('extractDomainsFromManifest', () => {
     it('should extract domains from host_permissions', () => {
       const manifest = {
-        host_permissions: ['https://www.bancolombia.com/*', 'https://gmail.com/*'],
+        host_permissions: [
+          'https://www.bancolombia.com/*',
+          'https://gmail.com/*',
+        ],
       };
       const domains = service.extractDomainsFromManifest(manifest);
-      expect(domains.some(d => d.domain === 'www.bancolombia.com')).toBe(true);
-      expect(domains.some(d => d.domain === 'gmail.com')).toBe(true);
+      expect(domains.some((d) => d.domain === 'www.bancolombia.com')).toBe(
+        true,
+      );
+      expect(domains.some((d) => d.domain === 'gmail.com')).toBe(true);
     });
 
     it('should extract domains from content_scripts.matches', () => {
@@ -103,13 +108,13 @@ describe('DomainDiscoveryService', () => {
         ],
       };
       const domains = service.extractDomainsFromManifest(manifest);
-      expect(domains.some(d => d.domain.includes('paypal'))).toBe(true);
+      expect(domains.some((d) => d.domain.includes('paypal'))).toBe(true);
     });
 
     it('should mark manifest domains with source=manifest', () => {
       const manifest = { host_permissions: ['https://instagram.com/*'] };
       const domains = service.extractDomainsFromManifest(manifest);
-      domains.forEach(d => expect(d.source).toBe('manifest'));
+      domains.forEach((d) => expect(d.source).toBe('manifest'));
     });
   });
 

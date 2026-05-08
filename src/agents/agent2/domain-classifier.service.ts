@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { DomainCategory, CategorizedDomain } from '../interfaces/agents.interfaces.js';
+import type {
+  DomainCategory,
+  CategorizedDomain,
+} from '../interfaces/agents.interfaces.js';
 
 /**
  * First-layer deterministic domain classifier.
@@ -15,37 +18,68 @@ import type { DomainCategory, CategorizedDomain } from '../interfaces/agents.int
 
 const TECH_INFRASTRUCTURE = new Set([
   // Web fonts & assets
-  'fonts.googleapis.com', 'fonts.gstatic.com',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
   // Package CDNs
-  'unpkg.com', 'jsdelivr.net', 'cdnjs.cloudflare.com',
+  'unpkg.com',
+  'jsdelivr.net',
+  'cdnjs.cloudflare.com',
   // Google APIs (infrastructure only — accounts.google.com goes to IDENTITY)
-  'ajax.googleapis.com', 'www.googleapis.com', 'storage.googleapis.com',
+  'ajax.googleapis.com',
+  'www.googleapis.com',
+  'storage.googleapis.com',
   // Analytics
-  'google-analytics.com', 'googletagmanager.com', 'analytics.google.com',
-  'doubleclick.net', 'googlesyndication.com', 'sentry.io', 'bugsnag.com',
-  'rollbar.com', 'segment.io', 'mixpanel.com', 'amplitude.com',
+  'google-analytics.com',
+  'googletagmanager.com',
+  'analytics.google.com',
+  'doubleclick.net',
+  'googlesyndication.com',
+  'sentry.io',
+  'bugsnag.com',
+  'rollbar.com',
+  'segment.io',
+  'mixpanel.com',
+  'amplitude.com',
   // Hosting / CDN
-  'cloudflare.com', 'fastly.net', 'akamaihd.net', 'cloudfront.net',
+  'cloudflare.com',
+  'fastly.net',
+  'akamaihd.net',
+  'cloudfront.net',
   // Build / package tooling
-  'registry.npmjs.org', 'yarnpkg.com',
+  'registry.npmjs.org',
+  'yarnpkg.com',
   // Design / UI
-  'bootstrapcdn.com', 'jquery.com',
+  'bootstrapcdn.com',
+  'jquery.com',
 ]);
 
 const SOCIAL_MEDIA: Record<string, string> = {
-  'instagram.com': 'Instagram', 'www.instagram.com': 'Instagram',
-  'facebook.com': 'Facebook', 'www.facebook.com': 'Facebook', 'fb.com': 'Facebook',
-  'tiktok.com': 'TikTok', 'www.tiktok.com': 'TikTok',
-  'twitter.com': 'Twitter/X', 'x.com': 'Twitter/X',
-  'linkedin.com': 'LinkedIn', 'www.linkedin.com': 'LinkedIn',
-  'reddit.com': 'Reddit', 'www.reddit.com': 'Reddit', 'old.reddit.com': 'Reddit',
-  'youtube.com': 'YouTube', 'www.youtube.com': 'YouTube',
-  'snapchat.com': 'Snapchat', 'www.snapchat.com': 'Snapchat',
+  'instagram.com': 'Instagram',
+  'www.instagram.com': 'Instagram',
+  'facebook.com': 'Facebook',
+  'www.facebook.com': 'Facebook',
+  'fb.com': 'Facebook',
+  'tiktok.com': 'TikTok',
+  'www.tiktok.com': 'TikTok',
+  'twitter.com': 'Twitter/X',
+  'x.com': 'Twitter/X',
+  'linkedin.com': 'LinkedIn',
+  'www.linkedin.com': 'LinkedIn',
+  'reddit.com': 'Reddit',
+  'www.reddit.com': 'Reddit',
+  'old.reddit.com': 'Reddit',
+  'youtube.com': 'YouTube',
+  'www.youtube.com': 'YouTube',
+  'snapchat.com': 'Snapchat',
+  'www.snapchat.com': 'Snapchat',
   'pinterest.com': 'Pinterest',
-  'twitch.tv': 'Twitch', 'www.twitch.tv': 'Twitch',
+  'twitch.tv': 'Twitch',
+  'www.twitch.tv': 'Twitch',
   'discord.com': 'Discord',
-  'telegram.org': 'Telegram', 't.me': 'Telegram',
-  'whatsapp.com': 'WhatsApp', 'web.whatsapp.com': 'WhatsApp',
+  'telegram.org': 'Telegram',
+  't.me': 'Telegram',
+  'whatsapp.com': 'WhatsApp',
+  'web.whatsapp.com': 'WhatsApp',
 };
 
 const IDENTITY_PROVIDERS: Record<string, string> = {
@@ -122,7 +156,8 @@ export class DomainClassifierService {
 
     // 3. Social media
     const social = SOCIAL_MEDIA[d] ?? SOCIAL_MEDIA[dNoWww];
-    if (social) return { category: 'sensible_redes_sociales', platform: social };
+    if (social)
+      return { category: 'sensible_redes_sociales', platform: social };
 
     // 4. Identity providers
     const identity = IDENTITY_PROVIDERS[d] ?? IDENTITY_PROVIDERS[dNoWww];
@@ -130,7 +165,8 @@ export class DomainClassifierService {
 
     // 5. Email & productivity
     const email = EMAIL_PRODUCTIVITY[d] ?? EMAIL_PRODUCTIVITY[dNoWww];
-    if (email) return { category: 'sensible_correo_productividad', platform: email };
+    if (email)
+      return { category: 'sensible_correo_productividad', platform: email };
 
     // Unknown — LLM must decide
     return { category: null };
@@ -159,7 +195,13 @@ export class DomainClassifierService {
     playwrightPriority?: number,
   ): CategorizedDomain {
     const goesToPlaywright = playwrightPriority !== undefined;
-    return { domain, category, reasoning, goesToPlaywright, playwrightPriority };
+    return {
+      domain,
+      category,
+      reasoning,
+      goesToPlaywright,
+      playwrightPriority,
+    };
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -180,7 +222,9 @@ export class DomainClassifierService {
       .map(normalize)
       .filter((p) => p.length > 3);
 
-    if (nameParts.some((p) => domainBase.includes(p) || p.includes(domainBase))) {
+    if (
+      nameParts.some((p) => domainBase.includes(p) || p.includes(domainBase))
+    ) {
       return true;
     }
 

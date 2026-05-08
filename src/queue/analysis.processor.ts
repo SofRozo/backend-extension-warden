@@ -15,7 +15,10 @@ import { Agent4DynamicService } from '../agents/agent4/agent4-dynamic.service.js
 import { StructuredLogger } from '../common/logger/logger.service.js';
 import { AnalysisStatus } from '../common/enums/risk-level.enum.js';
 import { ConfigService } from '@nestjs/config';
-import type { DynamicAnalysisResult, AgentAnalysisResult } from '../common/interfaces/analysis.interfaces.js';
+import type {
+  DynamicAnalysisResult,
+  AgentAnalysisResult,
+} from '../common/interfaces/analysis.interfaces.js';
 
 /**
  * Queue this worker process consumes. Picked at module-load time from the
@@ -50,7 +53,9 @@ export class AnalysisProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<{ extensionId: string; jobId: string }>): Promise<void> {
+  async process(
+    job: Job<{ extensionId: string; jobId: string }>,
+  ): Promise<void> {
     const { extensionId, jobId } = job.data;
     const startTime = Date.now();
 
@@ -64,7 +69,10 @@ export class AnalysisProcessor extends WorkerHost {
     try {
       // Step 1: Download CRX
       await this.updateJobStatus(jobId, AnalysisStatus.DOWNLOADING);
-      const downloadResult = await this.downloader.downloadAndExtract(extensionId, jobId);
+      const downloadResult = await this.downloader.downloadAndExtract(
+        extensionId,
+        jobId,
+      );
 
       // Step 2: Preprocess — hard failure if the extension is invalid.
       // Throws synchronously on missing/unparseable manifest; the outer catch
@@ -87,7 +95,8 @@ export class AnalysisProcessor extends WorkerHost {
       await this.updateJobStatus(jobId, AnalysisStatus.AI_ANALYSIS);
       let agentAnalysis: AgentAnalysisResult | undefined;
       try {
-        const agentTimeoutMs = this.config.get<number>('AGENT_TIMEOUT_MS') ?? 360_000;
+        const agentTimeoutMs =
+          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 360_000;
         agentAnalysis = await this.withTimeout(
           this.agentsOrchestrator.run(preprocessed, jobId),
           agentTimeoutMs,
@@ -200,7 +209,8 @@ export class AnalysisProcessor extends WorkerHost {
       const isLikelyDomain = (d: string) => {
         const domainRe =
           /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/i;
-        const staticAssets = /\.(png|jpg|jpeg|gif|css|json|js|svg|woff2?|map|crx)$/i;
+        const staticAssets =
+          /\.(png|jpg|jpeg|gif|css|json|js|svg|woff2?|map|crx)$/i;
         return domainRe.test(d) && !staticAssets.test(d);
       };
 
@@ -210,7 +220,10 @@ export class AnalysisProcessor extends WorkerHost {
 
       let threatIntelResults: any[] = [];
       try {
-        threatIntelResults = await this.threatIntel.queryDomains(domainsToQuery, jobId);
+        threatIntelResults = await this.threatIntel.queryDomains(
+          domainsToQuery,
+          jobId,
+        );
       } catch (err) {
         this.logger.logWithJob(
           jobId,
@@ -266,7 +279,12 @@ export class AnalysisProcessor extends WorkerHost {
       this.downloader.cleanup(extensionId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      this.logger.logWithJob(jobId, 'error', `Analysis failed: ${errorMessage}`, 'AnalysisProcessor');
+      this.logger.logWithJob(
+        jobId,
+        'error',
+        `Analysis failed: ${errorMessage}`,
+        'AnalysisProcessor',
+      );
 
       await this.jobRepository.update(jobId, {
         status: AnalysisStatus.FAILED,
@@ -278,7 +296,10 @@ export class AnalysisProcessor extends WorkerHost {
     }
   }
 
-  private async updateJobStatus(jobId: string, status: AnalysisStatus): Promise<void> {
+  private async updateJobStatus(
+    jobId: string,
+    status: AnalysisStatus,
+  ): Promise<void> {
     await this.jobRepository.update(jobId, { status });
   }
 
@@ -287,8 +308,15 @@ export class AnalysisProcessor extends WorkerHost {
    */
   private forceKillBrowserProcesses(jobId: string): void {
     try {
-      execSync('pkill -9 -f chromium || pkill -9 -f chrome || true', { timeout: 5000 });
-      this.logger.logWithJob(jobId, 'warn', 'Force-killed lingering browser processes (SIGKILL)', 'AnalysisProcessor');
+      execSync('pkill -9 -f chromium || pkill -9 -f chrome || true', {
+        timeout: 5000,
+      });
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        'Force-killed lingering browser processes (SIGKILL)',
+        'AnalysisProcessor',
+      );
     } catch {
       // Best effort — process may already be dead
     }
@@ -312,5 +340,4 @@ export class AnalysisProcessor extends WorkerHost {
       clearTimeout(timer!);
     }
   }
-
 }

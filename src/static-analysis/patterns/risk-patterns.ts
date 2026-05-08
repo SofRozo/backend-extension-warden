@@ -41,9 +41,7 @@ export const RISK_PATTERNS: RiskPattern[] = [
     category: FindingCategory.DATA_THEFT,
     severity: RiskLevel.HIGH,
     description: 'Accesses form data',
-    astPatterns: [
-      { type: 'member', object: 'document', property: 'forms' },
-    ],
+    astPatterns: [{ type: 'member', object: 'document', property: 'forms' }],
   },
   {
     category: FindingCategory.DATA_THEFT,
@@ -139,10 +137,9 @@ export const RISK_PATTERNS: RiskPattern[] = [
   {
     category: FindingCategory.INJECTION,
     severity: RiskLevel.MEDIUM,
-    description: 'Modifies page content or UI (may be used for pet/theme features)',
-    astPatterns: [
-      { type: 'assignment', property: 'innerHTML' },
-    ],
+    description:
+      'Modifies page content or UI (may be used for pet/theme features)',
+    astPatterns: [{ type: 'assignment', property: 'innerHTML' }],
   },
   {
     category: FindingCategory.INJECTION,
@@ -190,9 +187,7 @@ export const RISK_PATTERNS: RiskPattern[] = [
     category: FindingCategory.EXFILTRATION,
     severity: RiskLevel.CRITICAL,
     description: 'Uses navigator.sendBeacon for data exfiltration',
-    astPatterns: [
-      { type: 'call', callee: 'navigator.sendBeacon' },
-    ],
+    astPatterns: [{ type: 'call', callee: 'navigator.sendBeacon' }],
   },
 
   // Persistence
@@ -210,9 +205,7 @@ export const RISK_PATTERNS: RiskPattern[] = [
     category: FindingCategory.PERSISTENCE,
     severity: RiskLevel.MEDIUM,
     description: 'Creates alarms for background execution',
-    astPatterns: [
-      { type: 'call', callee: 'chrome.alarms.create' },
-    ],
+    astPatterns: [{ type: 'call', callee: 'chrome.alarms.create' }],
   },
   {
     category: FindingCategory.PERSISTENCE,

@@ -45,45 +45,54 @@ describe('ThreatIntelService', () => {
 
   describe('queryDomain', () => {
     it('should query VirusTotal and return results', async () => {
-      mockedAxios.get.mockResolvedValueOnce({
-        data: {
+      mockedAxios.get
+        .mockResolvedValueOnce({
           data: {
-            attributes: {
-              last_analysis_stats: {
-                malicious: 5,
-                suspicious: 2,
-                harmless: 60,
-                undetected: 10,
+            data: {
+              attributes: {
+                last_analysis_stats: {
+                  malicious: 5,
+                  suspicious: 2,
+                  harmless: 60,
+                  undetected: 10,
+                },
+                categories: { cat1: 'phishing' },
+                reputation: -15,
               },
-              categories: { cat1: 'phishing' },
-              reputation: -15,
             },
           },
-        },
-      }).mockResolvedValueOnce({
-        data: { results: [] },
-      });
+        })
+        .mockResolvedValueOnce({
+          data: { results: [] },
+        });
 
       const results = await service.queryDomain('evil.com', 'job-1');
-      const vtResult = results.find(r => r.provider === 'virustotal');
+      const vtResult = results.find((r) => r.provider === 'virustotal');
       expect(vtResult).toBeDefined();
       expect(vtResult!.isMalicious).toBe(true);
       expect(vtResult!.score).toBeGreaterThan(0);
     });
 
     it('should return cached results on second call', async () => {
-      mockedAxios.get.mockResolvedValueOnce({
-        data: {
+      mockedAxios.get
+        .mockResolvedValueOnce({
           data: {
-            attributes: {
-              last_analysis_stats: { malicious: 0, suspicious: 0, harmless: 70, undetected: 5 },
-              categories: {},
+            data: {
+              attributes: {
+                last_analysis_stats: {
+                  malicious: 0,
+                  suspicious: 0,
+                  harmless: 70,
+                  undetected: 5,
+                },
+                categories: {},
+              },
             },
           },
-        },
-      }).mockResolvedValueOnce({
-        data: { results: [] },
-      });
+        })
+        .mockResolvedValueOnce({
+          data: { results: [] },
+        });
 
       await service.queryDomain('cached-domain.com', 'job-1');
       mockedAxios.get.mockClear();
@@ -101,21 +110,28 @@ describe('ThreatIntelService', () => {
     });
 
     it('should mark domain as not malicious when score is 0', async () => {
-      mockedAxios.get.mockResolvedValueOnce({
-        data: {
+      mockedAxios.get
+        .mockResolvedValueOnce({
           data: {
-            attributes: {
-              last_analysis_stats: { malicious: 0, suspicious: 0, harmless: 80, undetected: 0 },
-              categories: {},
+            data: {
+              attributes: {
+                last_analysis_stats: {
+                  malicious: 0,
+                  suspicious: 0,
+                  harmless: 80,
+                  undetected: 0,
+                },
+                categories: {},
+              },
             },
           },
-        },
-      }).mockResolvedValueOnce({
-        data: { results: [] },
-      });
+        })
+        .mockResolvedValueOnce({
+          data: { results: [] },
+        });
 
       const results = await service.queryDomain('safe.com', 'job-1');
-      const vtResult = results.find(r => r.provider === 'virustotal');
+      const vtResult = results.find((r) => r.provider === 'virustotal');
       expect(vtResult?.isMalicious).toBe(false);
     });
   });
@@ -123,12 +139,18 @@ describe('ThreatIntelService', () => {
   describe('queryDomains', () => {
     it('should deduplicate domains', async () => {
       mockedAxios.get.mockResolvedValue({
-        data: { data: { attributes: { last_analysis_stats: {}, categories: {} } }, results: [] },
+        data: {
+          data: { attributes: { last_analysis_stats: {}, categories: {} } },
+          results: [],
+        },
       });
 
       // Use fake timers to skip the 16s VT rate-limit delay between sequential domain queries
       jest.useFakeTimers();
-      const queryPromise = service.queryDomains(['a.com', 'a.com', 'b.com'], 'job-1');
+      const queryPromise = service.queryDomains(
+        ['a.com', 'a.com', 'b.com'],
+        'job-1',
+      );
       await jest.advanceTimersByTimeAsync(30_000);
       await queryPromise;
       jest.useRealTimers();

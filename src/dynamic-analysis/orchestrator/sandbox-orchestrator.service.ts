@@ -30,7 +30,7 @@ export class SandboxOrchestratorService {
     private readonly detonationStrategy: DetonationStrategyService,
     private readonly intelligentNavigator: IntelligentNavigatorService,
     private readonly stagehand: StagehandService,
-  ) { }
+  ) {}
 
   async executeDynamicAnalysis(
     extensionPath: string,
@@ -59,8 +59,10 @@ export class SandboxOrchestratorService {
     // static domain classifier found no Level-1 public domains to navigate.
     // executeDirectNavigation reads dominios_para_playwright from agentAnalysis
     // directly, so targetUrls can be empty here.
-    const agent2Domains = (agentAnalysis?.agent2 as any)?.dominios_para_playwright ?? [];
-    const hasDirectNav = plans.some(p => p.strategy === DetonationStrategy.DIRECT_NAVIGATION);
+    const agent2Domains = agentAnalysis?.agent2?.dominios_para_playwright ?? [];
+    const hasDirectNav = plans.some(
+      (p) => p.strategy === DetonationStrategy.DIRECT_NAVIGATION,
+    );
     if (agent2Domains.length > 0 && !hasDirectNav) {
       plans.unshift({
         strategy: DetonationStrategy.DIRECT_NAVIGATION,
@@ -76,10 +78,13 @@ export class SandboxOrchestratorService {
       'SandboxOrchestrator',
     );
 
-    const collector = this.networkInterceptor.createEvidenceCollector(extensionId);
-    const domainObservations: import('../../common/interfaces/analysis.interfaces.js').SandboxDomainObservation[] = [];
+    const collector =
+      this.networkInterceptor.createEvidenceCollector(extensionId);
+    const domainObservations: import('../../common/interfaces/analysis.interfaces.js').SandboxDomainObservation[] =
+      [];
     let timedOut = false;
-    let primaryStrategy = plans[0]?.strategy || DetonationStrategy.PASSIVE_TRIGGER;
+    const primaryStrategy =
+      plans[0]?.strategy || DetonationStrategy.PASSIVE_TRIGGER;
 
     // Baseline: visit target URLs without the extension to capture natural page traffic.
     // Requests seen in the baseline are reclassified as 'browser' origin, eliminating
@@ -93,7 +98,10 @@ export class SandboxOrchestratorService {
         ),
       ];
       if (urlsForBaseline.length > 0) {
-        const { hosts, mutations } = await this.captureBaseline(urlsForBaseline, jobId);
+        const { hosts, mutations } = await this.captureBaseline(
+          urlsForBaseline,
+          jobId,
+        );
         collector.setBaseline(hosts, mutations);
       }
     }
@@ -113,35 +121,36 @@ export class SandboxOrchestratorService {
         browserArgs.push('--headless=new');
       }
 
-      const browser = await chromium.launchPersistentContext(
-        '',
-        {
-          headless: demoMode ? false : true,
-          slowMo: demoMode ? demoSlowMo : 0,
-          args: browserArgs,
-          timeout: 30000,
-          // Stealth: present as a real desktop Chrome rather than HeadlessChrome
-          // so anti-bot heuristics on Instagram/Meta/Google don't reject the
-          // injected session immediately.
-          userAgent:
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-            '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-          viewport: { width: 1920, height: 1080 },
-          locale: 'es-CO',
-          timezoneId: 'America/Bogota',
-        },
-      );
+      const browser = await chromium.launchPersistentContext('', {
+        headless: demoMode ? false : true,
+        slowMo: demoMode ? demoSlowMo : 0,
+        args: browserArgs,
+        timeout: 30000,
+        // Stealth: present as a real desktop Chrome rather than HeadlessChrome
+        // so anti-bot heuristics on Instagram/Meta/Google don't reject the
+        // injected session immediately.
+        userAgent:
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        viewport: { width: 1920, height: 1080 },
+        locale: 'es-CO',
+        timezoneId: 'America/Bogota',
+      });
 
       // Stealth init: scrub the most common automation fingerprints BEFORE any
       // page script runs in this context. Applied once at the context level so
       // every newPage() inherits it.
-      await browser.addInitScript(this.buildStealthScript()).catch(() => { });
+      await browser.addInitScript(this.buildStealthScript()).catch(() => {});
 
       // Verify the extension installed correctly before running any analysis.
       // If the extension's manifest is not reachable at chrome-extension://<id>/manifest.json
       // it means it failed to load (e.g. missing key, CRX parse error) and the
       // entire dynamic analysis would produce false-negative results.
-      const extensionInstalled = await this.verifyExtensionInstalled(browser, extensionId, jobId);
+      const extensionInstalled = await this.verifyExtensionInstalled(
+        browser,
+        extensionId,
+        jobId,
+      );
       if (!extensionInstalled) {
         this.logger.logWithJob(
           jobId,
@@ -149,7 +158,7 @@ export class SandboxOrchestratorService {
           `Extension ${extensionId} failed to install — dynamic analysis aborted to prevent false negatives`,
           'SandboxOrchestrator',
         );
-        await browser.close().catch(() => { });
+        await browser.close().catch(() => {});
         return {
           strategy: primaryStrategy,
           evidence: collector.getEvidence(),
@@ -162,7 +171,13 @@ export class SandboxOrchestratorService {
       // Instrument the extension's background service worker so we capture
       // chrome.* API calls and SW-originated fetches that page-level
       // addInitScript cannot reach (chrome.* is undefined in normal pages).
-      this.instrumentExtensionServiceWorker(browser, extensionId, collector, jobId, demoMode);
+      this.instrumentExtensionServiceWorker(
+        browser,
+        extensionId,
+        collector,
+        jobId,
+        demoMode,
+      );
 
       try {
         for (const plan of plans) {
@@ -190,7 +205,7 @@ export class SandboxOrchestratorService {
           );
         }
       } finally {
-        await browser.close().catch(() => { });
+        await browser.close().catch(() => {});
       }
     } catch (err) {
       this.logger.logWithJob(
@@ -208,7 +223,8 @@ export class SandboxOrchestratorService {
       evidence: collector.getEvidence(),
       duration,
       timedOut,
-      domainObservations: domainObservations.length > 0 ? domainObservations : undefined,
+      domainObservations:
+        domainObservations.length > 0 ? domainObservations : undefined,
     };
   }
 
@@ -234,16 +250,50 @@ export class SandboxOrchestratorService {
 
     switch (plan.strategy) {
       case DetonationStrategy.STATE_INJECTION:
-        await this.executeStateInjection(browser, plan, collector, extensionId, extensionPath, jobId, demoMode);
+        await this.executeStateInjection(
+          browser,
+          plan,
+          collector,
+          extensionId,
+          extensionPath,
+          jobId,
+          demoMode,
+        );
         break;
       case DetonationStrategy.PASSIVE_TRIGGER:
-        await this.executePassiveTrigger(browser, plan, collector, extensionId, extensionPath, jobId, demoMode);
+        await this.executePassiveTrigger(
+          browser,
+          plan,
+          collector,
+          extensionId,
+          extensionPath,
+          jobId,
+          demoMode,
+        );
         break;
       case DetonationStrategy.DOM_FALSIFICATION:
-        await this.executeDomFalsification(browser, plan, collector, extensionId, extensionPath, jobId, demoMode);
+        await this.executeDomFalsification(
+          browser,
+          plan,
+          collector,
+          extensionId,
+          extensionPath,
+          jobId,
+          demoMode,
+        );
         break;
       case DetonationStrategy.DIRECT_NAVIGATION:
-        await this.executeDirectNavigation(browser, plan, collector, extensionId, extensionPath, jobId, demoMode, agentAnalysis, domainObservations);
+        await this.executeDirectNavigation(
+          browser,
+          plan,
+          collector,
+          extensionId,
+          extensionPath,
+          jobId,
+          demoMode,
+          agentAnalysis,
+          domainObservations,
+        );
         break;
     }
   }
@@ -275,7 +325,12 @@ export class SandboxOrchestratorService {
           }
         }
 
-        await this.setupScreenshots(page, jobId, DetonationStrategy.STATE_INJECTION, collector);
+        await this.setupScreenshots(
+          page,
+          jobId,
+          DetonationStrategy.STATE_INJECTION,
+          collector,
+        );
         await this.setupApiInterception(page, extensionId, demoMode);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
@@ -283,17 +338,30 @@ export class SandboxOrchestratorService {
           // Restore localStorage after navigation
           for (const origin of plan['_demoStateData'].origins) {
             for (const item of origin.localStorage ?? []) {
-              await page.evaluate(
-                ([k, v]: [string, string]) => localStorage.setItem(k, v),
-                [item.name, item.value],
-              ).catch(() => { });
+              await page
+                .evaluate(
+                  ([k, v]: [string, string]) => localStorage.setItem(k, v),
+                  [item.name, item.value],
+                )
+                .catch(() => {});
             }
           }
-          await this.overlayLog(page, '💉 SESIÓN', 'Cookies + localStorage honeypot inyectados', 'info');
+          await this.overlayLog(
+            page,
+            '💉 SESIÓN',
+            'Cookies + localStorage honeypot inyectados',
+            'info',
+          );
         }
 
         await this.injectMonitoringScripts(page);
-        await this.interactWithExtension(browser, page, extensionId, extensionPath, demoMode);
+        await this.interactWithExtension(
+          browser,
+          page,
+          extensionId,
+          extensionPath,
+          demoMode,
+        );
 
         await page.waitForTimeout(plan.waitTimeMs);
         await this.takePageScreenshot(page, 'final', collector);
@@ -324,11 +392,22 @@ export class SandboxOrchestratorService {
         const page = await browser.newPage();
         this.setupPageInterception(page, collector, demoMode);
 
-        await this.setupScreenshots(page, jobId, DetonationStrategy.PASSIVE_TRIGGER, collector);
+        await this.setupScreenshots(
+          page,
+          jobId,
+          DetonationStrategy.PASSIVE_TRIGGER,
+          collector,
+        );
         await this.setupApiInterception(page, extensionId, demoMode);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
         await this.injectMonitoringScripts(page);
-        await this.interactWithExtension(browser, page, extensionId, extensionPath, demoMode);
+        await this.interactWithExtension(
+          browser,
+          page,
+          extensionId,
+          extensionPath,
+          demoMode,
+        );
 
         await page.waitForTimeout(plan.waitTimeMs);
         await this.takePageScreenshot(page, 'final', collector);
@@ -369,14 +448,25 @@ export class SandboxOrchestratorService {
       const page = await browser.newPage();
       this.setupPageInterception(page, collector, demoMode);
 
-      await this.setupScreenshots(page, jobId, DetonationStrategy.DOM_FALSIFICATION, collector);
+      await this.setupScreenshots(
+        page,
+        jobId,
+        DetonationStrategy.DOM_FALSIFICATION,
+        collector,
+      );
       await this.setupApiInterception(page, extensionId, demoMode);
       await page.goto(`http://localhost:${port}`, {
         waitUntil: 'domcontentloaded',
         timeout: 10000,
       });
       await this.injectMonitoringScripts(page);
-      await this.interactWithExtension(browser, page, extensionId, extensionPath, demoMode);
+      await this.interactWithExtension(
+        browser,
+        page,
+        extensionId,
+        extensionPath,
+        demoMode,
+      );
 
       await page.waitForTimeout(plan.waitTimeMs);
       await this.takePageScreenshot(page, 'final', collector);
@@ -407,41 +497,59 @@ export class SandboxOrchestratorService {
     agentAnalysis?: AgentAnalysisResult,
     domainObservations?: import('../../common/interfaces/analysis.interfaces.js').SandboxDomainObservation[],
   ): Promise<void> {
-    const agent1 = agentAnalysis?.agent1 as any;
-    const proposito = agent1?.proposito || 'Analizar comportamiento de la extensión';
+    const agent1 = agentAnalysis?.agent1;
+    const proposito =
+      agent1?.proposito || 'Analizar comportamiento de la extensión';
 
     // Agent 2 domains take priority; fall back to plan URLs when Agent 2 didn't run.
-    const agent2 = agentAnalysis?.agent2 as any;
+    const agent2 = agentAnalysis?.agent2;
     const targets: Array<{ domain: string; category: string }> =
       agent2?.dominios_para_playwright?.length > 0
         ? agent2.dominios_para_playwright
         : plan.targetUrls
             .map((url: string) => {
               try {
-                return { domain: new URL(url).hostname, category: 'desconocido' };
+                return {
+                  domain: new URL(url).hostname,
+                  category: 'desconocido',
+                };
               } catch {
                 return { domain: url, category: 'desconocido' };
               }
             })
             .filter((t: { domain: string }) => !!t.domain);
 
-    const useStagehand = this.config.get<boolean>('analysis.useStagehand') || false;
+    const useStagehand =
+      this.config.get<boolean>('analysis.useStagehand') || false;
 
     for (const target of targets) {
       try {
         const page = await browser.newPage();
         this.setupPageInterception(page, collector, demoMode);
-        await this.setupScreenshots(page, jobId, DetonationStrategy.DIRECT_NAVIGATION, collector);
+        await this.setupScreenshots(
+          page,
+          jobId,
+          DetonationStrategy.DIRECT_NAVIGATION,
+          collector,
+        );
         await this.setupApiInterception(page, extensionId, demoMode);
 
         let observation;
         if (useStagehand) {
           observation = await this.stagehand.navigateDomain(
-            page, target.domain, target.category as any, proposito, jobId,
+            page,
+            target.domain,
+            target.category as any,
+            proposito,
+            jobId,
           );
         } else {
           observation = await this.intelligentNavigator.navigateDomain(
-            page, target.domain, target.category as any, proposito, jobId,
+            page,
+            target.domain,
+            target.category as any,
+            proposito,
+            jobId,
           );
         }
 
@@ -462,7 +570,9 @@ export class SandboxOrchestratorService {
         domainObservations?.push({
           domain: target.domain,
           url: `https://${target.domain}`,
-          observations: [`Error: ${err instanceof Error ? err.message : String(err)}`],
+          observations: [
+            `Error: ${err instanceof Error ? err.message : String(err)}`,
+          ],
           actionsPerformed: [],
           requestsToThisDomain: 0,
           domModificationsDetected: false,
@@ -485,19 +595,32 @@ export class SandboxOrchestratorService {
       const manifestPath = path.join(extensionPath, 'manifest.json');
       if (fs.existsSync(manifestPath)) {
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        const popupPath = manifest.action?.default_popup || manifest.browser_action?.default_popup || manifest.page_action?.default_popup;
+        const popupPath =
+          manifest.action?.default_popup ||
+          manifest.browser_action?.default_popup ||
+          manifest.page_action?.default_popup;
         if (popupPath) {
           const popupUrl = `chrome-extension://${extensionId}/${popupPath}`;
           const popupPage = await browser.newPage();
-          await popupPage.goto(popupUrl, { waitUntil: 'domcontentloaded', timeout: 5000 });
+          await popupPage.goto(popupUrl, {
+            waitUntil: 'domcontentloaded',
+            timeout: 5000,
+          });
           if (demoMode) {
-            await this.overlayLog(page, '🖱️ POPUP', 'Extension popup opened and interacted', 'info');
+            await this.overlayLog(
+              page,
+              '🖱️ POPUP',
+              'Extension popup opened and interacted',
+              'info',
+            );
           }
           await popupPage.waitForTimeout(2000);
           await popupPage.close();
         }
       }
-    } catch { /* ignore interaction failures */ }
+    } catch {
+      /* ignore interaction failures */
+    }
 
     // 2. Perform some generic interaction on the main page to trigger event listeners
     try {
@@ -505,7 +628,9 @@ export class SandboxOrchestratorService {
       await page.mouse.down();
       await page.mouse.up();
       await page.keyboard.press('Shift');
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // ─── Extension installation verification ──────────────────────────────────
@@ -524,10 +649,17 @@ export class SandboxOrchestratorService {
     try {
       const page = await browser.newPage();
       const manifestUrl = `chrome-extension://${extensionId}/manifest.json`;
-      const response = await page.goto(manifestUrl, { timeout: 5000 }).catch(() => null);
-      await page.close().catch(() => { });
+      const response = await page
+        .goto(manifestUrl, { timeout: 5000 })
+        .catch(() => null);
+      await page.close().catch(() => {});
       if (response && response.ok()) {
-        this.logger.logWithJob(jobId, 'info', `Extension ${extensionId} verified as installed`, 'SandboxOrchestrator');
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          `Extension ${extensionId} verified as installed`,
+          'SandboxOrchestrator',
+        );
         return true;
       }
     } catch {
@@ -547,16 +679,28 @@ export class SandboxOrchestratorService {
 
   // ─── Differential baseline ────────────────────────────────────────────────
 
-  private async captureBaseline(urls: string[], jobId: string): Promise<{ hosts: Set<string>, mutations: Set<string> }> {
+  private async captureBaseline(
+    urls: string[],
+    jobId: string,
+  ): Promise<{ hosts: Set<string>; mutations: Set<string> }> {
     const hosts = new Set<string>();
     const mutations = new Set<string>();
-    this.logger.logWithJob(jobId, 'info', `Capturing baseline for ${urls.length} URL(s)`, 'SandboxOrchestrator');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Capturing baseline for ${urls.length} URL(s)`,
+      'SandboxOrchestrator',
+    );
 
     try {
       const { chromium } = await import('playwright');
       const browser = await chromium.launchPersistentContext('', {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
         timeout: 15000,
       });
 
@@ -567,13 +711,18 @@ export class SandboxOrchestratorService {
             try {
               const hostname = new URL(req.url()).hostname;
               if (hostname) hosts.add(hostname);
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           });
 
           // Record natural DOM mutations on the target page
-          await page.exposeFunction('__baselineMutation', (type: string, target: string) => {
-            mutations.add(`${type}:${target}`);
-          });
+          await page.exposeFunction(
+            '__baselineMutation',
+            (type: string, target: string) => {
+              mutations.add(`${type}:${target}`);
+            },
+          );
 
           await page.addInitScript(() => {
             const observer = new MutationObserver((list) => {
@@ -582,25 +731,40 @@ export class SandboxOrchestratorService {
                 (window as any).__baselineMutation(m.type, tag);
               }
             });
-            observer.observe(document, { childList: true, subtree: true, attributes: true });
+            observer.observe(document, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+            });
           });
 
-          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 8000,
+          });
           await page.waitForTimeout(3000); // Wait for post-load mutations (ads, trackers)
           await page.close();
-        } catch { /* best effort per URL */ }
+        } catch {
+          /* best effort per URL */
+        }
       }
 
-      await browser.close().catch(() => { });
+      await browser.close().catch(() => {});
     } catch (err) {
       this.logger.logWithJob(
-        jobId, 'warn',
+        jobId,
+        'warn',
         `Baseline capture failed (analysis will continue without it): ${err instanceof Error ? err.message : String(err)}`,
         'SandboxOrchestrator',
       );
     }
 
-    this.logger.logWithJob(jobId, 'info', `Baseline captured: ${hosts.size} host(s), ${mutations.size} mutation pattern(s)`, 'SandboxOrchestrator');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Baseline captured: ${hosts.size} host(s), ${mutations.size} mutation pattern(s)`,
+      'SandboxOrchestrator',
+    );
     return { hosts, mutations };
   }
 
@@ -612,13 +776,15 @@ export class SandboxOrchestratorService {
     detail: string,
     severity: string,
   ): Promise<void> {
-    await page.evaluate(
-      ([t, d, s]: [string, string, string]) => {
-        const fn = (window as any).__extSandboxAddEvent;
-        if (typeof fn === 'function') fn(t, d, s);
-      },
-      [type, detail, severity],
-    ).catch(() => { });
+    await page
+      .evaluate(
+        ([t, d, s]: [string, string, string]) => {
+          const fn = (window as any).__extSandboxAddEvent;
+          if (typeof fn === 'function') fn(t, d, s);
+        },
+        [type, detail, severity],
+      )
+      .catch(() => {});
   }
 
   // ─── Page setup helpers ───────────────────────────────────────────────────
@@ -634,7 +800,9 @@ export class SandboxOrchestratorService {
       '/tmp/ext-sandbox/screenshots';
     const dir = path.join(baseDir, jobId);
     fs.mkdirSync(dir, { recursive: true });
-    try { fs.chmodSync(dir, 0o777); } catch { } // Ensure API can read it
+    try {
+      fs.chmodSync(dir, 0o777);
+    } catch {} // Ensure API can read it
 
     let screenshotIndex = 0;
 
@@ -647,7 +815,9 @@ export class SandboxOrchestratorService {
         );
         try {
           await page.screenshot({ path: filePath, fullPage: false });
-          try { fs.chmodSync(filePath, 0o666); } catch { }
+          try {
+            fs.chmodSync(filePath, 0o666);
+          } catch {}
           collector.addScreenshot(filePath);
         } catch {
           // Page may have navigated between detection and screenshot
@@ -655,9 +825,9 @@ export class SandboxOrchestratorService {
       },
     );
 
-    (page as any).__screenshotDir = dir;
-    (page as any).__strategyName = strategyName;
-    (page as any).__screenshotIndex = () => screenshotIndex++;
+    page.__screenshotDir = dir;
+    page.__strategyName = strategyName;
+    page.__screenshotIndex = () => screenshotIndex++;
   }
 
   private async takePageScreenshot(
@@ -665,134 +835,157 @@ export class SandboxOrchestratorService {
     label: string,
     collector: EvidenceCollector,
   ): Promise<void> {
-    const dir: string = (page as any).__screenshotDir;
-    const strategy: string = (page as any).__strategyName ?? 'unknown';
-    const getIndex: () => number = (page as any).__screenshotIndex ?? (() => 0);
+    const dir: string = page.__screenshotDir;
+    const strategy: string = page.__strategyName ?? 'unknown';
+    const getIndex: () => number = page.__screenshotIndex ?? (() => 0);
     if (!dir) return;
 
     const filePath = path.join(dir, `${strategy}_${getIndex()}_${label}.png`);
     try {
       await page.screenshot({ path: filePath, fullPage: false });
-      try { fs.chmodSync(filePath, 0o666); } catch { }
+      try {
+        fs.chmodSync(filePath, 0o666);
+      } catch {}
       collector.addScreenshot(filePath);
     } catch {
       // Best effort
     }
   }
 
-  private async setupApiInterception(page: any, extensionId: string, demoMode: boolean): Promise<void> {
+  private async setupApiInterception(
+    page: any,
+    extensionId: string,
+    demoMode: boolean,
+  ): Promise<void> {
     const overlayScript = demoMode ? this.buildOverlayScript(extensionId) : '';
 
-    await page.addInitScript((params: { overlay: string; demo: boolean }) => {
-      // ── Demo overlay (injected only in DEMO_MODE) ──────────────────────────
-      if (params.overlay) {
-        // eslint-disable-next-line no-new-func
-        new Function(params.overlay)();
-      }
-
-      // ── Chrome API proxy (always active) ──────────────────────────────────
-      (window as any).__extSandboxApiCalls = [];
-
-      const record = (api: string, args: unknown[]) => {
-        try {
-          const serialized = JSON.stringify(args).substring(0, 2000);
-          (window as any).__extSandboxApiCalls.push({
-            api,
-            args: serialized,
-            timestamp: Date.now(),
-          });
-        } catch {
-          (window as any).__extSandboxApiCalls.push({
-            api,
-            args: '[unserializable]',
-            timestamp: Date.now(),
-          });
+    await page.addInitScript(
+      (params: { overlay: string; demo: boolean }) => {
+        // ── Demo overlay (injected only in DEMO_MODE) ──────────────────────────
+        if (params.overlay) {
+          new Function(params.overlay)();
         }
-        if (params.demo && (window as any).__extSandboxAddEvent) {
-          (window as any).__extSandboxAddEvent('🟡 API', api, 'medium');
-        }
-      };
 
-      if ((window as any).chrome?.storage?.local) {
-        const orig = (window as any).chrome.storage.local;
-        (window as any).chrome.storage.local = new Proxy(orig, {
-          get(target: any, prop: string) {
-            const fn = target[prop];
-            if (typeof fn !== 'function') return fn;
-            return (...args: unknown[]) => {
-              record(`chrome.storage.local.${prop}`, args);
-              return fn.apply(target, args);
-            };
-          },
-        });
-      }
+        // ── Chrome API proxy (always active) ──────────────────────────────────
+        (window as any).__extSandboxApiCalls = [];
 
-      if ((window as any).chrome?.storage?.sync) {
-        const orig = (window as any).chrome.storage.sync;
-        (window as any).chrome.storage.sync = new Proxy(orig, {
-          get(target: any, prop: string) {
-            const fn = target[prop];
-            if (typeof fn !== 'function') return fn;
-            return (...args: unknown[]) => {
-              record(`chrome.storage.sync.${prop}`, args);
-              return fn.apply(target, args);
-            };
-          },
-        });
-      }
-
-      if ((window as any).chrome?.runtime?.sendMessage) {
-        const orig = (window as any).chrome.runtime.sendMessage.bind(
-          (window as any).chrome.runtime,
-        );
-        (window as any).chrome.runtime.sendMessage = (...args: unknown[]) => {
-          record('chrome.runtime.sendMessage', args);
-          return orig(...args);
+        const record = (api: string, args: unknown[]) => {
+          try {
+            const serialized = JSON.stringify(args).substring(0, 2000);
+            (window as any).__extSandboxApiCalls.push({
+              api,
+              args: serialized,
+              timestamp: Date.now(),
+            });
+          } catch {
+            (window as any).__extSandboxApiCalls.push({
+              api,
+              args: '[unserializable]',
+              timestamp: Date.now(),
+            });
+          }
+          if (params.demo && (window as any).__extSandboxAddEvent) {
+            (window as any).__extSandboxAddEvent('🟡 API', api, 'medium');
+          }
         };
-      }
 
-      if ((window as any).chrome?.tabs) {
-        for (const method of ['query', 'sendMessage', 'update', 'create']) {
-          const orig = (window as any).chrome.tabs[method];
-          if (typeof orig === 'function') {
-            (window as any).chrome.tabs[method] = (...args: unknown[]) => {
-              record(`chrome.tabs.${method}`, args);
-              return orig.apply((window as any).chrome.tabs, args);
-            };
+        if ((window as any).chrome?.storage?.local) {
+          const orig = (window as any).chrome.storage.local;
+          (window as any).chrome.storage.local = new Proxy(orig, {
+            get(target: any, prop: string) {
+              const fn = target[prop];
+              if (typeof fn !== 'function') return fn;
+              return (...args: unknown[]) => {
+                record(`chrome.storage.local.${prop}`, args);
+                return fn.apply(target, args);
+              };
+            },
+          });
+        }
+
+        if ((window as any).chrome?.storage?.sync) {
+          const orig = (window as any).chrome.storage.sync;
+          (window as any).chrome.storage.sync = new Proxy(orig, {
+            get(target: any, prop: string) {
+              const fn = target[prop];
+              if (typeof fn !== 'function') return fn;
+              return (...args: unknown[]) => {
+                record(`chrome.storage.sync.${prop}`, args);
+                return fn.apply(target, args);
+              };
+            },
+          });
+        }
+
+        if ((window as any).chrome?.runtime?.sendMessage) {
+          const orig = (window as any).chrome.runtime.sendMessage.bind(
+            (window as any).chrome.runtime,
+          );
+          (window as any).chrome.runtime.sendMessage = (...args: unknown[]) => {
+            record('chrome.runtime.sendMessage', args);
+            return orig(...args);
+          };
+        }
+
+        if ((window as any).chrome?.tabs) {
+          for (const method of ['query', 'sendMessage', 'update', 'create']) {
+            const orig = (window as any).chrome.tabs[method];
+            if (typeof orig === 'function') {
+              (window as any).chrome.tabs[method] = (...args: unknown[]) => {
+                record(`chrome.tabs.${method}`, args);
+                return orig.apply((window as any).chrome.tabs, args);
+              };
+            }
           }
         }
-      }
 
-      if ((window as any).chrome?.cookies) {
-        for (const method of ['get', 'getAll', 'set', 'remove']) {
-          const orig = (window as any).chrome.cookies[method];
-          if (typeof orig === 'function') {
-            (window as any).chrome.cookies[method] = (...args: unknown[]) => {
-              record(`chrome.cookies.${method}`, args);
-              return orig.apply((window as any).chrome.cookies, args);
-            };
+        if ((window as any).chrome?.cookies) {
+          for (const method of ['get', 'getAll', 'set', 'remove']) {
+            const orig = (window as any).chrome.cookies[method];
+            if (typeof orig === 'function') {
+              (window as any).chrome.cookies[method] = (...args: unknown[]) => {
+                record(`chrome.cookies.${method}`, args);
+                return orig.apply((window as any).chrome.cookies, args);
+              };
+            }
           }
         }
-      }
 
-      const origFetch = window.fetch.bind(window);
-      window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-        record('fetch', [url, { method: init?.method, bodyPreview: String(init?.body ?? '').substring(0, 500) }]);
-        return origFetch(input, init);
-      };
+        const origFetch = window.fetch.bind(window);
+        window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+          const url =
+            typeof input === 'string'
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url;
+          record('fetch', [
+            url,
+            {
+              method: init?.method,
+              bodyPreview: String(init?.body ?? '').substring(0, 500),
+            },
+          ]);
+          return origFetch(input, init);
+        };
 
-      const OrigXHR = window.XMLHttpRequest;
-      (window as any).XMLHttpRequest = class extends OrigXHR {
-        open(method: string, url: string) {
-          record('XMLHttpRequest.open', [method, url]);
-          return super.open(method, url);
-        }
-      };
-    }, { overlay: overlayScript, demo: demoMode });
+        const OrigXHR = window.XMLHttpRequest;
+        (window as any).XMLHttpRequest = class extends OrigXHR {
+          open(method: string, url: string) {
+            record('XMLHttpRequest.open', [method, url]);
+            return super.open(method, url);
+          }
+        };
+      },
+      { overlay: overlayScript, demo: demoMode },
+    );
   }
 
-  private setupPageInterception(page: any, collector: EvidenceCollector, demoMode: boolean): void {
+  private setupPageInterception(
+    page: any,
+    collector: EvidenceCollector,
+    demoMode: boolean,
+  ): void {
     page.on('request', (request: any) => {
       try {
         const url: string = request.url();
@@ -808,18 +1001,27 @@ export class SandboxOrchestratorService {
           const isExtension =
             url.startsWith('chrome-extension://') ||
             (initiator?.startsWith('chrome-extension://') ?? false);
-          if (isExtension || (!url.startsWith('chrome://') && !url.startsWith('data:'))) {
+          if (
+            isExtension ||
+            (!url.startsWith('chrome://') && !url.startsWith('data:'))
+          ) {
             let label = url;
-            try { label = new URL(url).hostname; } catch { label = url.substring(0, 60); }
+            try {
+              label = new URL(url).hostname;
+            } catch {
+              label = url.substring(0, 60);
+            }
             const severity = isExtension ? 'critical' : 'info';
             const icon = isExtension ? '🔴 RED EXT' : '🌐 RED';
-            page.evaluate(
-              ([t, d, s]: [string, string, string]) => {
-                const fn = (window as any).__extSandboxAddEvent;
-                if (typeof fn === 'function') fn(t, d, s);
-              },
-              [icon, label, severity],
-            ).catch(() => { });
+            page
+              .evaluate(
+                ([t, d, s]: [string, string, string]) => {
+                  const fn = (window as any).__extSandboxAddEvent;
+                  if (typeof fn === 'function') fn(t, d, s);
+                },
+                [icon, label, severity],
+              )
+              .catch(() => {});
           }
         }
       } catch {
@@ -828,7 +1030,10 @@ export class SandboxOrchestratorService {
     });
   }
 
-  private async collectPageEvidence(page: any, collector: EvidenceCollector): Promise<void> {
+  private async collectPageEvidence(
+    page: any,
+    collector: EvidenceCollector,
+  ): Promise<void> {
     try {
       const mutations: any[] = await page.evaluate(
         () => (window as any).__extSandboxMutations || [],
@@ -882,7 +1087,9 @@ export class SandboxOrchestratorService {
               if (isCritical) {
                 const reason = nodeName === 'iframe' ? 'iframe' : 'script';
                 if ((window as any).__extSandboxCriticalMutation) {
-                  (window as any).__extSandboxCriticalMutation(reason).catch(() => { });
+                  (window as any)
+                    .__extSandboxCriticalMutation(reason)
+                    .catch(() => {});
                 }
                 if ((window as any).__extSandboxAddEvent) {
                   (window as any).__extSandboxAddEvent(
@@ -953,10 +1160,20 @@ export class SandboxOrchestratorService {
 
     // Catch SWs that register after we attach
     browser.on('serviceworker', (sw: any) => {
-      if (typeof sw.url === 'function' ? sw.url().startsWith(swUrlPrefix) : false) {
-        this.attachToServiceWorker(sw, collector, jobId, demoMode).catch(() => { });
-      } else if (sw.url && typeof sw.url === 'string' && sw.url.startsWith(swUrlPrefix)) {
-        this.attachToServiceWorker(sw, collector, jobId, demoMode).catch(() => { });
+      if (
+        typeof sw.url === 'function' ? sw.url().startsWith(swUrlPrefix) : false
+      ) {
+        this.attachToServiceWorker(sw, collector, jobId, demoMode).catch(
+          () => {},
+        );
+      } else if (
+        sw.url &&
+        typeof sw.url === 'string' &&
+        sw.url.startsWith(swUrlPrefix)
+      ) {
+        this.attachToServiceWorker(sw, collector, jobId, demoMode).catch(
+          () => {},
+        );
       }
     });
 
@@ -968,7 +1185,9 @@ export class SandboxOrchestratorService {
       for (const sw of existing) {
         const url = typeof sw.url === 'function' ? sw.url() : sw.url;
         if (typeof url === 'string' && url.startsWith(swUrlPrefix)) {
-          this.attachToServiceWorker(sw, collector, jobId, demoMode).catch(() => { });
+          this.attachToServiceWorker(sw, collector, jobId, demoMode).catch(
+            () => {},
+          );
         }
       }
     } catch {
@@ -994,9 +1213,12 @@ export class SandboxOrchestratorService {
     // Forward sentinel console messages from the SW into the collector
     sw.on?.('console', (msg: any) => {
       try {
-        const text: string = typeof msg.text === 'function' ? msg.text() : String(msg);
+        const text: string =
+          typeof msg.text === 'function' ? msg.text() : String(msg);
         if (!text.startsWith('[SANDBOX_API]')) return;
-        const payload = JSON.parse(text.substring('[SANDBOX_API]'.length).trim());
+        const payload = JSON.parse(
+          text.substring('[SANDBOX_API]'.length).trim(),
+        );
         if (payload.kind === 'api') {
           collector.onApiCall(payload.api, payload.args ?? '');
         } else if (payload.kind === 'fetch') {

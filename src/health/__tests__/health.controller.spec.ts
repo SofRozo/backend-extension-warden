@@ -71,7 +71,10 @@ describe('HealthController', () => {
       const module = await Test.createTestingModule({
         controllers: [HealthController],
         providers: [
-          { provide: getRepositoryToken(AnalysisJob), useValue: mockRepository },
+          {
+            provide: getRepositoryToken(AnalysisJob),
+            useValue: mockRepository,
+          },
           { provide: getQueueToken('analysis'), useValue: mockQueue },
         ],
       }).compile();

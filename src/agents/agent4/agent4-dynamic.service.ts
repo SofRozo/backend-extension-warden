@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { LlmClientService } from '../llm/llm-client.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import type { Agent4Output, Agent4ContactDetail } from '../interfaces/agents.interfaces.js';
+import type {
+  Agent4Output,
+  Agent4ContactDetail,
+} from '../interfaces/agents.interfaces.js';
 import type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
 
 const VALID_VERDICTS = new Set(['benigna', 'sospechosa', 'maliciosa']);
@@ -99,12 +102,14 @@ Responde en JSON exactamente así (sin texto adicional):
     return {
       contacto_dominios_sensibles: Boolean(r.contacto_dominios_sensibles),
       detalle_contactos,
-      modificaciones_dom_sospechosas: toStringArray(r.modificaciones_dom_sospechosas),
+      modificaciones_dom_sospechosas: toStringArray(
+        r.modificaciones_dom_sospechosas,
+      ),
       comportamiento_inesperado: toStringArray(r.comportamiento_inesperado),
       confirma_hallazgos_estaticos: Boolean(r.confirma_hallazgos_estaticos),
       nuevos_hallazgos: toStringArray(r.nuevos_hallazgos),
       veredicto_dinamico: VALID_VERDICTS.has(veredicto)
-        ? veredicto as Agent4Output['veredicto_dinamico']
+        ? (veredicto as Agent4Output['veredicto_dinamico'])
         : 'sospechosa',
       resumen: String(r.resumen ?? ''),
     };

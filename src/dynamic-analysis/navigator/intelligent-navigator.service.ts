@@ -56,7 +56,11 @@ Responde SOLO con JSON válido:
   "reasoning": "por qué esta acción ayuda a detectar comportamiento malicioso"
 }`;
 
-const categoryTask = (domain: string, category: DomainCategory, proposito: string): string => {
+const categoryTask = (
+  domain: string,
+  category: DomainCategory,
+  proposito: string,
+): string => {
   const tasks: Record<DomainCategory, string> = {
     sensible_financiero:
       `Navega en ${domain} (sitio bancario/financiero). Busca formularios de transferencia o login. ` +
@@ -123,7 +127,12 @@ export class IntelligentNavigatorService {
     let credentialsSubmitted = false;
     let domModificationsDetected = false;
 
-    this.logger.logWithJob(jobId, 'info', `Navigator — starting ${domain} (${category})`, 'IntelligentNavigator');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Navigator — starting ${domain} (${category})`,
+      'IntelligentNavigator',
+    );
 
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
@@ -131,7 +140,16 @@ export class IntelligentNavigatorService {
     } catch (err) {
       const msg = `Failed to load ${url}: ${err instanceof Error ? err.message : String(err)}`;
       this.logger.logWithJob(jobId, 'warn', msg, 'IntelligentNavigator');
-      return this.buildObservation(domain, url, [msg], [], 0, false, false, msg);
+      return this.buildObservation(
+        domain,
+        url,
+        [msg],
+        [],
+        0,
+        false,
+        false,
+        msg,
+      );
     }
 
     const task = categoryTask(domain, category, proposito);
@@ -140,13 +158,24 @@ export class IntelligentNavigatorService {
     for (let step = 0; step < MAX_STEPS_PER_DOMAIN; step++) {
       try {
         const snapshot = await this.takeSnapshot(page);
-        const action = await this.getNextAction(snapshot, task, step, observations, jobId);
+        const action = await this.getNextAction(
+          snapshot,
+          task,
+          step,
+          observations,
+          jobId,
+        );
 
         observations.push(`[${step + 1}] ${action.observation}`);
 
         if (action.action === 'done') break;
 
-        const { submitted, mutationsAdded } = await this.executeAction(page, action, actionsPerformed, jobId);
+        const { submitted, mutationsAdded } = await this.executeAction(
+          page,
+          action,
+          actionsPerformed,
+          jobId,
+        );
         if (submitted) credentialsSubmitted = true;
         if (mutationsAdded) domModificationsDetected = true;
 
@@ -162,28 +191,41 @@ export class IntelligentNavigatorService {
     // Check for DOM modifications by the extension (iframes, external scripts)
     try {
       const injected = await page.evaluate(() => {
-        const iframes = document.querySelectorAll('iframe[src*="chrome-extension://"]').length;
-        const extScripts = document.querySelectorAll('script[src*="chrome-extension://"]').length;
+        const iframes = document.querySelectorAll(
+          'iframe[src*="chrome-extension://"]',
+        ).length;
+        const extScripts = document.querySelectorAll(
+          'script[src*="chrome-extension://"]',
+        ).length;
         return { iframes, extScripts };
       });
       if (injected.iframes > 0 || injected.extScripts > 0) {
         domModificationsDetected = true;
-        observations.push(`Extension injected ${injected.iframes} iframe(s) and ${injected.extScripts} script(s) into DOM`);
+        observations.push(
+          `Extension injected ${injected.iframes} iframe(s) and ${injected.extScripts} script(s) into DOM`,
+        );
       }
-    } catch { /* best effort */ }
+    } catch {
+      /* best effort */
+    }
 
     const requestsAfter = await this.countRequestsToHost(page, domain);
 
     this.logger.logWithJob(
-      jobId, 'info',
+      jobId,
+      'info',
       `Navigator — finished ${domain}: ${actionsPerformed.length} actions, ${observations.length} observations`,
       'IntelligentNavigator',
     );
 
     return this.buildObservation(
-      domain, url, observations, actionsPerformed,
+      domain,
+      url,
+      observations,
+      actionsPerformed,
       requestsAfter - requestsBefore,
-      domModificationsDetected, credentialsSubmitted,
+      domModificationsDetected,
+      credentialsSubmitted,
     );
   }
 
@@ -193,7 +235,9 @@ export class IntelligentNavigatorService {
     try {
       const data = await page.evaluate(() => {
         const bodyText = (document.body?.innerText ?? '').slice(0, 1500);
-        const inputs = Array.from(document.querySelectorAll('input, textarea, select'))
+        const inputs = Array.from(
+          document.querySelectorAll('input, textarea, select'),
+        )
           .slice(0, 20)
           .map((el: any) => ({
             type: el.type || el.tagName.toLowerCase(),
@@ -201,17 +245,37 @@ export class IntelligentNavigatorService {
             id: el.id || '',
             name: el.name || '',
           }));
-        const buttons = Array.from(document.querySelectorAll('button, [role="button"], a[href]'))
+        const buttons = Array.from(
+          document.querySelectorAll('button, [role="button"], a[href]'),
+        )
           .slice(0, 20)
-          .map((el: any) => ({ tag: el.tagName, text: (el.innerText || '').slice(0, 100), href: el.href || '' }));
+          .map((el: any) => ({
+            tag: el.tagName,
+            text: (el.innerText || '').slice(0, 100),
+            href: el.href || '',
+          }));
         const iframes = Array.from(document.querySelectorAll('iframe'))
           .slice(0, 5)
           .map((fr: any) => ({ src: fr.src || '', id: fr.id || '' }));
-        return JSON.stringify({ url: window.location.href, title: document.title, bodyText, inputs, buttons, iframes });
+        return JSON.stringify({
+          url: window.location.href,
+          title: document.title,
+          bodyText,
+          inputs,
+          buttons,
+          iframes,
+        });
       });
       return data as string;
     } catch {
-      return JSON.stringify({ url: 'unknown', title: 'unknown', bodyText: '', inputs: [], buttons: [], iframes: [] });
+      return JSON.stringify({
+        url: 'unknown',
+        title: 'unknown',
+        bodyText: '',
+        inputs: [],
+        buttons: [],
+        iframes: [],
+      });
     }
   }
 
@@ -223,11 +287,18 @@ export class IntelligentNavigatorService {
     jobId: string,
   ): Promise<NavigatorAction> {
     if (!this.llm.isConfigured()) {
-      return { action: step === 0 ? 'wait' : 'done', observation: 'LLM not configured — observing passively', reasoning: 'No LLM' };
+      return {
+        action: step === 0 ? 'wait' : 'done',
+        observation: 'LLM not configured — observing passively',
+        reasoning: 'No LLM',
+      };
     }
     try {
       const prompt = buildPrompt(snapshot, task, step, previousObservations);
-      const raw = await this.llm.callLLM(prompt, jobId) as Record<string, unknown>;
+      const raw = (await this.llm.callLLM(prompt, jobId)) as Record<
+        string,
+        unknown
+      >;
       return {
         action: (raw.action as NavigatorAction['action']) ?? 'done',
         element_text: raw.element_text as string | undefined,
@@ -238,7 +309,11 @@ export class IntelligentNavigatorService {
         reasoning: (raw.reasoning as string) ?? '',
       };
     } catch {
-      return { action: 'done', observation: 'LLM call failed — stopping navigation', reasoning: 'LLM error' };
+      return {
+        action: 'done',
+        observation: 'LLM call failed — stopping navigation',
+        reasoning: 'LLM error',
+      };
     }
   }
 
@@ -255,23 +330,43 @@ export class IntelligentNavigatorService {
       switch (action.action) {
         case 'navigate':
           if (action.url) {
-            await page.goto(action.url, { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+            await page
+              .goto(action.url, {
+                waitUntil: 'domcontentloaded',
+                timeout: 10000,
+              })
+              .catch(() => {});
             actionsPerformed.push(`navigate:${action.url}`);
           }
           break;
 
         case 'click': {
-          const clicked = await this.clickElement(page, action.element_text, action.selector);
-          if (clicked) actionsPerformed.push(`click:${action.element_text ?? action.selector}`);
+          const clicked = await this.clickElement(
+            page,
+            action.element_text,
+            action.selector,
+          );
+          if (clicked)
+            actionsPerformed.push(
+              `click:${action.element_text ?? action.selector}`,
+            );
           break;
         }
 
         case 'type': {
           if (action.value) {
-            const typed = await this.typeInElement(page, action.element_text, action.selector, action.value);
+            const typed = await this.typeInElement(
+              page,
+              action.element_text,
+              action.selector,
+              action.value,
+            );
             if (typed) {
-              actionsPerformed.push(`type:${action.element_text ?? action.selector}="${action.value.slice(0, 30)}"`);
-              if (action.value === FAKE_EMAIL || action.value === FAKE_PASSWORD) submitted = true;
+              actionsPerformed.push(
+                `type:${action.element_text ?? action.selector}="${action.value.slice(0, 30)}"`,
+              );
+              if (action.value === FAKE_EMAIL || action.value === FAKE_PASSWORD)
+                submitted = true;
               mutationsAdded = true;
             }
           }
@@ -288,7 +383,8 @@ export class IntelligentNavigatorService {
       }
     } catch (err) {
       this.logger.logWithJob(
-        jobId, 'warn',
+        jobId,
+        'warn',
         `Navigator action ${action.action} failed: ${err instanceof Error ? err.message : String(err)}`,
         'IntelligentNavigator',
       );
@@ -297,37 +393,66 @@ export class IntelligentNavigatorService {
     return { submitted, mutationsAdded };
   }
 
-  private async clickElement(page: any, elementText?: string, selector?: string): Promise<boolean> {
+  private async clickElement(
+    page: any,
+    elementText?: string,
+    selector?: string,
+  ): Promise<boolean> {
     // Try CSS selector first
     if (selector) {
       try {
         await page.locator(selector).first().click({ timeout: 3000 });
         return true;
-      } catch { /* fall through */ }
+      } catch {
+        /* fall through */
+      }
     }
 
     // Try text match on buttons and links
     if (elementText) {
-      const words = elementText.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+      const words = elementText
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
       for (const word of words.slice(0, 3)) {
         try {
-          await page.getByRole('button', { name: new RegExp(word, 'i') }).first().click({ timeout: 2000 });
+          await page
+            .getByRole('button', { name: new RegExp(word, 'i') })
+            .first()
+            .click({ timeout: 2000 });
           return true;
-        } catch { /* continue */ }
+        } catch {
+          /* continue */
+        }
         try {
-          await page.getByRole('link', { name: new RegExp(word, 'i') }).first().click({ timeout: 2000 });
+          await page
+            .getByRole('link', { name: new RegExp(word, 'i') })
+            .first()
+            .click({ timeout: 2000 });
           return true;
-        } catch { /* continue */ }
+        } catch {
+          /* continue */
+        }
         try {
-          await page.getByText(new RegExp(word, 'i')).first().click({ timeout: 2000 });
+          await page
+            .getByText(new RegExp(word, 'i'))
+            .first()
+            .click({ timeout: 2000 });
           return true;
-        } catch { /* continue */ }
+        } catch {
+          /* continue */
+        }
       }
     }
     return false;
   }
 
-  private async typeInElement(page: any, elementText?: string, selector?: string, value?: string): Promise<boolean> {
+  private async typeInElement(
+    page: any,
+    elementText?: string,
+    selector?: string,
+    value?: string,
+  ): Promise<boolean> {
     if (!value) return false;
 
     // Try CSS selector first
@@ -335,37 +460,71 @@ export class IntelligentNavigatorService {
       try {
         await page.locator(selector).first().fill(value, { timeout: 3000 });
         return true;
-      } catch { /* fall through */ }
+      } catch {
+        /* fall through */
+      }
     }
 
     // Infer from element description
     if (elementText) {
       const lc = elementText.toLowerCase();
-      if (lc.includes('password') || lc.includes('contraseña') || lc.includes('senha')) {
+      if (
+        lc.includes('password') ||
+        lc.includes('contraseña') ||
+        lc.includes('senha')
+      ) {
         try {
-          await page.locator('input[type="password"]').first().fill(value, { timeout: 3000 });
+          await page
+            .locator('input[type="password"]')
+            .first()
+            .fill(value, { timeout: 3000 });
           return true;
-        } catch { /* continue */ }
+        } catch {
+          /* continue */
+        }
       }
-      if (lc.includes('email') || lc.includes('user') || lc.includes('usuario')) {
+      if (
+        lc.includes('email') ||
+        lc.includes('user') ||
+        lc.includes('usuario')
+      ) {
         try {
-          await page.locator('input[type="email"], input[name*="user"], input[name*="email"]').first().fill(value, { timeout: 3000 });
+          await page
+            .locator(
+              'input[type="email"], input[name*="user"], input[name*="email"]',
+            )
+            .first()
+            .fill(value, { timeout: 3000 });
           return true;
-        } catch { /* continue */ }
+        } catch {
+          /* continue */
+        }
       }
       // Generic text input
       try {
-        await page.locator('input[type="text"], input[type="email"], input:not([type])').first().fill(value, { timeout: 3000 });
+        await page
+          .locator('input[type="text"], input[type="email"], input:not([type])')
+          .first()
+          .fill(value, { timeout: 3000 });
         return true;
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
     return false;
   }
 
-  private async countRequestsToHost(page: any, domain: string): Promise<number> {
+  private async countRequestsToHost(
+    page: any,
+    domain: string,
+  ): Promise<number> {
     try {
       return await page.evaluate((d: string) => {
-        return (window as any).__extSandboxApiCalls?.filter((c: any) => c.api === 'fetch' && String(c.args).includes(d)).length ?? 0;
+        return (
+          (window as any).__extSandboxApiCalls?.filter(
+            (c: any) => c.api === 'fetch' && String(c.args).includes(d),
+          ).length ?? 0
+        );
       }, domain);
     } catch {
       return 0;
@@ -382,6 +541,15 @@ export class IntelligentNavigatorService {
     credentialsSubmitted: boolean,
     error?: string,
   ): SandboxDomainObservation {
-    return { domain, url, observations, actionsPerformed, requestsToThisDomain, domModificationsDetected, credentialsSubmitted, error };
+    return {
+      domain,
+      url,
+      observations,
+      actionsPerformed,
+      requestsToThisDomain,
+      domModificationsDetected,
+      credentialsSubmitted,
+      error,
+    };
   }
 }

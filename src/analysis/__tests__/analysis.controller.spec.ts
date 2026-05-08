@@ -38,7 +38,10 @@ describe('AnalysisController', () => {
       expect(result.jobId).toBe('uuid-123');
       expect(result.status).toBe('queued');
       expect(result.message).toContain('queued successfully');
-      expect(mockService.createAnalysisJob).toHaveBeenCalledWith('ext-abc', false);
+      expect(mockService.createAnalysisJob).toHaveBeenCalledWith(
+        'ext-abc',
+        false,
+      );
     });
   });
 

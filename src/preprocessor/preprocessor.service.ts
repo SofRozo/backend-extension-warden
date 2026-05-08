@@ -32,7 +32,9 @@ export class PreprocessorService {
   ): Promise<PreprocessorOutput> {
     const manifestPath = path.join(extractPath, 'manifest.json');
     if (!fs.existsSync(manifestPath)) {
-      throw new Error('Invalid extension: manifest.json not found at extension root');
+      throw new Error(
+        'Invalid extension: manifest.json not found at extension root',
+      );
     }
 
     let rawManifest: Record<string, unknown>;
@@ -51,14 +53,20 @@ export class PreprocessorService {
     // Classify JS files referenced from the popup HTML that are not declared
     // in the manifest directly (e.g. bundled via <script src="...">) as 'popup'.
     // Also collect external <script src="https://..."> tags as MV3 policy violations.
-    const { localScripts, externalScripts } = this.parsePopupScripts(extractPath, manifest.popupUrl);
+    const { localScripts, externalScripts } = this.parsePopupScripts(
+      extractPath,
+      manifest.popupUrl,
+    );
     for (const scriptPath of localScripts) {
       if (!roleMap.has(scriptPath)) {
         roleMap.set(scriptPath, 'popup');
       }
     }
     for (const src of externalScripts) {
-      remoteCodeViolations.push({ htmlFile: manifest.popupUrl ?? 'popup.html', externalSrc: src });
+      remoteCodeViolations.push({
+        htmlFile: manifest.popupUrl ?? 'popup.html',
+        externalSrc: src,
+      });
       if (manifest.manifestVersion === 3) {
         this.logger.logWithJob(
           jobId,
@@ -100,12 +108,19 @@ export class PreprocessorService {
 
       // Safety limit: skip extremely large files to prevent worker OOM
       if (rawCode.length > 2 * 1024 * 1024) {
-        this.logger.logWithJob(jobId, 'warn', `Skipping ${relativePath}: file too large (${(rawCode.length / 1024 / 1024).toFixed(2)} MB)`, 'PreprocessorService');
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `Skipping ${relativePath}: file too large (${(rawCode.length / 1024 / 1024).toFixed(2)} MB)`,
+          'PreprocessorService',
+        );
         files.push(this.emptyFile(relativePath, role, false));
         continue;
       }
 
-      const isObfuscatedInit = this.deobfuscator.isObfuscated(rawCode) || this.isAggressivelyMinified(rawCode);
+      const isObfuscatedInit =
+        this.deobfuscator.isObfuscated(rawCode) ||
+        this.isAggressivelyMinified(rawCode);
 
       let processedCode = rawCode;
       let finalIsObfuscated = isObfuscatedInit;
@@ -242,7 +257,10 @@ export class PreprocessorService {
     return map;
   }
 
-  private inferRole(relativePath: string, roleMap: Map<string, FileRole>): FileRole {
+  private inferRole(
+    relativePath: string,
+    roleMap: Map<string, FileRole>,
+  ): FileRole {
     const norm = relativePath.replace(/\\/g, '/');
 
     for (const [key, role] of roleMap) {
@@ -251,13 +269,24 @@ export class PreprocessorService {
 
     const basename = norm.split('/').pop()?.toLowerCase() ?? '';
     const KNOWN_LIBS = [
-      'jquery', 'lodash', 'underscore', 'html2canvas',
-      'react.min', 'vue.min', 'angular.min', 'bootstrap.min',
+      'jquery',
+      'lodash',
+      'underscore',
+      'html2canvas',
+      'react.min',
+      'vue.min',
+      'angular.min',
+      'bootstrap.min',
     ];
     if (KNOWN_LIBS.some((lib) => basename.startsWith(lib))) return 'library';
 
     const lower = norm.toLowerCase();
-    if (lower.includes('/popup/') || lower.startsWith('popup/') || lower === 'popup.js') return 'popup';
+    if (
+      lower.includes('/popup/') ||
+      lower.startsWith('popup/') ||
+      lower === 'popup.js'
+    )
+      return 'popup';
     if (
       lower.includes('background') ||
       lower.includes('service-worker') ||
@@ -300,7 +329,8 @@ export class PreprocessorService {
     const popupDir = path.dirname(popupUrl).replace(/\\/g, '/');
     const localScripts: string[] = [];
     const externalScripts: string[] = [];
-    const scriptSrcRegex = /<script[^>]+src=['"]([^'"]+\.(?:js|mjs))(?:\?[^'"]*)?['"]/gi;
+    const scriptSrcRegex =
+      /<script[^>]+src=['"]([^'"]+\.(?:js|mjs))(?:\?[^'"]*)?['"]/gi;
     let m: RegExpExecArray | null;
 
     while ((m = scriptSrcRegex.exec(html)) !== null) {
@@ -352,7 +382,8 @@ export class PreprocessorService {
     // or base64-packed strings.  Readable JS sits at ~4–5 bits/char; base64 ~6;
     // encrypted/random content reaches >7.  Threshold 6.5 catches the latter two.
     const sample = code.slice(0, 4000);
-    if (sample.length > 500 && this.computeShannonEntropy(sample) > 6.5) return true;
+    if (sample.length > 500 && this.computeShannonEntropy(sample) > 6.5)
+      return true;
 
     // Ratio of short identifiers to readable words
     const shortVars = (code.match(/\b[a-z_][a-z_]?\s*=/g) ?? []).length;
@@ -371,20 +402,24 @@ export class PreprocessorService {
      * 1. Match string literals (double, single, template) OR regex literals and capture them in group 1.
      * 2. Match block comments and capture them in group 2.
      * 3. Match line comments and capture them in group 3.
-     * 
+     *
      * In the replacer, if group 1 matched, return it as-is.
      * If a block comment matched, return newlines to preserve line numbers.
      * If a line comment matched, return empty string.
      */
-    const regex = /((?:"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\/(?![*\/])(?:[^\/\n\\\\]|\\.)+\/[gimyus]*))|(\/\*[\s\S]*?\*\/)|(\/\/[^\n]*)/gs;
+    const regex =
+      /((?:"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\/(?![*\/])(?:[^\/\n\\\\]|\\.)+\/[gimyus]*))|(\/\*[\s\S]*?\*\/)|(\/\/[^\n]*)/gs;
 
-    return code.replace(regex, (_match, literal, blockComment, _lineComment) => {
-      if (literal) return literal;
-      if (blockComment) {
-        return '\n'.repeat((blockComment.match(/\n/g) ?? []).length);
-      }
-      return '';
-    });
+    return code.replace(
+      regex,
+      (_match, literal, blockComment, _lineComment) => {
+        if (literal) return literal;
+        if (blockComment) {
+          return '\n'.repeat((blockComment.match(/\n/g) ?? []).length);
+        }
+        return '';
+      },
+    );
   }
 
   // ─── Structured data extraction ───────────────────────────────────────────────
@@ -401,10 +436,12 @@ export class PreprocessorService {
     const lines = code.split('\n');
 
     // Pattern 1: domains inside URLs (http://example.com/...)
-    const urlRegex = /https?:\/\/([a-zA-Z0-9][-a-zA-Z0-9]*(?:\.[a-zA-Z0-9][-a-zA-Z0-9]*)+)/gi;
+    const urlRegex =
+      /https?:\/\/([a-zA-Z0-9][-a-zA-Z0-9]*(?:\.[a-zA-Z0-9][-a-zA-Z0-9]*)+)/gi;
 
     // Pattern 2: bare domain strings ('example.com')
-    const bareRegex = /['"`]([a-zA-Z0-9][-a-zA-Z0-9]*\.(?:com|org|net|edu|gov|io|co|me|info|biz)(?:\.[a-z]{2,3})?)['"`]/gi;
+    const bareRegex =
+      /['"`]([a-zA-Z0-9][-a-zA-Z0-9]*\.(?:com|org|net|edu|gov|io|co|me|info|biz)(?:\.[a-z]{2,3})?)['"`]/gi;
 
     for (let i = 0; i < lines.length; i++) {
       const lineText = lines[i];
@@ -492,7 +529,8 @@ export class PreprocessorService {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === '_metadata') continue;
+        if (entry.name === 'node_modules' || entry.name === '_metadata')
+          continue;
         files.push(...this.findJsFiles(fullPath));
       } else if (/\.(js|mjs|cjs|jsx)$/i.test(entry.name)) {
         files.push(fullPath);

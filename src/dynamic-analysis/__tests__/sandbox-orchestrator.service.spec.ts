@@ -1,19 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SandboxOrchestratorService } from '../orchestrator/sandbox-orchestrator.service.js';
-import { NetworkInterceptorService, EvidenceCollector } from '../network-interceptor/network-interceptor.service.js';
+import {
+  NetworkInterceptorService,
+  EvidenceCollector,
+} from '../network-interceptor/network-interceptor.service.js';
 import { DetonationStrategyService } from '../detonation-strategies/detonation-strategy.service.js';
 import { IntelligentNavigatorService } from '../navigator/intelligent-navigator.service.js';
 import { StagehandService } from '../navigator/stagehand.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import { DetonationStrategy, PlatformLevel } from '../../common/enums/risk-level.enum.js';
+import {
+  DetonationStrategy,
+  PlatformLevel,
+} from '../../common/enums/risk-level.enum.js';
 
 // Mock playwright to avoid needing it installed
 jest.mock('playwright', () => ({
   chromium: {
-    launchPersistentContext: jest.fn().mockRejectedValue(
-      new Error('Browser not available in test'),
-    ),
+    launchPersistentContext: jest
+      .fn()
+      .mockRejectedValue(new Error('Browser not available in test')),
   },
 }));
 
@@ -50,16 +56,38 @@ describe('SandboxOrchestratorService', () => {
         },
         {
           provide: IntelligentNavigatorService,
-          useValue: { navigateDomain: jest.fn().mockResolvedValue({ domain: '', url: '', observations: [], actionsPerformed: [], requestsToThisDomain: 0, domModificationsDetected: false, credentialsSubmitted: false }) },
+          useValue: {
+            navigateDomain: jest.fn().mockResolvedValue({
+              domain: '',
+              url: '',
+              observations: [],
+              actionsPerformed: [],
+              requestsToThisDomain: 0,
+              domModificationsDetected: false,
+              credentialsSubmitted: false,
+            }),
+          },
         },
         {
           provide: StagehandService,
-          useValue: { navigateDomain: jest.fn().mockResolvedValue({ domain: '', url: '', observations: [], actionsPerformed: [], requestsToThisDomain: 0, domModificationsDetected: false, credentialsSubmitted: false }) },
+          useValue: {
+            navigateDomain: jest.fn().mockResolvedValue({
+              domain: '',
+              url: '',
+              observations: [],
+              actionsPerformed: [],
+              requestsToThisDomain: 0,
+              domModificationsDetected: false,
+              credentialsSubmitted: false,
+            }),
+          },
         },
       ],
     }).compile();
 
-    service = module.get<SandboxOrchestratorService>(SandboxOrchestratorService);
+    service = module.get<SandboxOrchestratorService>(
+      SandboxOrchestratorService,
+    );
     mockDetonationStrategy = module.get(DetonationStrategyService);
   });
 
@@ -77,10 +105,15 @@ describe('SandboxOrchestratorService', () => {
 
     it('should call detonation strategy service', async () => {
       const result = await service.executeDynamicAnalysis(
-        '/tmp/ext', 'ext-id', staticResult, 'job-1',
+        '/tmp/ext',
+        'ext-id',
+        staticResult,
+        'job-1',
       );
 
-      expect(mockDetonationStrategy.selectStrategy).toHaveBeenCalledWith(staticResult);
+      expect(mockDetonationStrategy.selectStrategy).toHaveBeenCalledWith(
+        staticResult,
+      );
       expect(result).toBeDefined();
       expect(result.evidence).toBeDefined();
       expect(result.duration).toBeGreaterThanOrEqual(0);
@@ -88,7 +121,10 @@ describe('SandboxOrchestratorService', () => {
 
     it('should return evidence even when browser fails', async () => {
       const result = await service.executeDynamicAnalysis(
-        '/tmp/ext', 'ext-id', staticResult, 'job-1',
+        '/tmp/ext',
+        'ext-id',
+        staticResult,
+        'job-1',
       );
 
       expect(result.evidence.networkRequests).toEqual([]);
@@ -107,7 +143,10 @@ describe('SandboxOrchestratorService', () => {
       ]);
 
       const result = await service.executeDynamicAnalysis(
-        '/tmp/ext', 'ext-id', staticResult, 'job-1',
+        '/tmp/ext',
+        'ext-id',
+        staticResult,
+        'job-1',
       );
 
       expect(result.strategy).toBe(DetonationStrategy.DOM_FALSIFICATION);
@@ -117,7 +156,10 @@ describe('SandboxOrchestratorService', () => {
       mockDetonationStrategy.selectStrategy.mockReturnValue([]);
 
       const result = await service.executeDynamicAnalysis(
-        '/tmp/ext', 'ext-id', staticResult, 'job-1',
+        '/tmp/ext',
+        'ext-id',
+        staticResult,
+        'job-1',
       );
 
       expect(result.strategy).toBe(DetonationStrategy.PASSIVE_TRIGGER);

@@ -14,7 +14,9 @@ describe('AnalysisService', () => {
   beforeEach(async () => {
     mockRepository = {
       create: jest.fn((data: any) => ({ id: 'uuid-123', ...data })),
-      save: jest.fn((entity: any) => Promise.resolve({ ...entity, id: 'uuid-123' })),
+      save: jest.fn((entity: any) =>
+        Promise.resolve({ ...entity, id: 'uuid-123' }),
+      ),
       findOne: jest.fn(),
     };
 
@@ -80,7 +82,10 @@ describe('AnalysisService', () => {
 
   describe('getJobStatus', () => {
     it('should query repository by jobId', async () => {
-      mockRepository.findOne.mockResolvedValue({ id: 'j1', status: 'completed' });
+      mockRepository.findOne.mockResolvedValue({
+        id: 'j1',
+        status: 'completed',
+      });
       const result = await service.getJobStatus('j1');
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { id: 'j1' },

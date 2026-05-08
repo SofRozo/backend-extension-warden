@@ -23,7 +23,12 @@ export class EvidenceCollector {
   private keyboardEvents: KbEvent[] = [];
   private apiCalls: ApiCall[] = [];
   private screenshotPaths: string[] = [];
-  private logs: Array<{ module: string; message: string; level: string; timestamp: number }> = [];
+  private logs: Array<{
+    module: string;
+    message: string;
+    level: string;
+    timestamp: number;
+  }> = [];
   private extensionOrigin: string;
   private extensionId: string;
   private currentContext: string = 'generic';
@@ -50,7 +55,11 @@ export class EvidenceCollector {
       return;
     }
 
-    const origin = this.classifyRequestOrigin(url, initiator, fromServiceWorker);
+    const origin = this.classifyRequestOrigin(
+      url,
+      initiator,
+      fromServiceWorker,
+    );
 
     this.networkRequests.push({
       url,
@@ -89,7 +98,12 @@ export class EvidenceCollector {
   }
 
   onApiCall(api: string, args: string): void {
-    this.apiCalls.push({ api, args, timestamp: Date.now(), context: this.currentContext });
+    this.apiCalls.push({
+      api,
+      args,
+      timestamp: Date.now(),
+      context: this.currentContext,
+    });
   }
 
   setContext(context: string): void {
@@ -157,7 +171,9 @@ export class EvidenceCollector {
     try {
       const hostname = new URL(url).hostname;
       if (hostname && this.baselineHosts.has(hostname)) return 'browser';
-    } catch { /* ignore malformed URLs */ }
+    } catch {
+      /* ignore malformed URLs */
+    }
 
     return 'unknown';
   }
@@ -205,11 +221,13 @@ export function isRecordableUrl(url: string): boolean {
   if (!hostname) return false;
 
   // Reject hostnames that are clearly file names misclassified as hosts
-  const ASSET_EXT = /\.(js|mjs|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|map|json|xml|html?)$/i;
+  const ASSET_EXT =
+    /\.(js|mjs|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|map|json|xml|html?)$/i;
   if (ASSET_EXT.test(hostname)) return false;
 
   // Allow localhost and IPs
-  if (hostname === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return true;
+  if (hostname === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname))
+    return true;
 
   // Real hostnames have at least one dot and a TLD of 2+ chars
   if (!hostname.includes('.')) return false;

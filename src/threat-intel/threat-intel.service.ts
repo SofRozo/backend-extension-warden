@@ -6,7 +6,10 @@ import { ThreatIntelResult } from '../common/interfaces/analysis.interfaces.js';
 
 @Injectable()
 export class ThreatIntelService {
-  private cache = new Map<string, { result: ThreatIntelResult[]; expiresAt: number }>();
+  private cache = new Map<
+    string,
+    { result: ThreatIntelResult[]; expiresAt: number }
+  >();
 
   // Hard cap: never query more than this many domains per job (any provider)
   private static readonly GLOBAL_MAX_DOMAINS = 30;
@@ -20,7 +23,7 @@ export class ThreatIntelService {
   constructor(
     private readonly config: ConfigService,
     private readonly logger: StructuredLogger,
-  ) { }
+  ) {}
 
   async queryDomain(
     domain: string,
@@ -28,7 +31,12 @@ export class ThreatIntelService {
   ): Promise<ThreatIntelResult[]> {
     const cached = this.cache.get(domain);
     if (cached && cached.expiresAt > Date.now()) {
-      this.logger.logWithJob(jobId, 'info', `Cache hit for ${domain}`, 'ThreatIntelService');
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `Cache hit for ${domain}`,
+        'ThreatIntelService',
+      );
       return cached.result;
     }
 
@@ -43,7 +51,8 @@ export class ThreatIntelService {
       if (r.status === 'fulfilled' && r.value) results.push(r.value);
     }
 
-    const ttl = (this.config.get<number>('threatIntel.cacheTtlSeconds') || 86400) * 1000;
+    const ttl =
+      (this.config.get<number>('threatIntel.cacheTtlSeconds') || 86400) * 1000;
     this.cache.set(domain, { result: results, expiresAt: Date.now() + ttl });
 
     return results;
@@ -61,7 +70,12 @@ export class ThreatIntelService {
     for (const domain of uniqueDomains) {
       const cached = this.cache.get(domain);
       if (cached && cached.expiresAt > Date.now()) {
-        this.logger.logWithJob(jobId, 'info', `Cache hit for ${domain}`, 'ThreatIntelService');
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          `Cache hit for ${domain}`,
+          'ThreatIntelService',
+        );
         allResults.push(...cached.result);
       } else {
         uncached.push(domain);
@@ -81,8 +95,10 @@ export class ThreatIntelService {
       );
     }
 
-    const timeoutMs = this.config.get<number>('threatIntel.timeoutMs') || 10_000;
-    const ttl = (this.config.get<number>('threatIntel.cacheTtlSeconds') || 86400) * 1000;
+    const timeoutMs =
+      this.config.get<number>('threatIntel.timeoutMs') || 10_000;
+    const ttl =
+      (this.config.get<number>('threatIntel.cacheTtlSeconds') || 86400) * 1000;
     const domainResults = new Map<string, ThreatIntelResult[]>();
     for (const d of capped) domainResults.set(d, []);
 
@@ -91,10 +107,15 @@ export class ThreatIntelService {
     // VirusTotal: sequential with delay to respect 4 req/min free tier
     const vtDomains = capped.slice(0, ThreatIntelService.VT_MAX_DOMAINS);
     if (vtDomains.length > 0) {
-      const estMinutes = Math.ceil((vtDomains.length * ThreatIntelService.VT_DELAY_MS) / 60_000);
-      this.logger.logWithJob(jobId, 'info',
+      const estMinutes = Math.ceil(
+        (vtDomains.length * ThreatIntelService.VT_DELAY_MS) / 60_000,
+      );
+      this.logger.logWithJob(
+        jobId,
+        'info',
         `VirusTotal: querying ${vtDomains.length} domains sequentially (~${estMinutes}min, rate-limited)`,
-        'ThreatIntelService');
+        'ThreatIntelService',
+      );
     }
     for (let i = 0; i < vtDomains.length; i++) {
       const domain = vtDomains[i];
@@ -154,9 +175,7 @@ export class ThreatIntelService {
         provider: 'virustotal',
         isMalicious: malicious > 0 || suspicious > 2,
         score: total > 0 ? (malicious + suspicious) / total : 0,
-        categories: data?.categories
-          ? Object.values(data.categories) as string[]
-          : [],
+        categories: data?.categories ? Object.values(data.categories) : [],
         details: {
           malicious,
           suspicious,
@@ -202,8 +221,7 @@ export class ThreatIntelService {
         domain,
         provider: 'urlscan',
         isMalicious: maliciousCount > 0,
-        score:
-          results.length > 0 ? maliciousCount / results.length : 0,
+        score: results.length > 0 ? maliciousCount / results.length : 0,
         categories: results
           .filter((r: any) => r.verdicts?.overall?.tags)
           .flatMap((r: any) => r.verdicts.overall.tags)

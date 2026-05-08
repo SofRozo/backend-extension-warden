@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as parser from '@babel/parser';
 import _traverse from '@babel/traverse';
-import * as t from '@babel/types';
-import {
-  DiscoveredDomain,
-} from '../../common/interfaces/analysis.interfaces.js';
+import { DiscoveredDomain } from '../../common/interfaces/analysis.interfaces.js';
 import { PlatformLevel } from '../../common/enums/risk-level.enum.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 
@@ -18,36 +15,89 @@ const RESTRICTED_PLATFORM_PATTERNS: {
   category: string;
   level: PlatformLevel;
 }[] = [
-    // Banking / Financial
-    { pattern: /bancolombia|davivienda|bbva|nequi/i, category: 'banking', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    { pattern: /chase\.com|bankofamerica|wellsfargo|citibank/i, category: 'banking', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    { pattern: /paypal\.com|stripe\.com|mercadopago/i, category: 'financial', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    { pattern: /nubank|nu\.com\.co/i, category: 'banking', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    // Educational
-    { pattern: /moodle|canvas|blackboard|brightspace/i, category: 'educational', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    { pattern: /\.edu(\.[a-z]{2})?$/i, category: 'educational', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    // Government
-    { pattern: /\.gov(\.[a-z]{2})?$/i, category: 'government', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    { pattern: /dian\.gov|registraduria|sisben/i, category: 'government', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    // Health
-    { pattern: /\.health|hospital|medic|salud|eps\./i, category: 'health', level: PlatformLevel.LEVEL_3_RESTRICTED },
-    // Public platforms (Level 1)
-    { pattern: /youtube\.com|wikipedia\.org|reddit\.com/i, category: 'public', level: PlatformLevel.LEVEL_1_PUBLIC },
-    { pattern: /news\.ycombinator|medium\.com|stackoverflow/i, category: 'public', level: PlatformLevel.LEVEL_1_PUBLIC },
-    // Social media (Level 2 - honeypot possible)
-    { pattern: /facebook\.com|fb\.com|instagram\.com/i, category: 'social', level: PlatformLevel.LEVEL_2_HONEYPOT },
-    { pattern: /twitter\.com|x\.com|linkedin\.com/i, category: 'social', level: PlatformLevel.LEVEL_2_HONEYPOT },
-    { pattern: /gmail\.com|mail\.google\.com|outlook\.com/i, category: 'email', level: PlatformLevel.LEVEL_2_HONEYPOT },
-  ];
+  // Banking / Financial
+  {
+    pattern: /bancolombia|davivienda|bbva|nequi/i,
+    category: 'banking',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  {
+    pattern: /chase\.com|bankofamerica|wellsfargo|citibank/i,
+    category: 'banking',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  {
+    pattern: /paypal\.com|stripe\.com|mercadopago/i,
+    category: 'financial',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  {
+    pattern: /nubank|nu\.com\.co/i,
+    category: 'banking',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  // Educational
+  {
+    pattern: /moodle|canvas|blackboard|brightspace/i,
+    category: 'educational',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  {
+    pattern: /\.edu(\.[a-z]{2})?$/i,
+    category: 'educational',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  // Government
+  {
+    pattern: /\.gov(\.[a-z]{2})?$/i,
+    category: 'government',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  {
+    pattern: /dian\.gov|registraduria|sisben/i,
+    category: 'government',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  // Health
+  {
+    pattern: /\.health|hospital|medic|salud|eps\./i,
+    category: 'health',
+    level: PlatformLevel.LEVEL_3_RESTRICTED,
+  },
+  // Public platforms (Level 1)
+  {
+    pattern: /youtube\.com|wikipedia\.org|reddit\.com/i,
+    category: 'public',
+    level: PlatformLevel.LEVEL_1_PUBLIC,
+  },
+  {
+    pattern: /news\.ycombinator|medium\.com|stackoverflow/i,
+    category: 'public',
+    level: PlatformLevel.LEVEL_1_PUBLIC,
+  },
+  // Social media (Level 2 - honeypot possible)
+  {
+    pattern: /facebook\.com|fb\.com|instagram\.com/i,
+    category: 'social',
+    level: PlatformLevel.LEVEL_2_HONEYPOT,
+  },
+  {
+    pattern: /twitter\.com|x\.com|linkedin\.com/i,
+    category: 'social',
+    level: PlatformLevel.LEVEL_2_HONEYPOT,
+  },
+  {
+    pattern: /gmail\.com|mail\.google\.com|outlook\.com/i,
+    category: 'email',
+    level: PlatformLevel.LEVEL_2_HONEYPOT,
+  },
+];
 
 @Injectable()
 export class DomainDiscoveryService {
-  constructor(private readonly logger: StructuredLogger) { }
+  constructor(private readonly logger: StructuredLogger) {}
 
-  extractDomainsFromCode(
-    code: string,
-    filename: string,
-  ): DiscoveredDomain[] {
+  extractDomainsFromCode(code: string, filename: string): DiscoveredDomain[] {
     const domains: DiscoveredDomain[] = [];
     const seen = new Set<string>();
 
@@ -236,11 +286,11 @@ export class DomainDiscoveryService {
   }
 
   private extractDomainFromPermission(perm: string): string | null {
-    const cleaned = perm
-      .replace(/^\*:\/\//, 'https://')
-      .replace(/\/\*$/, '');
+    const cleaned = perm.replace(/^\*:\/\//, 'https://').replace(/\/\*$/, '');
     try {
-      const parsed = new URL(cleaned.includes('://') ? cleaned : `https://${cleaned}`);
+      const parsed = new URL(
+        cleaned.includes('://') ? cleaned : `https://${cleaned}`,
+      );
       const host = parsed.hostname.replace(/^\*\./, '');
       return host === '*' ? null : host.toLowerCase();
     } catch {
@@ -256,7 +306,9 @@ export class DomainDiscoveryService {
 
   private stripComments(code: string): string {
     // Remove block comments, preserving newlines so line numbers stay accurate
-    let result = code.replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) ?? []).length));
+    let result = code.replace(/\/\*[\s\S]*?\*\//g, (m) =>
+      '\n'.repeat((m.match(/\n/g) ?? []).length),
+    );
     // Remove line comments
     result = result.replace(/\/\/[^\n]*/g, '');
     return result;
@@ -273,8 +325,6 @@ export class DomainDiscoveryService {
       'chrome.google.com',
       'developer.chrome.com',
     ];
-    return cdns.some(
-      (cdn) => domain === cdn || domain.endsWith(`.${cdn}`),
-    );
+    return cdns.some((cdn) => domain === cdn || domain.endsWith(`.${cdn}`));
   }
 }

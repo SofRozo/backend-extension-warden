@@ -1,4 +1,10 @@
-import { IsString, Matches, IsNotEmpty, IsBoolean, IsOptional } from 'class-validator';
+import {
+  IsString,
+  Matches,
+  IsNotEmpty,
+  IsBoolean,
+  IsOptional,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class AnalyzeRequestDto {
@@ -18,8 +24,8 @@ export class AnalyzeRequestDto {
    */
   @IsOptional()
   @IsBoolean()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.toLowerCase() === 'true' : value,
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.toLowerCase() === 'true' : Boolean(value),
   )
   demo?: boolean;
 }

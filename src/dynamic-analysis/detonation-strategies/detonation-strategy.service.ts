@@ -24,11 +24,9 @@ export class DetonationStrategyService {
   constructor(
     private readonly config: ConfigService,
     @Optional() private readonly encryption?: EncryptionService,
-  ) { }
+  ) {}
 
-  selectStrategy(
-    staticResult: StaticAnalysisResult,
-  ): DetonationPlan[] {
+  selectStrategy(staticResult: StaticAnalysisResult): DetonationPlan[] {
     const demoMode = this.config.get<boolean>('demo.enabled') || false;
     const plans: DetonationPlan[] = [];
 
@@ -46,7 +44,8 @@ export class DetonationStrategyService {
     // extra time grant when demo mode is on.
 
     // Level 3: Restricted platforms — use B strategies (most sensitive first)
-    for (const domain of domainsByLevel.get(PlatformLevel.LEVEL_3_RESTRICTED) || []) {
+    for (const domain of domainsByLevel.get(PlatformLevel.LEVEL_3_RESTRICTED) ||
+      []) {
       plans.push({
         strategy: DetonationStrategy.PASSIVE_TRIGGER,
         targetUrls: [this.getLoginUrl(domain.domain)],
@@ -69,7 +68,8 @@ export class DetonationStrategyService {
     }
 
     // Level 2: State injection with honeypot accounts
-    for (const domain of domainsByLevel.get(PlatformLevel.LEVEL_2_HONEYPOT) || []) {
+    for (const domain of domainsByLevel.get(PlatformLevel.LEVEL_2_HONEYPOT) ||
+      []) {
       const storageStatePath = this.getStorageStatePath(domain.domain);
       if (storageStatePath) {
         plans.push({
@@ -88,7 +88,8 @@ export class DetonationStrategyService {
     }
 
     // Level 1: Direct navigation (no account needed)
-    for (const domain of domainsByLevel.get(PlatformLevel.LEVEL_1_PUBLIC) || []) {
+    for (const domain of domainsByLevel.get(PlatformLevel.LEVEL_1_PUBLIC) ||
+      []) {
       plans.push({
         strategy: DetonationStrategy.DIRECT_NAVIGATION,
         targetUrls: [`https://${domain.domain}`],
@@ -107,10 +108,7 @@ export class DetonationStrategyService {
     if (plans.length === 0) {
       plans.push({
         strategy: DetonationStrategy.PASSIVE_TRIGGER,
-        targetUrls: [
-          'https://www.google.com',
-          'https://www.wikipedia.org',
-        ],
+        targetUrls: ['https://www.google.com', 'https://www.wikipedia.org'],
         waitTimeMs: 10000,
       });
     }
@@ -128,7 +126,8 @@ export class DetonationStrategyService {
     plans.push({
       strategy: DetonationStrategy.STATE_INJECTION,
       targetUrls: ['https://www.youtube.com'],
-      storageStatePath: this.getDemoStorageStatePath('youtube.com') ?? undefined,
+      storageStatePath:
+        this.getDemoStorageStatePath('youtube.com') ?? undefined,
       waitTimeMs: 15000,
     });
 
@@ -136,7 +135,8 @@ export class DetonationStrategyService {
     plans.push({
       strategy: DetonationStrategy.STATE_INJECTION,
       targetUrls: ['https://www.instagram.com'],
-      storageStatePath: this.getDemoStorageStatePath('instagram.com') ?? undefined,
+      storageStatePath:
+        this.getDemoStorageStatePath('instagram.com') ?? undefined,
       waitTimeMs: 15000,
     });
 
@@ -144,7 +144,8 @@ export class DetonationStrategyService {
     plans.push({
       strategy: DetonationStrategy.STATE_INJECTION,
       targetUrls: ['https://chat.openai.com'],
-      storageStatePath: this.getDemoStorageStatePath('chat.openai.com') ?? undefined,
+      storageStatePath:
+        this.getDemoStorageStatePath('chat.openai.com') ?? undefined,
       waitTimeMs: 15000,
     });
 
@@ -170,10 +171,7 @@ export class DetonationStrategyService {
 
   // ─── HTML builders ─────────────────────────────────────────────────────────
 
-  buildFakeHtml(
-    domain: string,
-    selectors: DomSelector[],
-  ): string {
+  buildFakeHtml(domain: string, selectors: DomSelector[]): string {
     const elements = selectors.map((s) => {
       const sel = s.selector;
       if (sel.startsWith('#')) {
@@ -188,7 +186,10 @@ export class DetonationStrategyService {
           return `<input type="text" name="${nameMatch[1]}" value="test-data" />`;
         }
       }
-      if (sel.includes('input[type="password"]') || sel.includes("input[type='password']")) {
+      if (
+        sel.includes('input[type="password"]') ||
+        sel.includes("input[type='password']")
+      ) {
         return `<input type="password" value="honeypot-password-123" />`;
       }
       return `<div data-selector="${sel}"><input type="text" value="test-data" /></div>`;
@@ -351,7 +352,11 @@ export function isLikelyRealDomain(domain: string): boolean {
   if (!d) return false;
 
   // Asset filenames disguised as hostnames
-  if (/\.(js|mjs|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|map|json|xml|html?)$/.test(d)) {
+  if (
+    /\.(js|mjs|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|map|json|xml|html?)$/.test(
+      d,
+    )
+  ) {
     return false;
   }
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AnalysisJob } from '../analysis/entities/analysis-job.entity.js';
 import { StructuredLogger } from '../common/logger/logger.service.js';

@@ -7,7 +7,12 @@ import {
 
 // ─── Preprocessor types ───────────────────────────────────────────────────────
 
-export type FileRole = 'content_script' | 'background' | 'popup' | 'library' | 'unknown';
+export type FileRole =
+  | 'content_script'
+  | 'background'
+  | 'popup'
+  | 'library'
+  | 'unknown';
 
 export interface ExtractedChromeApi {
   api: string;
@@ -124,8 +129,8 @@ export interface KeyboardEvent {
 }
 
 export interface ApiCall {
-  api: string;       // e.g. "chrome.storage.local.set"
-  args: string;      // JSON-serialized arguments (truncated)
+  api: string; // e.g. "chrome.storage.local.set"
+  args: string; // JSON-serialized arguments (truncated)
   timestamp: number;
   context?: string;
 }
@@ -136,7 +141,12 @@ export interface DynamicEvidence {
   keyboardEvents: KeyboardEvent[];
   apiCalls: ApiCall[];
   screenshotPaths?: string[];
-  logs?: Array<{ module: string; message: string; level: string; timestamp: number }>;
+  logs?: Array<{
+    module: string;
+    message: string;
+    level: string;
+    timestamp: number;
+  }>;
 }
 
 export interface StaticAnalysisResult {
@@ -196,7 +206,7 @@ export interface ContactedUrlReputation {
   hostname: string;
   isMalicious: boolean;
   score: number;
-  providers: string[];       // which threat intel providers flagged it
+  providers: string[]; // which threat intel providers flagged it
   categories: string[];
 }
 

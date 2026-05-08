@@ -39,7 +39,9 @@ describe('EncryptionService', () => {
     });
 
     it('should encrypt and decrypt JSON data', () => {
-      const data = JSON.stringify({ cookies: [{ name: 'session', value: 'abc123' }] });
+      const data = JSON.stringify({
+        cookies: [{ name: 'session', value: 'abc123' }],
+      });
       const encrypted = service.encrypt(data);
       const decrypted = service.decrypt(encrypted);
       expect(JSON.parse(decrypted)).toEqual(JSON.parse(data));

@@ -63,7 +63,9 @@ describe('RetentionService', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockQueryBuilder.execute.mockRejectedValue(new Error('DB connection lost'));
+      mockQueryBuilder.execute.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
       await expect(service.purgeExpiredReports()).resolves.not.toThrow();
     });
   });

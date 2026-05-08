@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { LlmClientService } from '../llm/llm-client.service.js';
 import { DomainClassifierService } from './domain-classifier.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import type { PreprocessorOutput, ProcessedFile } from '../../common/interfaces/analysis.interfaces.js';
+import type {
+  PreprocessorOutput,
+  ProcessedFile,
+} from '../../common/interfaces/analysis.interfaces.js';
 import type {
   Agent1Output,
   Agent2Output,
@@ -108,7 +111,11 @@ export class Agent2SastService {
     const needsLLM: string[] = [];
 
     for (const domain of allDomains) {
-      const det = this.domainClassifier.classify(domain, manifest.name, manifest.author);
+      const det = this.domainClassifier.classify(
+        domain,
+        manifest.name,
+        manifest.author,
+      );
       if (det.category !== null) {
         const priority = this.domainClassifier.playwrightPriority(det.category);
         alreadyClassified.push(
@@ -167,13 +174,17 @@ export class Agent2SastService {
         ? needsLLM.map((d) => `  - ${d}`).join('\n')
         : '  (ninguno)';
 
-    const prompt = PROMPT
-      .replace('{contexto_agente1}', contextoAgente1)
+    const prompt = PROMPT.replace('{contexto_agente1}', contextoAgente1)
       .replace('{archivos}', archivosSection)
       .replace('{enriquecimiento_dominios}', enrichmentData || '(sin datos)')
       .replace('{dominios_sin_clasificar}', dominosSinClasificar);
 
-    this.logger.logWithJob(jobId, 'info', 'Agent 2 — running SAST + domain classification', 'Agent2SastService');
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      'Agent 2 — running SAST + domain classification',
+      'Agent2SastService',
+    );
 
     const raw = await this.llm.callLLM(prompt, jobId);
     return this.buildOutput(raw, alreadyClassified, obfuscatedFiles, jobId);
@@ -181,7 +192,10 @@ export class Agent2SastService {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  private collectAllDomains(files: ProcessedFile[], hostPermissions: string[]): string[] {
+  private collectAllDomains(
+    files: ProcessedFile[],
+    hostPermissions: string[],
+  ): string[] {
     const domains = new Set<string>();
 
     for (const f of files) {
@@ -192,19 +206,25 @@ export class Agent2SastService {
     // Extract the bare hostname
     for (const hp of hostPermissions) {
       try {
-        const hostname = new URL(hp.replace('*', 'x')).hostname.replace(/^x\./, '');
+        const hostname = new URL(hp.replace('*', 'x')).hostname.replace(
+          /^x\./,
+          '',
+        );
         if (hostname && hostname !== 'x' && !hostname.includes('*')) {
           domains.add(hostname);
         }
-      } catch { /* skip malformed patterns */ }
+      } catch {
+        /* skip malformed patterns */
+      }
     }
 
     return [...domains].filter((d) => d.length > 3);
   }
 
-  private buildCodeSection(
-    files: ProcessedFile[],
-  ): { archivosSection: string; obfuscatedFiles: string[] } {
+  private buildCodeSection(files: ProcessedFile[]): {
+    archivosSection: string;
+    obfuscatedFiles: string[];
+  } {
     const obfuscatedFiles: string[] = [];
     const sections: string[] = [];
     let totalChars = 0;
@@ -214,7 +234,9 @@ export class Agent2SastService {
 
     // Sort files: high-risk indicators first (usesFetch + usesEval + usesDomManipulation)
     const priority = (f: ProcessedFile) =>
-      (f.usesFetch ? 3 : 0) + (f.usesEval ? 2 : 0) + (f.usesDomManipulation ? 1 : 0);
+      (f.usesFetch ? 3 : 0) +
+      (f.usesEval ? 2 : 0) +
+      (f.usesDomManipulation ? 1 : 0);
 
     const filesToAnalyze = files
       .filter((f) => (analysisRoles as readonly string[]).includes(f.role))
@@ -225,17 +247,18 @@ export class Agent2SastService {
         obfuscatedFiles.push(file.path);
         sections.push(
           `### ${file.path} [${file.role}] — OFUSCADO\n` +
-          `(Sin código legible. La presencia de ofuscación es en sí misma una señal de alerta.)\n` +
-          `Domains encontrados: ${file.domains.join(', ') || 'ninguno'}\n` +
-          `Chrome APIs: ${file.chromeApis.map((a) => a.api).join(', ') || 'ninguna'}`,
+            `(Sin código legible. La presencia de ofuscación es en sí misma una señal de alerta.)\n` +
+            `Domains encontrados: ${file.domains.join(', ') || 'ninguno'}\n` +
+            `Chrome APIs: ${file.chromeApis.map((a) => a.api).join(', ') || 'ninguna'}`,
         );
         continue;
       }
 
       const code = file.cleanCode ?? '';
-      const snippet = totalChars < MAX_TOTAL_CODE_CHARS
-        ? code.slice(0, MAX_CHARS_PER_FILE)
-        : '[OMITIDO — límite de contexto alcanzado]';
+      const snippet =
+        totalChars < MAX_TOTAL_CODE_CHARS
+          ? code.slice(0, MAX_CHARS_PER_FILE)
+          : '[OMITIDO — límite de contexto alcanzado]';
 
       if (snippet !== '[OMITIDO — límite de contexto alcanzado]') {
         totalChars += snippet.length;
@@ -244,10 +267,10 @@ export class Agent2SastService {
       const truncated = code.length > MAX_CHARS_PER_FILE;
       sections.push(
         `### ${file.path} [${file.role}]${truncated ? ' (truncado)' : ''}\n` +
-        `Indicadores: fetch=${file.usesFetch}, XHR=${file.usesXHR}, eval=${file.usesEval}, domManip=${file.usesDomManipulation}\n` +
-        `Chrome APIs: ${file.chromeApis.map((a) => `${a.api}:L${a.line}`).join(', ') || 'ninguna'}\n` +
-        `Domains en código: ${file.domains.map((d) => `${d.domain}:L${d.line}`).join(', ') || 'ninguno'}\n` +
-        `\`\`\`js\n${snippet}\n\`\`\``,
+          `Indicadores: fetch=${file.usesFetch}, XHR=${file.usesXHR}, eval=${file.usesEval}, domManip=${file.usesDomManipulation}\n` +
+          `Chrome APIs: ${file.chromeApis.map((a) => `${a.api}:L${a.line}`).join(', ') || 'ninguna'}\n` +
+          `Domains en código: ${file.domains.map((d) => `${d.domain}:L${d.line}`).join(', ') || 'ninguno'}\n` +
+          `\`\`\`js\n${snippet}\n\`\`\``,
       );
     }
 
@@ -266,7 +289,11 @@ export class Agent2SastService {
     // Parse LLM-classified domains — PROMPT returns an array (dominios_clasificados_por_llm)
     if (Array.isArray(r.dominios_clasificados_por_llm)) {
       for (const item of r.dominios_clasificados_por_llm) {
-        const d = item as { dominio?: string; categoria?: string; razonamiento?: string };
+        const d = item as {
+          dominio?: string;
+          categoria?: string;
+          razonamiento?: string;
+        };
         if (!d.dominio || !d.categoria) continue;
         const category = d.categoria as DomainCategory;
         const priority = this.domainClassifier.playwrightPriority(category);
@@ -286,7 +313,9 @@ export class Agent2SastService {
     // Domains that go to Playwright, sorted by priority (lower = sooner)
     const dominosParaPlaywright = allDomains
       .filter((d) => d.goesToPlaywright)
-      .sort((a, b) => (a.playwrightPriority ?? 99) - (b.playwrightPriority ?? 99))
+      .sort(
+        (a, b) => (a.playwrightPriority ?? 99) - (b.playwrightPriority ?? 99),
+      )
       .slice(0, 5); // Plan caps at 5 domains
 
     // Parse findings — PROMPT key is "hallazgos"

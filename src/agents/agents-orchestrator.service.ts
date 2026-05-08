@@ -31,7 +31,7 @@ export class AgentsOrchestratorService {
     private readonly agent3: Agent3AbuseService,
     private readonly llm: LlmClientService,
     private readonly logger: StructuredLogger,
-  ) { }
+  ) {}
 
   async run(
     preprocessed: PreprocessorOutput,
@@ -71,7 +71,13 @@ export class AgentsOrchestratorService {
       const msg = `Agent 1 failed: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
       this.logger.logWithJob(jobId, 'error', msg, 'AgentsOrchestrator');
-      return { agent1: null, agent2: null, agent3: null, ranSuccessfully: false, errors };
+      return {
+        agent1: null,
+        agent2: null,
+        agent3: null,
+        ranSuccessfully: false,
+        errors,
+      };
     }
 
     // ── Agent 2 ──────────────────────────────────────────────────────────────
@@ -87,12 +93,23 @@ export class AgentsOrchestratorService {
       const msg = `Agent 2 failed: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
       this.logger.logWithJob(jobId, 'error', msg, 'AgentsOrchestrator');
-      return { agent1, agent2: null, agent3: null, ranSuccessfully: false, errors };
+      return {
+        agent1,
+        agent2: null,
+        agent3: null,
+        ranSuccessfully: false,
+        errors,
+      };
     }
 
     // ── Agent 3 ──────────────────────────────────────────────────────────────
     try {
-      const agent3 = await this.agent3.analyze(agent1, agent2, preprocessed.manifest, jobId);
+      const agent3 = await this.agent3.analyze(
+        agent1,
+        agent2,
+        preprocessed.manifest,
+        jobId,
+      );
       this.logger.logWithJob(
         jobId,
         'info',

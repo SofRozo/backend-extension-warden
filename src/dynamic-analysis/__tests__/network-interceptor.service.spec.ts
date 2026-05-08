@@ -100,7 +100,13 @@ describe('EvidenceCollector', () => {
 
     it('should truncate request body to 5000 chars', () => {
       const longBody = 'x'.repeat(10000);
-      collector.onNetworkRequest('https://a.com', 'POST', {}, longBody, undefined);
+      collector.onNetworkRequest(
+        'https://a.com',
+        'POST',
+        {},
+        longBody,
+        undefined,
+      );
 
       const evidence = collector.getEvidence();
       expect(evidence.networkRequests[0].body!.length).toBe(5000);
@@ -109,7 +115,11 @@ describe('EvidenceCollector', () => {
 
   describe('onDomMutation', () => {
     it('should record DOM mutations', () => {
-      collector.onDomMutation('childList', 'DIV#login-form', '<script>alert(1)</script>');
+      collector.onDomMutation(
+        'childList',
+        'DIV#login-form',
+        '<script>alert(1)</script>',
+      );
 
       const evidence = collector.getEvidence();
       expect(evidence.domMutations).toHaveLength(1);
@@ -139,9 +149,27 @@ describe('EvidenceCollector', () => {
 
   describe('getExtensionRequests', () => {
     it('should filter only extension-originated requests', () => {
-      collector.onNetworkRequest('chrome-extension://ext/bg.js', 'GET', {}, undefined, undefined);
-      collector.onNetworkRequest('https://google.com', 'GET', {}, undefined, undefined);
-      collector.onNetworkRequest('https://api.evil.com', 'POST', {}, undefined, 'chrome-extension://ext');
+      collector.onNetworkRequest(
+        'chrome-extension://ext/bg.js',
+        'GET',
+        {},
+        undefined,
+        undefined,
+      );
+      collector.onNetworkRequest(
+        'https://google.com',
+        'GET',
+        {},
+        undefined,
+        undefined,
+      );
+      collector.onNetworkRequest(
+        'https://api.evil.com',
+        'POST',
+        {},
+        undefined,
+        'chrome-extension://ext',
+      );
 
       const extRequests = collector.getExtensionRequests();
       expect(extRequests).toHaveLength(2);

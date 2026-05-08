@@ -5,7 +5,10 @@ import { StructuredLogger } from '../../common/logger/logger.service.js';
 export class DeobfuscatorService {
   constructor(private readonly logger: StructuredLogger) {}
 
-  deobfuscate(code: string, filename: string): { code: string; wasObfuscated: boolean } {
+  deobfuscate(
+    code: string,
+    filename: string,
+  ): { code: string; wasObfuscated: boolean } {
     let modified = code;
     let wasObfuscated = false;
 
@@ -79,9 +82,10 @@ export class DeobfuscatorService {
     return score > 5;
   }
 
-  private decodeBase64Strings(
-    code: string,
-  ): { code: string; changed: boolean } {
+  private decodeBase64Strings(code: string): {
+    code: string;
+    changed: boolean;
+  } {
     let changed = false;
     const result = code.replace(
       /atob\s*\(\s*['"]([A-Za-z0-9+/=]+)['"]\s*\)/g,
@@ -101,9 +105,7 @@ export class DeobfuscatorService {
     return { code: result, changed };
   }
 
-  private resolveEvalCalls(
-    code: string,
-  ): { code: string; changed: boolean } {
+  private resolveEvalCalls(code: string): { code: string; changed: boolean } {
     let changed = false;
     const result = code.replace(
       /eval\s*\(\s*(['"])((?:(?!\1).)*)\1\s*\)/g,
@@ -118,9 +120,7 @@ export class DeobfuscatorService {
     return { code: result, changed };
   }
 
-  private decodeHexStrings(
-    code: string,
-  ): { code: string; changed: boolean } {
+  private decodeHexStrings(code: string): { code: string; changed: boolean } {
     let changed = false;
     const result = code.replace(
       /(['"])((\\x[0-9a-fA-F]{2}){3,})\1/g,
@@ -140,9 +140,10 @@ export class DeobfuscatorService {
     return { code: result, changed };
   }
 
-  private decodeUnicodeEscapes(
-    code: string,
-  ): { code: string; changed: boolean } {
+  private decodeUnicodeEscapes(code: string): {
+    code: string;
+    changed: boolean;
+  } {
     let changed = false;
     const result = code.replace(
       /(['"])((\\u[0-9a-fA-F]{4}){3,})\1/g,
@@ -150,8 +151,7 @@ export class DeobfuscatorService {
         try {
           const decoded = uniStr.replace(
             /\\u([0-9a-fA-F]{4})/g,
-            (_: string, hex: string) =>
-              String.fromCharCode(parseInt(hex, 16)),
+            (_: string, hex: string) => String.fromCharCode(parseInt(hex, 16)),
           );
           changed = true;
           return JSON.stringify(decoded);
@@ -172,9 +172,10 @@ export class DeobfuscatorService {
    *   (function(modules) { ... })([function(module, exports, __webpack_require__) { ... }])
    *   (() => { "use strict"; var __webpack_modules__ = { 123: (m,e,r) => { ... } }; })()
    */
-  private unpackWebpackBundle(
-    code: string,
-  ): { code: string; changed: boolean } {
+  private unpackWebpackBundle(code: string): {
+    code: string;
+    changed: boolean;
+  } {
     let changed = false;
 
     // Pattern 1: Webpack 4 — array of modules passed to IIFE
@@ -221,9 +222,10 @@ export class DeobfuscatorService {
    * RF03(a): Resolve String.fromCharCode calls with literal arguments.
    * Example: String.fromCharCode(72,101,108,108,111) → "Hello"
    */
-  private resolveFromCharCode(
-    code: string,
-  ): { code: string; changed: boolean } {
+  private resolveFromCharCode(code: string): {
+    code: string;
+    changed: boolean;
+  } {
     let changed = false;
     const result = code.replace(
       /String\.fromCharCode\s*\(\s*((?:\d+\s*,?\s*)+)\)/g,

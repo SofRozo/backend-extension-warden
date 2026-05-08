@@ -113,7 +113,12 @@ describe('DetonationStrategyService', () => {
           },
         ],
         domSelectors: [
-          { selector: '#account-balance', method: 'document.querySelector', file: 'inject.js', line: 10 },
+          {
+            selector: '#account-balance',
+            method: 'document.querySelector',
+            file: 'inject.js',
+            line: 10,
+          },
         ],
       });
 
@@ -153,7 +158,12 @@ describe('DetonationStrategyService', () => {
   describe('buildFakeHtml', () => {
     it('should generate HTML with ID selectors', () => {
       const html = service.buildFakeHtml('bank.com', [
-        { selector: '#account-balance', method: 'document.querySelector', file: 'inject.js', line: 1 },
+        {
+          selector: '#account-balance',
+          method: 'document.querySelector',
+          file: 'inject.js',
+          line: 1,
+        },
       ]);
       expect(html).toContain('id="account-balance"');
       expect(html).toContain('bank.com');
@@ -161,14 +171,24 @@ describe('DetonationStrategyService', () => {
 
     it('should generate HTML with class selectors', () => {
       const html = service.buildFakeHtml('bank.com', [
-        { selector: '.user-data', method: 'document.querySelector', file: 'inject.js', line: 1 },
+        {
+          selector: '.user-data',
+          method: 'document.querySelector',
+          file: 'inject.js',
+          line: 1,
+        },
       ]);
       expect(html).toContain('class="user-data"');
     });
 
     it('should generate HTML with name selectors', () => {
       const html = service.buildFakeHtml('bank.com', [
-        { selector: 'input[name="cardNumber"]', method: 'document.querySelector', file: 'inject.js', line: 1 },
+        {
+          selector: 'input[name="cardNumber"]',
+          method: 'document.querySelector',
+          file: 'inject.js',
+          line: 1,
+        },
       ]);
       expect(html).toContain('name="cardNumber"');
     });
