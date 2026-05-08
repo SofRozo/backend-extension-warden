@@ -19,9 +19,9 @@ export class StagehandService {
     private readonly logger: StructuredLogger,
   ) {
     this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
-    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:8b';
+    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3.5:9b';
     this.ollamaHost = (
-      config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434'
+      config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
     this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
   }
@@ -54,7 +54,7 @@ export class StagehandService {
 
       await page
         .goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 })
-        .catch(() => {});
+        .catch(() => { });
 
       // observe() returns Action[] — potential actions identified on the page
       this.logger.logWithJob(
@@ -66,7 +66,7 @@ export class StagehandService {
       const actions = await stagehand
         .observe(
           `Identifica elementos de login, formularios sensibles o campos de datos personales en ${domain} ` +
-            `relacionados con el propósito declarado: "${proposito}"`,
+          `relacionados con el propósito declarado: "${proposito}"`,
           { page },
         )
         .catch(() => []);
@@ -113,7 +113,7 @@ export class StagehandService {
                 'Haz clic en el botón de Iniciar Sesión, Login o Continuar',
                 { page },
               )
-              .catch(() => {});
+              .catch(() => { });
             actionsPerformed.push('click:submit');
           }
         }
@@ -123,7 +123,7 @@ export class StagehandService {
             'Explora la página principal buscando secciones de configuración, perfil de usuario o paneles de control.',
             { page },
           )
-          .catch(() => {});
+          .catch(() => { });
         actionsPerformed.push('act:exploration');
       }
 
@@ -170,7 +170,7 @@ export class StagehandService {
         error: msg,
       };
     } finally {
-      await stagehand?.close().catch(() => {});
+      await stagehand?.close().catch(() => { });
     }
   }
 

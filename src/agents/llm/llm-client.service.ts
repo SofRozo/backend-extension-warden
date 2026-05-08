@@ -28,9 +28,9 @@ export class LlmClientService {
     private readonly logger: StructuredLogger,
   ) {
     this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
-    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:8b';
+    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3.5:9b';
     this.ollamaHost = (
-      config.get<string>('OLLAMA_HOST') ?? 'http://localhost:11434'
+      config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
     this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
     this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 120_000;
