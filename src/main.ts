@@ -21,4 +21,4 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`Ext-Sandbox API running on port ${port}`, 'Bootstrap');
 }
-bootstrap();
+void bootstrap();

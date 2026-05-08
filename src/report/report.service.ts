@@ -7,7 +7,6 @@ import {
   AnalysisReport,
   AnnotatedPermission,
   PrivacyLabel,
-  StaticFinding,
   ContactedUrlReputation,
   AgentAnalysisResult,
 } from '../common/interfaces/analysis.interfaces.js';
@@ -389,43 +388,9 @@ const SEVERITY_ORDER: Record<RiskLevel, number> = {
   [RiskLevel.NONE]: 0,
 };
 
-const CATEGORY_LABELS: Record<
-  FindingCategory,
-  { title: string; userFriendly: string }
-> = {
-  [FindingCategory.DATA_THEFT]: {
-    title: 'Data Access',
-    userFriendly:
-      'This extension can read your personal data including passwords and form inputs.',
-  },
-  [FindingCategory.KEYLOGGER]: {
-    title: 'Keystroke Monitoring',
-    userFriendly:
-      'This extension monitors your keyboard activity and may record what you type.',
-  },
-  [FindingCategory.INJECTION]: {
-    title: 'Content Injection',
-    userFriendly:
-      'This extension can modify web pages and inject its own content into sites you visit.',
-  },
-  [FindingCategory.EXFILTRATION]: {
-    title: 'Data Transmission',
-    userFriendly: 'This extension sends data to external servers.',
-  },
-  [FindingCategory.DOMAIN_TARGETING]: {
-    title: 'Targeted Sites',
-    userFriendly: 'This extension specifically targets certain websites.',
-  },
-  [FindingCategory.PERSISTENCE]: {
-    title: 'Background Activity',
-    userFriendly:
-      'This extension runs processes in the background even when you are not actively using it.',
-  },
-};
-
 @Injectable()
 export class ReportService {
-  constructor(private readonly logger: StructuredLogger) { }
+  constructor(private readonly logger: StructuredLogger) {}
 
   generateReport(
     jobId: string,
@@ -437,7 +402,10 @@ export class ReportService {
     metadata?: { name?: string; version?: string; author?: string },
     agentAnalysis?: AgentAnalysisResult,
   ): AnalysisReport {
-    const contactedUrls = this.extractContactedUrls(dynamicResult, agentAnalysis);
+    const contactedUrls = this.extractContactedUrls(
+      dynamicResult,
+      agentAnalysis,
+    );
     const contactedUrlsReputation = this.buildUrlReputation(
       contactedUrls,
       threatIntelResults,
@@ -547,9 +515,15 @@ export class ReportService {
               category: 'agent_finding',
               title: h.tipo,
               description: h.descripcion,
-              severity: h.severidad === 'critica' ? RiskLevel.CRITICAL :
-                h.severidad === 'alta' ? RiskLevel.HIGH : RiskLevel.MEDIUM,
-              evidence: [`[${h.rol}] En el archivo ${h.archivo}: ${h.evidencia || 'Comportamiento detectado por IA'}`],
+              severity:
+                h.severidad === 'critica'
+                  ? RiskLevel.CRITICAL
+                  : h.severidad === 'alta'
+                    ? RiskLevel.HIGH
+                    : RiskLevel.MEDIUM,
+              evidence: [
+                `[${h.rol}] En el archivo ${h.archivo}: ${h.evidencia || 'Comportamiento detectado por IA'}`,
+              ],
             });
           }
         }
@@ -569,51 +543,66 @@ export class ReportService {
       }
 
       // 3. Dynamic confirmations from Agent 4
-      if (agentAnalysis.agent4?.veredicto_dinamico === 'maliciosa' || agentAnalysis.agent4?.veredicto_dinamico === 'sospechosa') {
+      if (
+        agentAnalysis.agent4?.veredicto_dinamico === 'maliciosa' ||
+        agentAnalysis.agent4?.veredicto_dinamico === 'sospechosa'
+      ) {
         const a4 = agentAnalysis.agent4;
         if (a4.modificaciones_dom_sospechosas.length > 0) {
           labels.push({
             category: 'dynamic_risk',
             title: 'Comportamiento Malicioso en Navegación',
             description: a4.resumen,
-            severity: a4.veredicto_dinamico === 'maliciosa' ? RiskLevel.CRITICAL : RiskLevel.HIGH,
+            severity:
+              a4.veredicto_dinamico === 'maliciosa'
+                ? RiskLevel.CRITICAL
+                : RiskLevel.HIGH,
             evidence: a4.modificaciones_dom_sospechosas,
           });
         }
       }
 
       // 4. Critical Deterministic Findings
-      const restrictedDomains = staticResult.discoveredDomains.filter(d => d.platformLevel === 3);
+      const restrictedDomains = staticResult.discoveredDomains.filter(
+        (d) => d.platformLevel === 3,
+      );
       if (restrictedDomains.length > 0) {
         labels.push({
           category: FindingCategory.DOMAIN_TARGETING,
           title: 'Ataque a Sitios Sensibles',
           description: `La extensión contiene código diseñado específicamente para interactuar con ${restrictedDomains.length} plataforma(s) críticas.`,
           severity: RiskLevel.CRITICAL,
-          evidence: restrictedDomains.map(d => `Objetivo: ${d.domain} (${d.category})`),
+          evidence: restrictedDomains.map(
+            (d) => `Objetivo: ${d.domain} (${d.category})`,
+          ),
         });
       }
 
-      const maliciousDomains = threatIntelResults.filter(t => t.isMalicious);
+      const maliciousDomains = threatIntelResults.filter((t) => t.isMalicious);
       if (maliciousDomains.length > 0) {
         labels.push({
           category: 'threat_intelligence',
           title: 'Infraestructura Maliciosa Identificada',
           description: `Se detectó comunicación con ${maliciousDomains.length} dominio(s) reportados como peligrosos.`,
           severity: RiskLevel.CRITICAL,
-          evidence: maliciousDomains.map(d => `${d.domain} (Reportado por ${d.provider})`),
+          evidence: maliciousDomains.map(
+            (d) => `${d.domain} (Reportado por ${d.provider})`,
+          ),
         });
       }
 
       if (dynamicResult) {
-        const bankExfiltration = dynamicResult.evidence.networkRequests.filter(r => r.context === 'DOM_FALSIFICATION');
+        const bankExfiltration = dynamicResult.evidence.networkRequests.filter(
+          (r) => r.context === 'DOM_FALSIFICATION',
+        );
         if (bankExfiltration.length > 0) {
           labels.push({
             category: 'honeypot_hit',
             title: '¡ROBO DE DATOS DETECTADO!',
-            description: 'La extensión capturó y envió datos reales del formulario de prueba (BancoDemo).',
+            description:
+              'La extensión capturó y envió datos reales del formulario de prueba (BancoDemo).',
             severity: RiskLevel.CRITICAL,
-            evidence: bankExfiltration.map(r => `Datos enviados a: ${r.url}`),
+            evidence: bankExfiltration.map((r) => `Datos enviados a: ${r.url}`),
           });
         }
       }
@@ -621,13 +610,70 @@ export class ReportService {
       return labels;
     }
 
-    labels.push({
-      category: 'warning',
-      title: 'Análisis IA no disponible',
-      description: 'No se pudo realizar el refinamiento por IA.',
-      severity: RiskLevel.INFORMATIONAL,
-      evidence: ['Hallazgos técnicos disponibles en la base de datos.'],
-    });
+    // Deterministic fallback: static findings
+    for (const finding of staticResult.findings) {
+      labels.push({
+        category: finding.category,
+        title: finding.description,
+        description: finding.description,
+        severity: finding.severity,
+        evidence: [`${finding.location.file}:${finding.location.line}`],
+      });
+    }
+
+    // Restricted domains
+    const restrictedDomains = staticResult.discoveredDomains.filter(
+      (d) => d.platformLevel === 3,
+    );
+    if (restrictedDomains.length > 0) {
+      labels.push({
+        category: FindingCategory.DOMAIN_TARGETING,
+        title: 'Targeted Sensitive Sites',
+        description: `Extension targets ${restrictedDomains.length} restricted platform(s).`,
+        severity: RiskLevel.CRITICAL,
+        evidence: restrictedDomains.map((d) => `${d.domain} (${d.category})`),
+      });
+    }
+
+    // Malicious threat intel
+    const maliciousDomains = threatIntelResults.filter((t) => t.isMalicious);
+    if (maliciousDomains.length > 0) {
+      labels.push({
+        category: 'threat_intelligence',
+        title: 'Malicious Infrastructure',
+        description: `Communication with ${maliciousDomains.length} reported malicious domain(s).`,
+        severity: RiskLevel.CRITICAL,
+        evidence: maliciousDomains.map((d) => `${d.domain} (${d.provider})`),
+      });
+    }
+
+    // High dynamic network activity
+    if (dynamicResult) {
+      const extRequests = dynamicResult.evidence.networkRequests.filter(
+        (r) =>
+          (r.origin === 'extension' || r.origin === 'unknown') &&
+          r.url.startsWith('http'),
+      );
+      if (extRequests.length > 10) {
+        labels.push({
+          category: 'dynamic_network',
+          title: 'Suspicious Network Activity',
+          description: `Extension made ${extRequests.length} network requests during analysis.`,
+          severity: RiskLevel.HIGH,
+          evidence: extRequests.slice(0, 5).map((r) => r.url),
+        });
+      }
+    }
+
+    if (labels.length === 0) {
+      labels.push({
+        category: 'warning',
+        title: 'Análisis IA no disponible',
+        description: 'No se pudo realizar el refinamiento por IA.',
+        severity: RiskLevel.INFORMATIONAL,
+        evidence: ['Hallazgos técnicos disponibles en la base de datos.'],
+      });
+    }
 
     return labels;
   }
@@ -636,7 +682,7 @@ export class ReportService {
     staticResult: StaticAnalysisResult,
     dynamicResult: DynamicAnalysisResult | null,
     threatIntelResults: ThreatIntelResult[],
-    agentAnalysis?: AgentAnalysisResult,
+    _agentAnalysis?: AgentAnalysisResult,
   ): RiskLevel {
     let maxSeverity = 0;
 
@@ -724,19 +770,30 @@ export class ReportService {
     // Infrastructure/Benign domains are kept in raw dynamicEvidence but HIDDEN from this list.
     const sensitiveDomains = new Map(
       (agentAnalysis?.agent2?.dominios_categorizados ?? [])
-        .filter((d) => d.category !== 'infraestructura_tecnica' && d.category !== 'propio_extension')
+        .filter(
+          (d) =>
+            d.category !== 'infraestructura_tecnica' &&
+            d.category !== 'propio_extension',
+        )
         .map((d) => [d.domain.toLowerCase(), d]),
     );
 
     const urls = dynamicResult.evidence.networkRequests
-      .filter((r) => (r.origin === 'extension' || r.origin === 'unknown') && r.url.startsWith('http'))
+      .filter(
+        (r) =>
+          (r.origin === 'extension' || r.origin === 'unknown') &&
+          r.url.startsWith('http'),
+      )
       .map((r) => r.url);
 
     const filteredUrls = urls.filter((u) => {
       try {
         const host = new URL(u).hostname.toLowerCase();
         // Return TRUE only if the agent identified this domain as sensitive/suspicious
-        return sensitiveDomains.has(host) || sensitiveDomains.has(host.replace(/^www\./, ''));
+        return (
+          sensitiveDomains.has(host) ||
+          sensitiveDomains.has(host.replace(/^www\./, ''))
+        );
       } catch {
         return false;
       }
