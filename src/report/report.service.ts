@@ -425,7 +425,7 @@ const CATEGORY_LABELS: Record<
 
 @Injectable()
 export class ReportService {
-  constructor(private readonly logger: StructuredLogger) {}
+  constructor(private readonly logger: StructuredLogger) { }
 
   generateReport(
     jobId: string,
@@ -437,18 +437,6 @@ export class ReportService {
     metadata?: { name?: string; version?: string; author?: string },
     agentAnalysis?: AgentAnalysisResult,
   ): AnalysisReport {
-    const privacyLabels = this.generatePrivacyLabels(
-      staticResult,
-      dynamicResult,
-      threatIntelResults,
-    );
-
-    const overallRisk = this.calculateOverallRisk(
-      staticResult,
-      dynamicResult,
-      threatIntelResults,
-    );
-
     const contactedUrls = this.extractContactedUrls(dynamicResult, agentAnalysis);
     const contactedUrlsReputation = this.buildUrlReputation(
       contactedUrls,
@@ -459,6 +447,14 @@ export class ReportService {
       staticResult.manifestPermissions,
       abusedPermissions,
     );
+
+    const privacyLabels = this.generatePrivacyLabels(
+      staticResult,
+      dynamicResult,
+      threatIntelResults,
+      agentAnalysis,
+    );
+
     const score1 = this.calculateScore1(staticResult.manifestPermissions);
     const score2 = this.calculateScore2(score1, agentAnalysis);
     const score3 = this.calculateScore3(score2, dynamicResult, agentAnalysis);
@@ -542,37 +538,96 @@ export class ReportService {
     const labels: PrivacyLabel[] = [];
 
     // --- AGENT 2 & 3: THE TRUTH LAYER ---
-    // If we have agent analysis, they are the source of truth for what to show the user.
     if (agentAnalysis?.ranSuccessfully) {
-      // 1. Semantic Findings from Agent 2 (The "Why" and "Where")
+      // 1. Semantic Findings from Agent 2
       if (agentAnalysis.agent2?.hallazgos) {
         for (const h of agentAnalysis.agent2.hallazgos) {
-          // Only show high-impact findings to the user
           if (['critica', 'alta', 'media'].includes(h.severidad)) {
             labels.push({
               category: 'agent_finding',
               title: h.tipo,
               description: h.descripcion,
-              severity: h.severidad === 'critica' ? RiskLevel.CRITICAL : 
-                        h.severidad === 'alta' ? RiskLevel.HIGH : RiskLevel.MEDIUM,
+              severity: h.severidad === 'critica' ? RiskLevel.CRITICAL :
+                h.severidad === 'alta' ? RiskLevel.HIGH : RiskLevel.MEDIUM,
               evidence: [`[${h.rol}] En el archivo ${h.archivo}: ${h.evidencia || 'Comportamiento detectado por IA'}`],
             });
           }
-          title: 'Robo de Sesión Detectado',
-          description:
-            'La extensión intentó comunicarse con servidores externos mientras una sesión inyectada (Google/Instagram) estaba activa.',
-          severity: RiskLevel.HIGH,
-          evidence: sessionTheft
-            .slice(0, 5)
-            .map((r) => `Actividad sospechosa en: ${r.url}`),
+        }
+      }
+
+      // 2. Permission Abuses from Agent 3
+      if (agentAnalysis.agent3?.permisos_abusados) {
+        for (const abuse of agentAnalysis.agent3.permisos_abusados) {
+          labels.push({
+            category: 'permission_abuse',
+            title: `Abuso del permiso: ${abuse.permiso}`,
+            description: abuse.como_se_abusa,
+            severity: RiskLevel.HIGH,
+            evidence: [abuse.evidencia],
+          });
+        }
+      }
+
+      // 3. Dynamic confirmations from Agent 4
+      if (agentAnalysis.agent4?.veredicto_dinamico === 'maliciosa' || agentAnalysis.agent4?.veredicto_dinamico === 'sospechosa') {
+        const a4 = agentAnalysis.agent4;
+        if (a4.modificaciones_dom_sospechosas.length > 0) {
+          labels.push({
+            category: 'dynamic_risk',
+            title: 'Comportamiento Malicioso en Navegación',
+            description: a4.resumen,
+            severity: a4.veredicto_dinamico === 'maliciosa' ? RiskLevel.CRITICAL : RiskLevel.HIGH,
+            evidence: a4.modificaciones_dom_sospechosas,
+          });
+        }
+      }
+
+      // 4. Critical Deterministic Findings
+      const restrictedDomains = staticResult.discoveredDomains.filter(d => d.platformLevel === 3);
+      if (restrictedDomains.length > 0) {
+        labels.push({
+          category: FindingCategory.DOMAIN_TARGETING,
+          title: 'Ataque a Sitios Sensibles',
+          description: `La extensión contiene código diseñado específicamente para interactuar con ${restrictedDomains.length} plataforma(s) críticas.`,
+          severity: RiskLevel.CRITICAL,
+          evidence: restrictedDomains.map(d => `Objetivo: ${d.domain} (${d.category})`),
         });
       }
+
+      const maliciousDomains = threatIntelResults.filter(t => t.isMalicious);
+      if (maliciousDomains.length > 0) {
+        labels.push({
+          category: 'threat_intelligence',
+          title: 'Infraestructura Maliciosa Identificada',
+          description: `Se detectó comunicación con ${maliciousDomains.length} dominio(s) reportados como peligrosos.`,
+          severity: RiskLevel.CRITICAL,
+          evidence: maliciousDomains.map(d => `${d.domain} (Reportado por ${d.provider})`),
+        });
+      }
+
+      if (dynamicResult) {
+        const bankExfiltration = dynamicResult.evidence.networkRequests.filter(r => r.context === 'DOM_FALSIFICATION');
+        if (bankExfiltration.length > 0) {
+          labels.push({
+            category: 'honeypot_hit',
+            title: '¡ROBO DE DATOS DETECTADO!',
+            description: 'La extensión capturó y envió datos reales del formulario de prueba (BancoDemo).',
+            severity: RiskLevel.CRITICAL,
+            evidence: bankExfiltration.map(r => `Datos enviados a: ${r.url}`),
+          });
+        }
+      }
+
+      return labels;
     }
 
-    // Sort by severity
-    labels.sort(
-      (a, b) => SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity],
-    );
+    labels.push({
+      category: 'warning',
+      title: 'Análisis IA no disponible',
+      description: 'No se pudo realizar el refinamiento por IA.',
+      severity: RiskLevel.INFORMATIONAL,
+      evidence: ['Hallazgos técnicos disponibles en la base de datos.'],
+    });
 
     return labels;
   }
