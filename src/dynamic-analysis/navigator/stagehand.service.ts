@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { Stagehand, AISdkClient } from '@browserbasehq/stagehand';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { z } from 'zod';
+import * as fs from 'fs';
+import * as path from 'path';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type { DomainCategory } from '../../agents/interfaces/agents.interfaces.js';
 import type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
@@ -28,6 +30,7 @@ export class StagehandService {
 
   async navigateDomain(
     page: any,
+    browserContext: any,
     domain: string,
     category: DomainCategory,
     proposito: string,
@@ -44,6 +47,15 @@ export class StagehandService {
     const observations: string[] = [];
     const actionsPerformed: string[] = [];
 
+    // Inject honeypot session (cookies + localStorage) before any navigation
+    // so the extension sees a logged-in user from the very first request.
+    const honeypotSessionUsed = await this.injectHoneypotSession(
+      browserContext,
+      page,
+      domain,
+      jobId,
+    );
+
     let stagehand: Stagehand | undefined;
     try {
       const stagehandOpts = this.buildStagehandOptions();
@@ -55,6 +67,11 @@ export class StagehandService {
       await page
         .goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 })
         .catch(() => {});
+
+      // Restore localStorage AFTER navigation (storage is per-origin)
+      if (honeypotSessionUsed) {
+        await this.restoreLocalStorage(page, domain, jobId);
+      }
 
       // observe() returns Action[] — potential actions identified on the page
       this.logger.logWithJob(
@@ -155,6 +172,7 @@ export class StagehandService {
         domModificationsDetected: !!finalSummary.detectado,
         credentialsSubmitted:
           isSensitive && actionsPerformed.includes('click:submit'),
+        honeypotSessionUsed,
       };
     } catch (err) {
       const msg = `Stagehand failed for ${domain}: ${err instanceof Error ? err.message : String(err)}`;
@@ -167,11 +185,130 @@ export class StagehandService {
         requestsToThisDomain: 0,
         domModificationsDetected: false,
         credentialsSubmitted: false,
+        honeypotSessionUsed,
         error: msg,
       };
     } finally {
       await stagehand?.close().catch(() => {});
     }
+  }
+
+  // ─── Honeypot session helpers ─────────────────────────────────────────────
+
+  /**
+   * Loads cookies from data/honeypot/states/<domain>.json (or its bare-domain
+   * variant) and injects them into the browser context so the extension
+   * observes a logged-in session. Returns true if a session was loaded.
+   *
+   * Stores localStorage origins on the page object for restore after navigation.
+   */
+  private async injectHoneypotSession(
+    browserContext: any,
+    page: any,
+    domain: string,
+    jobId: string,
+  ): Promise<boolean> {
+    const statePath = this.findStateFile(domain);
+    if (!statePath) return false;
+
+    let raw: string;
+    try {
+      raw = fs.readFileSync(statePath, 'utf-8');
+    } catch (err) {
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `Stagehand — could not read storageState ${statePath}: ${err instanceof Error ? err.message : String(err)}`,
+        'StagehandService',
+      );
+      return false;
+    }
+
+    let state: { cookies?: any[]; origins?: any[] };
+    try {
+      state = JSON.parse(raw);
+    } catch {
+      return false;
+    }
+
+    if (Array.isArray(state.cookies) && state.cookies.length > 0) {
+      try {
+        await browserContext.addCookies(state.cookies);
+      } catch (err) {
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `Stagehand — addCookies failed for ${domain}: ${err instanceof Error ? err.message : String(err)}`,
+          'StagehandService',
+        );
+        return false;
+      }
+    }
+
+    // Stash for post-navigation restore
+    if (Array.isArray(state.origins)) {
+      page.__honeypotOrigins = state.origins;
+    }
+
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Stagehand — injected honeypot session for ${domain} from ${path.basename(statePath)}`,
+      'StagehandService',
+    );
+    return true;
+  }
+
+  private async restoreLocalStorage(
+    page: any,
+    domain: string,
+    jobId: string,
+  ): Promise<void> {
+    const origins = page.__honeypotOrigins as Array<{
+      origin: string;
+      localStorage?: Array<{ name: string; value: string }>;
+    }>;
+    if (!Array.isArray(origins)) return;
+
+    for (const o of origins) {
+      const items = o.localStorage ?? [];
+      for (const item of items) {
+        try {
+          await page.evaluate(
+            ([k, v]: [string, string]) => localStorage.setItem(k, v),
+            [item.name, item.value],
+          );
+        } catch {
+          /* page may have navigated cross-origin */
+        }
+      }
+    }
+
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Stagehand — restored localStorage for ${domain}`,
+      'StagehandService',
+    );
+  }
+
+  private findStateFile(domain: string): string | undefined {
+    const configured = this.config.get<string>('demo.storageStatePath');
+    const candidates = [
+      configured,
+      './data/honeypot/states',
+      '/data/honeypot/states',
+    ].filter((p): p is string => !!p);
+
+    const bare = domain.replace(/^www\./, '');
+    const variants = [domain, bare];
+    for (const base of candidates) {
+      for (const d of variants) {
+        const p = path.join(base, `${d}.json`);
+        if (fs.existsSync(p)) return p;
+      }
+    }
+    return undefined;
   }
 
   private buildStagehandOptions(): ConstructorParameters<typeof Stagehand>[0] {

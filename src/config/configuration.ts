@@ -28,6 +28,7 @@ export default () => ({
     password: process.env.REDIS_PASSWORD || '',
   },
   analysis: {
+    preprocessTimeoutMs: parseInt(process.env.PREPROCESS_TIMEOUT_MS || '180000', 10),
     staticTimeoutMs: parseInt(process.env.STATIC_TIMEOUT_MS || '60000', 10),
     dynamicTimeoutMs: parseInt(process.env.DYNAMIC_TIMEOUT_MS || '180000', 10),
     maxConcurrentWorkers: parseInt(

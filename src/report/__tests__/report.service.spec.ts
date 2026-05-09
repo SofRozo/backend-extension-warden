@@ -1,274 +1,145 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReportService } from '../report.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import {
-  StaticAnalysisResult,
-  DynamicAnalysisResult,
+import type {
+  AgentAnalysisResult,
+  VerdictedStaticFinding,
+  VerdictedDomainFinding,
+  DynamicVerdictedFinding,
 } from '../../common/interfaces/analysis.interfaces.js';
-import {
-  RiskLevel,
-  FindingCategory,
-  DetonationStrategy,
-  PlatformLevel,
-} from '../../common/enums/risk-level.enum.js';
-
-const makeStaticResult = (
-  overrides?: Partial<StaticAnalysisResult>,
-): StaticAnalysisResult => ({
-  findings: [],
-  discoveredDomains: [],
-  domSelectors: [],
-  manifestPermissions: [],
-  manifestHostPermissions: [],
-  crxHash: 'abc123',
-  obfuscationDetected: false,
-  deobfuscationApplied: false,
-  ...overrides,
-});
 
 describe('ReportService', () => {
   let service: ReportService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ReportService, StructuredLogger],
+      providers: [
+        ReportService,
+        { provide: StructuredLogger, useValue: { logWithJob: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get<ReportService>(ReportService);
   });
 
-  describe('generateReport', () => {
-    it('should return INFORMATIONAL risk for clean extension', () => {
-      const report = service.generateReport(
-        'job-1',
-        'abcdefghijklmnopqrstuvwxyzabcdef',
-        makeStaticResult(),
-        null,
-        [],
-        5000,
-      );
-      expect(report.overallRisk).toBe(RiskLevel.NONE);
-      expect(report.recommendation).toContain('NO_SIGNIFICANT_RISKS');
-    });
+  const baseStatic: VerdictedStaticFinding = {
+    fileType: 'content_script',
+    filePath: 'src/main.js',
+    discoveryType: 'listener_teclado',
+    detail: 'keydown',
+    line: 42,
+    veredicto: 'positivo',
+    razon: 'keylogger en content_script sin justificación',
+  };
 
-    it('should return CRITICAL risk when critical findings + restricted domains', () => {
-      const result = makeStaticResult({
-        findings: [
-          {
-            category: FindingCategory.DATA_THEFT,
-            pattern: 'document.querySelector',
-            description: 'Accesses password fields',
-            severity: RiskLevel.CRITICAL,
-            location: { file: 'inject.js', line: 10, column: 0 },
-          },
-        ],
-        discoveredDomains: [
-          {
-            domain: 'bancolombia.com',
-            source: 'code',
-            context: 'fetch bancolombia',
-            platformLevel: PlatformLevel.LEVEL_3_RESTRICTED,
-            category: 'banking',
-          },
-        ],
-      });
+  const basePriority: VerdictedDomainFinding = {
+    fileType: 'background',
+    filePath: 'src/bg.js',
+    discoveryType: 'url_en_codigo',
+    domain: 'instagram.com',
+    category: 'sensible_redes_sociales',
+    priority: 5,
+    line: 10,
+    veredicto: 'positivo',
+    razon: 'extensión de mascota no debería contactar redes sociales',
+  };
 
-      const report = service.generateReport(
-        'job-2',
-        'ext123',
-        result,
-        null,
-        [],
-        5000,
-      );
-      expect(report.overallRisk).toBe(RiskLevel.CRITICAL);
-      expect(report.recommendation).toContain('UNINSTALL_IMMEDIATELY');
-    });
+  const baseDynamic: DynamicVerdictedFinding = {
+    fileType: 'background',
+    filePath: 'src/bg.js',
+    discoveryType: 'url_en_codigo',
+    domain: 'instagram.com',
+    category: 'sensible_redes_sociales',
+    priority: 5,
+    line: 10,
+    veredicto: 'maliciosa',
+    accion_hecha: 'envió cookies de sesión a un dominio externo',
+    razon: 'la extensión exfiltró cookies durante la navegación',
+  };
 
-    it('should return CRITICAL risk when threat intel flags domain', () => {
-      const report = service.generateReport(
-        'job-3',
-        'ext456',
-        makeStaticResult(),
-        null,
-        [
-          {
-            domain: 'phishing-site.com',
-            provider: 'virustotal',
-            isMalicious: true,
-            score: 0.95,
-            queriedAt: new Date(),
-          },
-        ],
-        5000,
-      );
-      expect(report.overallRisk).toBe(RiskLevel.CRITICAL);
-    });
+  const buildAgents = (): AgentAnalysisResult => ({
+    agent1: {
+      proposito: 'Mascota virtual',
+      categoria: 'entretenimiento',
+      acciones_esperadas: ['mostrar mascota'],
+      acciones_NO_esperadas: ['acceder a redes sociales'],
+      senales_alarma_manifest: [],
+      nivel_riesgo_inicial: 'medio',
+      razon_nivel_riesgo: 'permisos amplios',
+    },
+    agent2: [baseStatic],
+    agent3: { priority: [basePriority], unknown: [] },
+    agent4: [baseDynamic],
+    ranSuccessfully: true,
+    errors: [],
+  });
 
-    it('should include privacy labels per finding category', () => {
-      const result = makeStaticResult({
-        findings: [
-          {
-            category: FindingCategory.KEYLOGGER,
-            pattern: 'keyup',
-            description: 'Keylogger detected',
-            severity: RiskLevel.CRITICAL,
-            location: { file: 'bg.js', line: 5, column: 0 },
-          },
-          {
-            category: FindingCategory.EXFILTRATION,
-            pattern: 'fetch',
-            description: 'Data exfiltration',
-            severity: RiskLevel.HIGH,
-            location: { file: 'bg.js', line: 10, column: 0 },
-          },
-        ],
-      });
+  it('returns the new minimal report shape', () => {
+    const report = service.generateReport(
+      'job-1',
+      'ext-1',
+      1234,
+      { name: 'Test Ext', version: '1.0', author: 'tester', crxHash: 'abc' },
+      buildAgents(),
+    );
 
-      const report = service.generateReport(
-        'job-4',
-        'ext789',
-        result,
-        null,
-        [],
-        5000,
-      );
-      const categories = report.privacyLabels.map((l) => l.category);
-      expect(categories).toContain(FindingCategory.KEYLOGGER);
-      expect(categories).toContain(FindingCategory.EXFILTRATION);
-    });
+    expect(report.agente1?.proposito).toBe('Mascota virtual');
+    expect(report.dominios_contactados_prioritarios).toEqual([
+      'https://instagram.com',
+    ]);
+    expect(report.hallazgos_estaticos_positivos.length).toBe(2);
+    expect(report.hallazgos_estaticos_positivos[0]).toContain('content script');
+    expect(report.hallazgos_estaticos_positivos[0]).toContain('src/main.js');
+    expect(report.hallazgos_estaticos_positivos[0]).toContain('línea 42');
+    expect(report.hallazgos_dinamicos_positivos.length).toBe(1);
+    expect(report.hallazgos_dinamicos_positivos[0]).toContain('por tanto');
+    expect(report.estructura.resultado1).toEqual([baseStatic]);
+    expect(report.estructura.resultado2_priority).toEqual([basePriority]);
+    expect(report.estructura.resultado_dinamico).toEqual([baseDynamic]);
+  });
 
-    it('should include restricted domains in privacy labels', () => {
-      const result = makeStaticResult({
-        discoveredDomains: [
-          {
-            domain: 'chase.com',
-            source: 'code',
-            context: 'https://chase.com/account',
-            platformLevel: PlatformLevel.LEVEL_3_RESTRICTED,
-            category: 'banking',
-          },
-        ],
-      });
+  it('filters out findings with falso_positivo verdict', () => {
+    const agent: AgentAnalysisResult = {
+      ...buildAgents(),
+      agent2: [{ ...baseStatic, veredicto: 'falso_positivo' }],
+      agent3: {
+        priority: [{ ...basePriority, veredicto: 'falso_positivo' }],
+        unknown: [],
+      },
+      agent4: [{ ...baseDynamic, veredicto: 'benigna' }],
+    };
 
-      const report = service.generateReport(
-        'job-5',
-        'ext000',
-        result,
-        null,
-        [],
-        5000,
-      );
-      const domainLabel = report.privacyLabels.find(
-        (l) => l.category === FindingCategory.DOMAIN_TARGETING,
-      );
-      expect(domainLabel).toBeDefined();
-      expect(domainLabel!.severity).toBe(RiskLevel.CRITICAL);
-    });
+    const report = service.generateReport(
+      'job-2',
+      'ext-2',
+      0,
+      { crxHash: 'h' },
+      agent,
+    );
 
-    it('should include dynamic network evidence in labels', () => {
-      const dynamicResult: DynamicAnalysisResult = {
-        strategy: DetonationStrategy.PASSIVE_TRIGGER,
-        evidence: {
-          networkRequests: Array.from({ length: 12 }, (_, i) => ({
-            url: `https://evil.com/track/${i}`,
-            method: 'POST',
-            headers: {},
-            timestamp: Date.now(),
-            origin: 'extension' as const,
-          })),
-          domMutations: [
-            { type: 'childList', target: 'DIV', timestamp: Date.now() },
-          ],
-          keyboardEvents: [],
-          apiCalls: [],
-        },
-        duration: 10000,
-        timedOut: false,
-      };
+    expect(report.hallazgos_estaticos_positivos).toHaveLength(0);
+    expect(report.hallazgos_dinamicos_positivos).toHaveLength(0);
+  });
 
-      const report = service.generateReport(
-        'job-6',
-        'ext111',
-        makeStaticResult(),
-        dynamicResult,
-        [],
-        15000,
-      );
-      const networkLabel = report.privacyLabels.find(
-        (l) => l.category === 'dynamic_network',
-      );
-      expect(networkLabel).toBeDefined();
-      expect(networkLabel!.severity).toBe(RiskLevel.HIGH);
-    });
+  it('handles missing agents gracefully', () => {
+    const report = service.generateReport(
+      'job-3',
+      'ext-3',
+      0,
+      { crxHash: 'h' },
+      {
+        agent1: null,
+        agent2: null,
+        agent3: null,
+        agent4: null,
+        ranSuccessfully: false,
+        errors: ['no LLM'],
+      },
+    );
 
-    it('should calculate lower confidence when obfuscation detected', () => {
-      const obfResult = makeStaticResult({ obfuscationDetected: true });
-      const cleanResult = makeStaticResult({ obfuscationDetected: false });
-
-      const obfReport = service.generateReport(
-        'j1',
-        'e1',
-        obfResult,
-        null,
-        [],
-        5000,
-      );
-      const cleanReport = service.generateReport(
-        'j2',
-        'e2',
-        cleanResult,
-        null,
-        [],
-        5000,
-      );
-
-      expect(cleanReport.confidence).toBeGreaterThan(obfReport.confidence);
-    });
-
-    it('should detect abused permissions', () => {
-      const result = makeStaticResult({
-        manifestPermissions: ['cookies', 'tabs', 'storage'],
-        findings: [
-          {
-            category: FindingCategory.DATA_THEFT,
-            pattern: 'document.cookie',
-            description: 'Cookie access',
-            severity: RiskLevel.CRITICAL,
-            location: { file: 'bg.js', line: 1, column: 0 },
-          },
-        ],
-      });
-
-      const report = service.generateReport(
-        'job-7',
-        'ext222',
-        result,
-        null,
-        [],
-        5000,
-      );
-      expect(report.abusedPermissions).toContain('cookies');
-    });
-
-    it('should contain all required report fields (RF07)', () => {
-      const report = service.generateReport(
-        'job-8',
-        'ext333',
-        makeStaticResult(),
-        null,
-        [],
-        5000,
-      );
-      expect(report).toHaveProperty('jobId');
-      expect(report).toHaveProperty('overallRisk');
-      expect(report).toHaveProperty('privacyLabels');
-      expect(report).toHaveProperty('staticFindings');
-      expect(report).toHaveProperty('threatIntelResults');
-      expect(report).toHaveProperty('contactedUrls');
-      expect(report).toHaveProperty('abusedPermissions');
-      expect(report).toHaveProperty('recommendation');
-      expect(report).toHaveProperty('confidence');
-    });
+    expect(report.agente1).toBeNull();
+    expect(report.dominios_contactados_prioritarios).toEqual([]);
+    expect(report.hallazgos_estaticos_positivos).toEqual([]);
+    expect(report.hallazgos_dinamicos_positivos).toEqual([]);
   });
 });

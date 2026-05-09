@@ -166,6 +166,10 @@ export class PreprocessorService {
       obfuscatedFileCount,
       hasObfuscation: obfuscatedFileCount > 0,
       remoteCodeViolations,
+      // Filled by StaticAnalysisService.analyze()
+      resultado1: [],
+      resultado2_priority: [],
+      resultado2_unknown: [],
     };
   }
 

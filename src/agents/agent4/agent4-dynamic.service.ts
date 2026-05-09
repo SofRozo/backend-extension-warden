@@ -2,12 +2,56 @@ import { Injectable } from '@nestjs/common';
 import { LlmClientService } from '../llm/llm-client.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type {
-  Agent4Output,
-  Agent4ContactDetail,
-} from '../interfaces/agents.interfaces.js';
-import type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
+  DomainFinding,
+  DynamicVerdictedFinding,
+  DynamicVerdict,
+  SandboxDomainObservation,
+} from '../../common/interfaces/analysis.interfaces.js';
 
-const VALID_VERDICTS = new Set(['benigna', 'sospechosa', 'maliciosa']);
+const VALID_VERDICTS: DynamicVerdict[] = [
+  'maliciosa',
+  'sospechosa',
+  'benigna',
+  'inaccesible',
+];
+
+interface DomainVerdict {
+  domain: string;
+  veredicto: DynamicVerdict;
+  accion_hecha: string;
+  razon: string;
+}
+
+const PROMPT = `Eres un experto en comportamiento dinámico de extensiones de navegador.
+
+Recibiste las observaciones del agente Stagehand/Playwright que navegó cada dominio prioritario.
+Para CADA dominio decide:
+- "veredicto": "maliciosa" si la extensión hizo algo claramente abusivo (exfiltración, keylogging,
+  inyección no esperada); "sospechosa" si hay señales preocupantes pero no concluyentes;
+  "benigna" si el comportamiento observado es consistente con el propósito declarado;
+  "inaccesible" si la página no cargó o no se pudo interactuar.
+- "accion_hecha": resumen breve (1 línea) de QUÉ hizo el navegador (clicks, escribió credenciales,
+  detectó inyecciones de la extensión).
+- "razon": 1-2 oraciones explicando el veredicto.
+
+PROPÓSITO DECLARADO: {proposito}
+
+OBSERVACIONES POR DOMINIO:
+{observaciones}
+
+Responde EXACTAMENTE con JSON (sin texto adicional):
+{
+  "dominios": [
+    {
+      "domain": "ejemplo.com",
+      "veredicto": "maliciosa|sospechosa|benigna|inaccesible",
+      "accion_hecha": "...",
+      "razon": "..."
+    }
+  ]
+}
+
+DEBES devolver una entrada por cada dominio observado.`;
 
 @Injectable()
 export class Agent4DynamicService {
@@ -16,107 +60,160 @@ export class Agent4DynamicService {
     private readonly logger: StructuredLogger,
   ) {}
 
+  /**
+   * Produces per-domain verdicts and replicates them onto each priority finding
+   * whose domain matches. The result has one DynamicVerdictedFinding for every
+   * priority finding (i.e. the same shape as resultado2_priority).
+   */
   async analyze(
     proposito: string,
-    veredictoEstatico: string,
+    priorityFindings: DomainFinding[],
     observations: SandboxDomainObservation[],
     jobId: string,
-  ): Promise<Agent4Output> {
-    const prompt = `
-Eres un experto en comportamiento dinámico de extensiones de navegador.
+  ): Promise<DynamicVerdictedFinding[]> {
+    if (priorityFindings.length === 0) return [];
 
-PROPÓSITO DE LA EXTENSIÓN: ${proposito}
-VEREDICTO ESTÁTICO: ${veredictoEstatico}
-
-OBSERVACIONES DEL AGENTE (STAGEHAND) EN EL NAVEGADOR:
-${JSON.stringify(observations, null, 2)}
-
-Basándote en las observaciones del agente, determina:
-1. ¿Se confirmó alguno de los hallazgos del análisis estático?
-2. ¿Se detectó exfiltración de datos (credenciales, contenido de página, cookies)?
-3. ¿La extensión modificó páginas sensibles de formas no esperadas?
-4. ¿Qué comportamiento nuevo se descubrió que el análisis estático no vio?
-
-Responde en JSON exactamente así (sin texto adicional):
-{
-  "contacto_dominios_sensibles": boolean,
-  "detalle_contactos": [
-    {
-      "dominio": "string",
-      "tipo_peticion": "string",
-      "parece_exfiltracion": boolean,
-      "razonamiento": "string"
+    // Build a default verdict per priority domain (covers the "no observation"
+    // case so every finding still gets a verdicted entry).
+    const verdictByDomain = new Map<string, DomainVerdict>();
+    for (const f of priorityFindings) {
+      verdictByDomain.set(f.domain, {
+        domain: f.domain,
+        veredicto: 'inaccesible',
+        accion_hecha: 'no se navegó este dominio',
+        razon: 'Sin observaciones del navegador para este dominio',
+      });
     }
-  ],
-  "modificaciones_dom_sospechosas": ["string"],
-  "comportamiento_inesperado": ["string"],
-  "confirma_hallazgos_estaticos": boolean,
-  "nuevos_hallazgos": ["string"],
-  "veredicto_dinamico": "benigna|sospechosa|maliciosa",
-  "resumen": "2-3 oraciones explicando qué encontró el agente"
-}
-`;
 
-    this.logger.logWithJob(
-      jobId,
-      'info',
-      `Agent 4 — analyzing ${observations.length} domain observation(s)`,
-      'Agent4DynamicService',
-    );
+    if (observations.length > 0) {
+      const llmVerdicts = await this.runLlm(proposito, observations, jobId);
+      for (const v of llmVerdicts) {
+        verdictByDomain.set(v.domain.toLowerCase(), v);
+      }
+      // Fallback for observations without an LLM verdict
+      for (const obs of observations) {
+        const key = obs.domain.toLowerCase();
+        if (!verdictByDomain.has(key)) continue;
+        const cur = verdictByDomain.get(key)!;
+        if (cur.veredicto === 'inaccesible') {
+          verdictByDomain.set(key, this.heuristicVerdict(obs));
+        }
+      }
+    }
 
-    const raw = await this.llm.callLLM(prompt, jobId);
-    return this.validate(raw, jobId);
+    return priorityFindings.map((f) => {
+      const v =
+        verdictByDomain.get(f.domain.toLowerCase()) ??
+        verdictByDomain.get(f.domain) ?? {
+          domain: f.domain,
+          veredicto: 'inaccesible' as DynamicVerdict,
+          accion_hecha: 'no observado',
+          razon: 'Sin información dinámica',
+        };
+      return {
+        ...f,
+        veredicto: v.veredicto,
+        accion_hecha: v.accion_hecha,
+        razon: v.razon,
+      };
+    });
   }
 
-  private validate(raw: unknown, jobId: string): Agent4Output {
-    const r = raw as Record<string, unknown>;
+  // ─── LLM ──────────────────────────────────────────────────────────────────
 
-    if (!r || typeof r !== 'object') {
-      throw new Error('Agent 4 returned non-object response');
+  private async runLlm(
+    proposito: string,
+    observations: SandboxDomainObservation[],
+    jobId: string,
+  ): Promise<DomainVerdict[]> {
+    const obsText = observations
+      .map(
+        (o) =>
+          `### ${o.domain}\n` +
+          `  url: ${o.url}\n` +
+          `  honeypotSession: ${o.honeypotSessionUsed}\n` +
+          `  requestsToThisDomain: ${o.requestsToThisDomain}\n` +
+          `  domModificationsDetected: ${o.domModificationsDetected}\n` +
+          `  credentialsSubmitted: ${o.credentialsSubmitted}\n` +
+          `  actionsPerformed: ${(o.actionsPerformed ?? []).join(' | ')}\n` +
+          `  observations:\n` +
+          (o.observations ?? []).map((x) => `    - ${x}`).join('\n') +
+          (o.error ? `\n  error: ${o.error}` : ''),
+      )
+      .join('\n\n');
+
+    const prompt = PROMPT.replace('{proposito}', proposito).replace(
+      '{observaciones}',
+      obsText,
+    );
+
+    let raw: unknown;
+    try {
+      raw = await this.llm.callLLM(prompt, jobId);
+    } catch (err) {
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `Agent 4 LLM call failed: ${err instanceof Error ? err.message : String(err)}`,
+        'Agent4DynamicService',
+      );
+      return observations.map((o) => this.heuristicVerdict(o));
     }
 
-    const detalle_contactos: Agent4ContactDetail[] = [];
-    if (Array.isArray(r.detalle_contactos)) {
-      for (const item of r.detalle_contactos) {
-        const c = item as Partial<Agent4ContactDetail>;
-        if (!c.dominio) continue;
-        detalle_contactos.push({
-          dominio: String(c.dominio),
-          tipo_peticion: String(c.tipo_peticion ?? 'GET'),
-          parece_exfiltracion: Boolean(c.parece_exfiltracion),
-          razonamiento: String(c.razonamiento ?? ''),
+    const r = raw as { dominios?: Array<Record<string, unknown>> };
+    const verdicts: DomainVerdict[] = [];
+    if (Array.isArray(r?.dominios)) {
+      for (const item of r.dominios) {
+        const domain = String(item.domain ?? '').toLowerCase();
+        if (!domain) continue;
+        const v = String(item.veredicto ?? 'sospechosa') as DynamicVerdict;
+        verdicts.push({
+          domain,
+          veredicto: VALID_VERDICTS.includes(v) ? v : 'sospechosa',
+          accion_hecha: String(item.accion_hecha ?? ''),
+          razon: String(item.razon ?? ''),
         });
       }
     }
 
-    const veredicto = String(r.veredicto_dinamico ?? 'sospechosa');
-    if (!VALID_VERDICTS.has(veredicto)) {
+    if (verdicts.length === 0) {
       this.logger.logWithJob(
         jobId,
         'warn',
-        `Agent 4 returned unexpected veredicto_dinamico="${veredicto}", defaulting to "sospechosa"`,
+        'Agent 4 returned no domain verdicts — using heuristic fallback',
         'Agent4DynamicService',
       );
+      return observations.map((o) => this.heuristicVerdict(o));
     }
 
+    return verdicts;
+  }
+
+  /**
+   * Conservative fallback when the LLM didn't deliver a usable verdict.
+   * "sospechosa" if we observed the extension modifying DOM or credentials
+   * being submitted, "benigna" otherwise.
+   */
+  private heuristicVerdict(obs: SandboxDomainObservation): DomainVerdict {
+    if (obs.error) {
+      return {
+        domain: obs.domain.toLowerCase(),
+        veredicto: 'inaccesible',
+        accion_hecha: 'no se pudo cargar la página',
+        razon: obs.error,
+      };
+    }
+    const suspicious =
+      obs.domModificationsDetected ||
+      obs.credentialsSubmitted ||
+      obs.requestsToThisDomain > 5;
     return {
-      contacto_dominios_sensibles: Boolean(r.contacto_dominios_sensibles),
-      detalle_contactos,
-      modificaciones_dom_sospechosas: toStringArray(
-        r.modificaciones_dom_sospechosas,
-      ),
-      comportamiento_inesperado: toStringArray(r.comportamiento_inesperado),
-      confirma_hallazgos_estaticos: Boolean(r.confirma_hallazgos_estaticos),
-      nuevos_hallazgos: toStringArray(r.nuevos_hallazgos),
-      veredicto_dinamico: VALID_VERDICTS.has(veredicto)
-        ? (veredicto as Agent4Output['veredicto_dinamico'])
-        : 'sospechosa',
-      resumen: String(r.resumen ?? ''),
+      domain: obs.domain.toLowerCase(),
+      veredicto: suspicious ? 'sospechosa' : 'benigna',
+      accion_hecha: (obs.actionsPerformed ?? []).slice(0, 3).join(' | '),
+      razon: suspicious
+        ? 'La extensión modificó el DOM o se enviaron credenciales en este dominio'
+        : 'No se observó comportamiento abusivo durante la navegación',
     };
   }
-}
-
-function toStringArray(v: unknown): string[] {
-  if (!Array.isArray(v)) return [];
-  return v.map(String);
 }

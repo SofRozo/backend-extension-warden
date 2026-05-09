@@ -1,20 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SandboxOrchestratorService } from '../orchestrator/sandbox-orchestrator.service.js';
-import {
-  NetworkInterceptorService,
-  EvidenceCollector,
-} from '../network-interceptor/network-interceptor.service.js';
-import { DetonationStrategyService } from '../detonation-strategies/detonation-strategy.service.js';
+import { NetworkInterceptorService } from '../network-interceptor/network-interceptor.service.js';
 import { IntelligentNavigatorService } from '../navigator/intelligent-navigator.service.js';
 import { StagehandService } from '../navigator/stagehand.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import {
-  DetonationStrategy,
-  PlatformLevel,
-} from '../../common/enums/risk-level.enum.js';
+import { DetonationStrategy } from '../../common/enums/risk-level.enum.js';
+import type { DomainFinding } from '../../common/interfaces/analysis.interfaces.js';
 
-// Mock playwright to avoid needing it installed
 jest.mock('playwright', () => ({
   chromium: {
     launchPersistentContext: jest
@@ -25,7 +18,6 @@ jest.mock('playwright', () => ({
 
 describe('SandboxOrchestratorService', () => {
   let service: SandboxOrchestratorService;
-  let mockDetonationStrategy: jest.Mocked<DetonationStrategyService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,135 +26,65 @@ describe('SandboxOrchestratorService', () => {
         NetworkInterceptorService,
         StructuredLogger,
         {
-          provide: DetonationStrategyService,
-          useValue: {
-            selectStrategy: jest.fn().mockReturnValue([
-              {
-                strategy: DetonationStrategy.PASSIVE_TRIGGER,
-                targetUrls: ['https://www.google.com'],
-                waitTimeMs: 1000,
-              },
-            ]),
-          },
-        },
-        {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) => {
-              if (key === 'analysis.dynamicTimeoutMs') return 5000;
+              if (key === 'analysis.dynamicTimeoutMs') return 30000;
+              if (key === 'analysis.useStagehand') return false;
               return undefined;
             }),
           },
         },
         {
           provide: IntelligentNavigatorService,
-          useValue: {
-            navigateDomain: jest.fn().mockResolvedValue({
-              domain: '',
-              url: '',
-              observations: [],
-              actionsPerformed: [],
-              requestsToThisDomain: 0,
-              domModificationsDetected: false,
-              credentialsSubmitted: false,
-            }),
-          },
+          useValue: { navigateDomain: jest.fn() },
         },
         {
           provide: StagehandService,
-          useValue: {
-            navigateDomain: jest.fn().mockResolvedValue({
-              domain: '',
-              url: '',
-              observations: [],
-              actionsPerformed: [],
-              requestsToThisDomain: 0,
-              domModificationsDetected: false,
-              credentialsSubmitted: false,
-            }),
-          },
+          useValue: { navigateDomain: jest.fn() },
         },
       ],
     }).compile();
 
-    service = module.get<SandboxOrchestratorService>(
-      SandboxOrchestratorService,
-    );
-    mockDetonationStrategy = module.get(DetonationStrategyService);
+    service = module.get<SandboxOrchestratorService>(SandboxOrchestratorService);
   });
 
-  describe('executeDynamicAnalysis', () => {
-    const staticResult = {
-      findings: [],
-      discoveredDomains: [],
-      domSelectors: [],
-      manifestPermissions: [],
-      manifestHostPermissions: [],
-      crxHash: 'hash',
-      obfuscationDetected: false,
-      deobfuscationApplied: false,
-    };
+  it('returns empty result when there are no priority findings', async () => {
+    const result = await service.executeDynamicAnalysis(
+      '/tmp/ext',
+      'ext-id',
+      [],
+      'propósito',
+      'job-1',
+    );
 
-    it('should call detonation strategy service', async () => {
-      const result = await service.executeDynamicAnalysis(
-        '/tmp/ext',
-        'ext-id',
-        staticResult,
-        'job-1',
-      );
+    expect(result.strategy).toBe(DetonationStrategy.DIRECT_NAVIGATION);
+    expect(result.domainObservations).toEqual([]);
+    expect(result.timedOut).toBe(false);
+  });
 
-      expect(mockDetonationStrategy.selectStrategy).toHaveBeenCalledWith(
-        staticResult,
-      );
-      expect(result).toBeDefined();
-      expect(result.evidence).toBeDefined();
-      expect(result.duration).toBeGreaterThanOrEqual(0);
-    });
+  it('returns observations array (empty when browser fails to launch)', async () => {
+    const findings: DomainFinding[] = [
+      {
+        fileType: 'background',
+        filePath: 'src/bg.js',
+        discoveryType: 'url_en_codigo',
+        domain: 'instagram.com',
+        category: 'sensible_redes_sociales',
+        priority: 5,
+        line: 10,
+      },
+    ];
 
-    it('should return evidence even when browser fails', async () => {
-      const result = await service.executeDynamicAnalysis(
-        '/tmp/ext',
-        'ext-id',
-        staticResult,
-        'job-1',
-      );
+    const result = await service.executeDynamicAnalysis(
+      '/tmp/ext',
+      'ext-id',
+      findings,
+      'propósito',
+      'job-2',
+    );
 
-      expect(result.evidence.networkRequests).toEqual([]);
-      expect(result.evidence.domMutations).toEqual([]);
-      expect(result.evidence.keyboardEvents).toEqual([]);
-    });
-
-    it('should use primary strategy from first plan', async () => {
-      mockDetonationStrategy.selectStrategy.mockReturnValue([
-        {
-          strategy: DetonationStrategy.DOM_FALSIFICATION,
-          targetUrls: [],
-          fakeHtmlContent: '<html></html>',
-          waitTimeMs: 1000,
-        },
-      ]);
-
-      const result = await service.executeDynamicAnalysis(
-        '/tmp/ext',
-        'ext-id',
-        staticResult,
-        'job-1',
-      );
-
-      expect(result.strategy).toBe(DetonationStrategy.DOM_FALSIFICATION);
-    });
-
-    it('should default to PASSIVE_TRIGGER when no plans', async () => {
-      mockDetonationStrategy.selectStrategy.mockReturnValue([]);
-
-      const result = await service.executeDynamicAnalysis(
-        '/tmp/ext',
-        'ext-id',
-        staticResult,
-        'job-1',
-      );
-
-      expect(result.strategy).toBe(DetonationStrategy.PASSIVE_TRIGGER);
-    });
+    expect(result.strategy).toBe(DetonationStrategy.DIRECT_NAVIGATION);
+    expect(Array.isArray(result.domainObservations)).toBe(true);
   });
 });

@@ -7,21 +7,14 @@ import { StructuredLogger } from '../common/logger/logger.service.js';
 import type { PreprocessorOutput } from '../common/interfaces/analysis.interfaces.js';
 import type {
   AgentAnalysisResult,
-  Agent1Output,
-  Agent2Output,
-} from './interfaces/agents.interfaces.js';
+  VerdictedStaticFinding,
+} from '../common/interfaces/analysis.interfaces.js';
+import type { Agent1Output } from './interfaces/agents.interfaces.js';
 
 /**
- * Orchestrates Agents 1 → 2 → 3 sequentially.
- *
- * Each agent failure is caught individually so the pipeline degrades
- * gracefully: if Agent 1 fails, Agents 2 and 3 are skipped; if Agent 2
- * fails, Agent 3 is skipped; Agent 3 failure still returns the
- * Agent 1 + 2 results.
- *
- * Returns AgentAnalysisResult.ranSuccessfully=false when any agent
- * failed, but the processor continues — agent outputs are supplementary
- * to the existing rule-based static analysis.
+ * Orchestrates Agents 1 → 2 → 3 (static phase). Agent 4 runs separately after
+ * the dynamic analysis. Each agent failure is caught individually so the
+ * pipeline degrades gracefully.
  */
 @Injectable()
 export class AgentsOrchestratorService {
@@ -37,7 +30,6 @@ export class AgentsOrchestratorService {
     preprocessed: PreprocessorOutput,
     jobId: string,
   ): Promise<AgentAnalysisResult> {
-    // Skip entirely if no LLM is configured — avoids misleading errors
     if (!this.llm.isConfigured()) {
       this.logger.logWithJob(
         jobId,
@@ -49,6 +41,7 @@ export class AgentsOrchestratorService {
         agent1: null,
         agent2: null,
         agent3: null,
+        agent4: null,
         ranSuccessfully: false,
         errors: ['No LLM configured'],
       };
@@ -56,7 +49,7 @@ export class AgentsOrchestratorService {
 
     const errors: string[] = [];
     let agent1: Agent1Output | null = null;
-    let agent2: Agent2Output | null = null;
+    let agent2: VerdictedStaticFinding[] | null = null;
 
     // ── Agent 1 ──────────────────────────────────────────────────────────────
     try {
@@ -75,53 +68,61 @@ export class AgentsOrchestratorService {
         agent1: null,
         agent2: null,
         agent3: null,
+        agent4: null,
         ranSuccessfully: false,
         errors,
       };
     }
 
-    // ── Agent 2 ──────────────────────────────────────────────────────────────
+    // ── Agent 2 (resultado1 1:1) ─────────────────────────────────────────────
     try {
       agent2 = await this.agent2.analyze(preprocessed, agent1, jobId);
       this.logger.logWithJob(
         jobId,
         'info',
-        `Agent 2 complete: ${agent2.hallazgos.length} findings, ${agent2.dominios_para_playwright.length} domains for Playwright`,
+        `Agent 2 complete: ${agent2.length} findings evaluated (${agent2.filter((f) => f.veredicto === 'positivo').length} positivos)`,
         'AgentsOrchestrator',
       );
     } catch (err) {
       const msg = `Agent 2 failed: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
       this.logger.logWithJob(jobId, 'error', msg, 'AgentsOrchestrator');
-      return {
-        agent1,
-        agent2: null,
-        agent3: null,
-        ranSuccessfully: false,
-        errors,
-      };
     }
 
-    // ── Agent 3 ──────────────────────────────────────────────────────────────
+    // ── Agent 3 (resultado2 priority + unknown) ──────────────────────────────
     try {
-      const agent3 = await this.agent3.analyze(
+      const agent3Out = await this.agent3.analyze(
         agent1,
-        agent2,
-        preprocessed.manifest,
+        preprocessed.resultado2_priority,
+        preprocessed.resultado2_unknown,
         jobId,
       );
       this.logger.logWithJob(
         jobId,
         'info',
-        `Agent 3 complete: veredicto=${agent3.veredicto_preliminar}, abusos=${agent3.permisos_abusados.length}`,
+        `Agent 3 complete: ${agent3Out.priority.length} priority + ${agent3Out.unknown.length} unknown evaluados`,
         'AgentsOrchestrator',
       );
-      return { agent1, agent2, agent3, ranSuccessfully: true, errors };
+      return {
+        agent1,
+        agent2,
+        agent3: agent3Out,
+        agent4: null,
+        ranSuccessfully: errors.length === 0,
+        errors,
+      };
     } catch (err) {
       const msg = `Agent 3 failed: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
       this.logger.logWithJob(jobId, 'error', msg, 'AgentsOrchestrator');
-      return { agent1, agent2, agent3: null, ranSuccessfully: false, errors };
+      return {
+        agent1,
+        agent2,
+        agent3: null,
+        agent4: null,
+        ranSuccessfully: false,
+        errors,
+      };
     }
   }
 }

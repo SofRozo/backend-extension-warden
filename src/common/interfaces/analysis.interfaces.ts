@@ -1,18 +1,20 @@
-import {
-  RiskLevel,
-  FindingCategory,
-  DetonationStrategy,
-  PlatformLevel,
-} from '../enums/risk-level.enum.js';
+import { DetonationStrategy } from '../enums/risk-level.enum.js';
+import type {
+  Agent1Output,
+  DomainCategory,
+} from '../../agents/interfaces/agents.interfaces.js';
 
-// ─── Preprocessor types ───────────────────────────────────────────────────────
+// ─── File classification ─────────────────────────────────────────────────────
 
 export type FileRole =
   | 'content_script'
   | 'background'
   | 'popup'
   | 'library'
-  | 'unknown';
+  | 'unknown'
+  | 'manifest';
+
+// ─── Preprocessor: per-file extracted data ───────────────────────────────────
 
 export interface ExtractedChromeApi {
   api: string;
@@ -38,6 +40,8 @@ export interface ProcessedFile {
   usesDomManipulation: boolean;
 }
 
+// ─── Manifest ────────────────────────────────────────────────────────────────
+
 export interface ManifestInfo {
   manifestVersion: 2 | 3;
   name: string;
@@ -62,6 +66,57 @@ export interface RemoteCodeViolation {
   externalSrc: string;
 }
 
+// ─── Resultado 1 — Static findings (NO URLs) ─────────────────────────────────
+
+/**
+ * Discovery types for Resultado 1 (everything that is NOT a URL/domain).
+ * Each finding is uniformly shaped as { fileType, filePath, discoveryType, detail, line }.
+ */
+export type StaticDiscoveryType =
+  | 'permiso_chrome_manifest_no_usado'
+  | 'uso_api_chrome'
+  | 'funcion_javascript_riesgosa'
+  | 'flujo_datos_a_red'
+  | 'codigo_ofuscado'
+  | 'script_remoto_mv3'
+  | 'listener_teclado'
+  | 'inyeccion_dom'
+  | 'lectura_cookies'
+  | 'lectura_storage_navegador';
+
+export interface PreprocessingFinding {
+  fileType: FileRole;
+  filePath: string;
+  discoveryType: StaticDiscoveryType;
+  /** Concrete subject — e.g. "chrome.cookies.getAll", "eval", "innerHTML", "keydown", "cookies" */
+  detail: string;
+  line: number;
+  /** Optional code snippet to help the agent reason */
+  codeSnippet?: string;
+}
+
+// ─── Resultado 2 — URL/domain findings ───────────────────────────────────────
+
+export type DomainDiscoveryType =
+  | 'url_en_codigo'
+  | 'host_permission_manifest';
+
+export interface DomainFinding {
+  fileType: FileRole;
+  filePath: string;
+  discoveryType: DomainDiscoveryType;
+  domain: string;
+  category: DomainCategory;
+  /**
+   * Visit priority. Defined only for sensitive categories (financiero, identidad,
+   * llm, correo, redes, gob). Lower number = visited first.
+   */
+  priority?: number;
+  line: number;
+}
+
+// ─── Preprocessor output (top-level) ─────────────────────────────────────────
+
 export interface PreprocessorOutput {
   crxHash: string;
   extractPath: string;
@@ -69,37 +124,17 @@ export interface PreprocessorOutput {
   files: ProcessedFile[];
   obfuscatedFileCount: number;
   hasObfuscation: boolean;
-  /** MV3 policy violations: HTML files that load external <script src="https://..."> */
+  /** MV3 policy violations — also surfaced as PreprocessingFinding entries */
   remoteCodeViolations: RemoteCodeViolation[];
+  /** Resultado 1 — every static finding that is NOT a URL */
+  resultado1: PreprocessingFinding[];
+  /** Resultado 2 — sensitive domains (financiero, identidad, llm, correo, redes, gob) */
+  resultado2_priority: DomainFinding[];
+  /** Resultado 2 — domains that need LLM/threat-intel reasoning (desconocido) */
+  resultado2_unknown: DomainFinding[];
 }
 
-export interface StaticFinding {
-  category: FindingCategory;
-  pattern: string;
-  description: string;
-  severity: RiskLevel;
-  location: {
-    file: string;
-    line: number;
-    column: number;
-  };
-  codeSnippet?: string;
-}
-
-export interface DiscoveredDomain {
-  domain: string;
-  source: 'code' | 'manifest';
-  context: string;
-  platformLevel: PlatformLevel;
-  category?: string;
-}
-
-export interface DomSelector {
-  selector: string;
-  method: string;
-  file: string;
-  line: number;
-}
+// ─── Dynamic analysis ────────────────────────────────────────────────────────
 
 export interface NetworkRequest {
   url: string;
@@ -129,8 +164,8 @@ export interface KeyboardEvent {
 }
 
 export interface ApiCall {
-  api: string; // e.g. "chrome.storage.local.set"
-  args: string; // JSON-serialized arguments (truncated)
+  api: string;
+  args: string;
   timestamp: number;
   context?: string;
 }
@@ -149,17 +184,10 @@ export interface DynamicEvidence {
   }>;
 }
 
-export interface StaticAnalysisResult {
-  findings: StaticFinding[];
-  discoveredDomains: DiscoveredDomain[];
-  domSelectors: DomSelector[];
-  manifestPermissions: string[];
-  manifestHostPermissions: string[];
-  crxHash: string;
-  obfuscationDetected: boolean;
-  deobfuscationApplied: boolean;
-}
-
+/**
+ * Stagehand observation per priority domain — raw signals collected by the
+ * navigator (Stagehand or IntelligentNavigator) before Agent 4 verdicts them.
+ */
 export interface SandboxDomainObservation {
   domain: string;
   url: string;
@@ -168,7 +196,8 @@ export interface SandboxDomainObservation {
   requestsToThisDomain: number;
   domModificationsDetected: boolean;
   credentialsSubmitted: boolean;
-  verdicto?: 'benigna' | 'sospechosa' | 'maliciosa';
+  /** True when the navigator injected a storageState cookie file */
+  honeypotSessionUsed: boolean;
   error?: string;
 }
 
@@ -178,10 +207,11 @@ export interface DynamicAnalysisResult {
   containerId?: string;
   duration: number;
   timedOut: boolean;
-  // Agent-driven sandbox fields (populated when Agent 2 provides domain list)
   extensionVerified?: boolean;
   domainObservations?: SandboxDomainObservation[];
 }
+
+// ─── Threat Intel ────────────────────────────────────────────────────────────
 
 export interface ThreatIntelResult {
   domain: string;
@@ -193,43 +223,47 @@ export interface ThreatIntelResult {
   queriedAt: Date;
 }
 
-export interface PrivacyLabel {
-  category: string;
-  title: string;
-  description: string;
-  severity: RiskLevel;
-  evidence: string[];
+// ─── Verdicted findings (output of agents 2/3/4) ─────────────────────────────
+
+export type VerdictPositive = 'positivo' | 'falso_positivo';
+export type DynamicVerdict = 'maliciosa' | 'sospechosa' | 'benigna' | 'inaccesible';
+
+export interface VerdictedStaticFinding extends PreprocessingFinding {
+  veredicto: VerdictPositive;
+  razon: string;
 }
 
-export interface ContactedUrlReputation {
-  url: string;
-  hostname: string;
-  isMalicious: boolean;
-  score: number;
-  providers: string[]; // which threat intel providers flagged it
-  categories: string[];
+export interface VerdictedDomainFinding extends DomainFinding {
+  veredicto: VerdictPositive;
+  razon: string;
+  /** Threat-intel snippet shown to the LLM for unknown domains */
+  threatIntelSummary?: string;
 }
 
-export interface AnnotatedPermission {
-  name: string;
-  description: string;
-  category: string;
-  risk: RiskLevel;
-  isAbused: boolean;
+export interface DynamicVerdictedFinding extends DomainFinding {
+  veredicto: DynamicVerdict;
+  accion_hecha: string;
+  razon: string;
 }
 
-// ─── AI Agent results ─────────────────────────────────────────────────────────
-// Imported as a type-only alias to avoid circular deps with the agents module.
-// The full types live in src/agents/interfaces/agents.interfaces.ts.
+// ─── Combined agent results ──────────────────────────────────────────────────
 
 export interface AgentAnalysisResult {
-  agent1: any | null;
-  agent2: any | null;
-  agent3: any | null;
-  agent4?: any | null;
+  agent1: Agent1Output | null;
+  /** Resultado 1 con veredicto+razón por hallazgo */
+  agent2: VerdictedStaticFinding[] | null;
+  /** Resultado 2 (priority + unknown) con veredicto+razón */
+  agent3: {
+    priority: VerdictedDomainFinding[];
+    unknown: VerdictedDomainFinding[];
+  } | null;
+  /** Veredicto dinámico replicado por hallazgo de Resultado 2 priority */
+  agent4: DynamicVerdictedFinding[] | null;
   ranSuccessfully: boolean;
   errors: string[];
 }
+
+// ─── Final report (user-facing) ──────────────────────────────────────────────
 
 export interface AnalysisReport {
   jobId: string;
@@ -238,28 +272,36 @@ export interface AnalysisReport {
   extensionVersion?: string;
   extensionAuthor?: string;
   crxHash: string;
-  overallRisk: RiskLevel;
-  privacyLabels: PrivacyLabel[];
-  staticFindings: StaticFinding[];
-  dynamicEvidence?: DynamicEvidence;
-  threatIntelResults: ThreatIntelResult[];
-  contactedUrls: string[];
-  contactedUrlsReputation: ContactedUrlReputation[];
-  abusedPermissions: string[];
-  annotatedPermissions: AnnotatedPermission[];
-  recommendation: string;
   analysisTimestamp: Date;
   analysisDuration: number;
-  confidence: number;
-  score1: number; // Attack Surface (Permissions only)
-  score2: number; // Contextual Risk (Static AI)
-  score3: number; // Confirmed Risk (Dynamic AI)
-  agentAnalysis?: AgentAnalysisResult;
-  testResults?: Array<{
-    name: string;
-    status: 'PASSED' | 'FAILED' | 'SKIPPED';
-    description: string;
-    severity: RiskLevel;
-    findings: string[];
-  }>;
+
+  /** Agente 1 — propósito en lenguaje natural */
+  agente1: Agent1Output | null;
+
+  /** Dominios contactados (categoría priority) en formato URL */
+  dominios_contactados_prioritarios: string[];
+
+  /**
+   * Resultados narrativos de análisis estático para hallazgos con veredicto positivo.
+   * Forma: "En el <fileType> de la extensión, en la ruta <filePath>, línea <line>,
+   *        descubrimos que <discoveryType>(<detail>), porque <razon>"
+   */
+  hallazgos_estaticos_positivos: string[];
+
+  /**
+   * Resultados narrativos de análisis dinámico para hallazgos con veredicto positivo
+   * (sospechosa o maliciosa).
+   * Forma: "En el <fileType> de la extensión, en la ruta <filePath>, línea <line>,
+   *        descubrimos que <discoveryType>(<detail>), porque <accion_hecha>,
+   *        por tanto <razon>"
+   */
+  hallazgos_dinamicos_positivos: string[];
+
+  /** Optional structured copy of the verdicted findings for the frontend */
+  estructura: {
+    resultado1: VerdictedStaticFinding[];
+    resultado2_priority: VerdictedDomainFinding[];
+    resultado2_unknown: VerdictedDomainFinding[];
+    resultado_dinamico: DynamicVerdictedFinding[];
+  };
 }

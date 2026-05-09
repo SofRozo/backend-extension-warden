@@ -8,7 +8,6 @@ import { DownloaderService } from '../downloader/downloader.service.js';
 import { PreprocessorService } from '../preprocessor/preprocessor.service.js';
 import { StaticAnalysisService } from '../static-analysis/static-analysis.service.js';
 import { SandboxOrchestratorService } from '../dynamic-analysis/orchestrator/sandbox-orchestrator.service.js';
-import { ThreatIntelService } from '../threat-intel/threat-intel.service.js';
 import { ReportService } from '../report/report.service.js';
 import { AgentsOrchestratorService } from '../agents/agents-orchestrator.service.js';
 import { Agent4DynamicService } from '../agents/agent4/agent4-dynamic.service.js';
@@ -18,21 +17,14 @@ import { ConfigService } from '@nestjs/config';
 import type {
   DynamicAnalysisResult,
   AgentAnalysisResult,
+  PreprocessorOutput,
 } from '../common/interfaces/analysis.interfaces.js';
 
-/**
- * Queue this worker process consumes. Picked at module-load time from the
- * WORKER_QUEUE env var so a single binary can serve either the headless
- * background queue ("analysis") or the visual demo queue ("analysis-demo").
- * Exported so QueueModule can register the matching BullModule producer.
- */
 export const WORKER_QUEUE_NAME =
   process.env.WORKER_QUEUE === 'analysis-demo' ? 'analysis-demo' : 'analysis';
 
 @Processor(WORKER_QUEUE_NAME, {
   concurrency: 5,
-  // RNF02: Total pipeline timeout — forced termination if exceeded.
-  // 15 min ceiling covers demo mode (180s + 210s) + static 60s + overhead.
   lockDuration: 900000,
 })
 export class AnalysisProcessor extends WorkerHost {
@@ -45,7 +37,6 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly agent4: Agent4DynamicService,
     private readonly staticAnalysis: StaticAnalysisService,
     private readonly dynamicAnalysis: SandboxOrchestratorService,
-    private readonly threatIntel: ThreatIntelService,
     private readonly reportService: ReportService,
     private readonly logger: StructuredLogger,
     private readonly config: ConfigService,
@@ -74,26 +65,31 @@ export class AnalysisProcessor extends WorkerHost {
         jobId,
       );
 
-      // Step 2: Preprocess — hard failure if the extension is invalid.
-      // Throws synchronously on missing/unparseable manifest; the outer catch
-      // marks the job FAILED and does NOT retry (the file itself is invalid).
+      // Step 2: Preprocess + Static Analysis (preprocessing fills resultado1
+      // and resultado2 in-place via StaticAnalysisService.analyze).
       await this.updateJobStatus(jobId, AnalysisStatus.PREPROCESSING);
-      const preprocessed = await this.preprocessor.preprocess(
-        downloadResult.extractPath,
-        downloadResult.crxHash,
-        jobId,
+      const preprocessTimeoutMs =
+        this.config.get<number>('analysis.preprocessTimeoutMs') ?? 180_000;
+      const preprocessed = await this.withTimeout(
+        this.preprocessAndAnalyzeStatic(
+          downloadResult.extractPath,
+          downloadResult.crxHash,
+          jobId,
+        ),
+        preprocessTimeoutMs,
+        'Preprocessing + static analysis timeout (3min exceeded)',
       );
 
-      // Persist extension metadata now that we have it from the manifest
       await this.jobRepository.update(jobId, {
         extensionName: preprocessed.manifest.name || undefined,
         extensionVersion: preprocessed.manifest.version || undefined,
         crxHash: preprocessed.crxHash,
       });
 
-      // Step 3: AI Analysis — Agents 1, 2, 3 (optional, degrades gracefully)
+      // Step 3: Agents 1 → 2 → 3 (static phase). Degrades gracefully when LLM
+      // is not configured: agent1/2/3 are returned as null.
       await this.updateJobStatus(jobId, AnalysisStatus.AI_ANALYSIS);
-      let agentAnalysis: AgentAnalysisResult | undefined;
+      let agentAnalysis: AgentAnalysisResult;
       try {
         const agentTimeoutMs =
           this.config.get<number>('AGENT_TIMEOUT_MS') ?? 360_000;
@@ -106,22 +102,20 @@ export class AnalysisProcessor extends WorkerHost {
         this.logger.logWithJob(
           jobId,
           'warn',
-          `AI analysis skipped: ${err instanceof Error ? err.message : String(err)}`,
+          `AI static analysis failed: ${err instanceof Error ? err.message : String(err)}`,
           'AnalysisProcessor',
         );
+        agentAnalysis = {
+          agent1: null,
+          agent2: null,
+          agent3: null,
+          agent4: null,
+          ranSuccessfully: false,
+          errors: [err instanceof Error ? err.message : String(err)],
+        };
       }
 
-      // Step 4: Static Analysis (RNF02 — max 60s)
-      await this.updateJobStatus(jobId, AnalysisStatus.STATIC_ANALYSIS);
-      const staticTimeoutMs =
-        this.config.get<number>('analysis.staticTimeoutMs') || 60000;
-      const staticResult = await this.withTimeout(
-        this.staticAnalysis.analyze(preprocessed, jobId),
-        staticTimeoutMs,
-        'Static analysis timeout (RNF02: 60s exceeded)',
-      );
-
-      // Step 4: Dynamic Analysis (RNF02 — max 180s, demo adds 210s)
+      // Step 4: Dynamic Analysis — visit priority domains
       let dynamicResult: DynamicAnalysisResult | null = null;
       await this.updateJobStatus(jobId, AnalysisStatus.DYNAMIC_ANALYSIS);
 
@@ -133,13 +127,17 @@ export class AnalysisProcessor extends WorkerHost {
           ? baseDynamicTimeoutMs + 210000
           : baseDynamicTimeoutMs;
 
+        const proposito =
+          agentAnalysis.agent1?.proposito ??
+          'Analizar comportamiento de la extensión';
+
         dynamicResult = await this.withTimeout(
           this.dynamicAnalysis.executeDynamicAnalysis(
             preprocessed.extractPath,
             extensionId,
-            staticResult,
+            preprocessed.resultado2_priority,
+            proposito,
             jobId,
-            agentAnalysis,
           ),
           dynamicTimeoutMs,
           'Dynamic analysis timeout (RNF02: 180s exceeded)',
@@ -154,81 +152,36 @@ export class AnalysisProcessor extends WorkerHost {
         this.forceKillBrowserProcesses(jobId);
       }
 
-      // Step 4.5: Agent 4 — Dynamic Log Analysis
-      // Called after dynamic analysis if Stagehand/navigator produced domain
-      // observations AND Agent 1 ran (we need the extension's stated purpose).
-      if (dynamicResult?.domainObservations?.length && agentAnalysis?.agent1) {
-        try {
-          const veredictoEstatico =
-            agentAnalysis.agent3?.veredicto_preliminar ?? 'sospechosa';
-          const agent4 = await this.withTimeout(
-            this.agent4.analyze(
-              agentAnalysis.agent1.proposito,
-              veredictoEstatico,
-              dynamicResult.domainObservations,
-              jobId,
-            ),
-            30_000,
-            'Agent 4 timeout',
-          );
-          agentAnalysis = { ...agentAnalysis, agent4 };
-          this.logger.logWithJob(
-            jobId,
-            'info',
-            `Agent 4 complete: veredicto_dinamico=${agent4.veredicto_dinamico}, confirma_estatico=${agent4.confirma_hallazgos_estaticos}`,
-            'AnalysisProcessor',
-          );
-        } catch (err) {
-          this.logger.logWithJob(
-            jobId,
-            'warn',
-            `Agent 4 skipped: ${err instanceof Error ? err.message : String(err)}`,
-            'AnalysisProcessor',
-          );
-        }
-      }
-
-      // Step 5: Threat Intelligence
-      await this.updateJobStatus(jobId, AnalysisStatus.THREAT_INTEL);
-
-      const staticDomains = staticResult.discoveredDomains
-        .filter((d) => d.source === 'code')
-        .map((d) => d.domain);
-
-      const dynamicDomains = (dynamicResult?.evidence.networkRequests ?? [])
-        .filter((r) => r.origin === 'extension' && r.url.startsWith('http'))
-        .map((r) => {
-          try {
-            return new URL(r.url).hostname;
-          } catch {
-            return null;
-          }
-        })
-        .filter((h): h is string => !!h);
-
-      const isLikelyDomain = (d: string) => {
-        const domainRe =
-          /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/i;
-        const staticAssets =
-          /\.(png|jpg|jpeg|gif|css|json|js|svg|woff2?|map|crx)$/i;
-        return domainRe.test(d) && !staticAssets.test(d);
-      };
-
-      const domainsToQuery = [
-        ...new Set([...staticDomains, ...dynamicDomains]),
-      ].filter(isLikelyDomain);
-
-      let threatIntelResults: any[] = [];
+      // Step 5: Agent 4 — emit per-domain verdict and replicate it on each
+      // priority finding so resultado_dinamico has one entry per priority
+      // discovery.
       try {
-        threatIntelResults = await this.threatIntel.queryDomains(
-          domainsToQuery,
+        const proposito =
+          agentAnalysis.agent1?.proposito ??
+          'Analizar comportamiento de la extensión';
+        const observations = dynamicResult?.domainObservations ?? [];
+        const agent4Result = await this.withTimeout(
+          this.agent4.analyze(
+            proposito,
+            preprocessed.resultado2_priority,
+            observations,
+            jobId,
+          ),
+          60_000,
+          'Agent 4 timeout',
+        );
+        agentAnalysis = { ...agentAnalysis, agent4: agent4Result };
+        this.logger.logWithJob(
           jobId,
+          'info',
+          `Agent 4 complete: ${agent4Result.length} verdicted dynamic findings`,
+          'AnalysisProcessor',
         );
       } catch (err) {
         this.logger.logWithJob(
           jobId,
           'warn',
-          `Threat intel failed (degraded mode): ${err instanceof Error ? err.message : String(err)}`,
+          `Agent 4 skipped: ${err instanceof Error ? err.message : String(err)}`,
           'AnalysisProcessor',
         );
       }
@@ -240,42 +193,34 @@ export class AnalysisProcessor extends WorkerHost {
       const report = this.reportService.generateReport(
         jobId,
         extensionId,
-        staticResult,
-        dynamicResult,
-        threatIntelResults,
         analysisDuration,
         {
           name: preprocessed.manifest.name || undefined,
           version: preprocessed.manifest.version || undefined,
           author: preprocessed.manifest.author || undefined,
+          crxHash: preprocessed.crxHash,
         },
         agentAnalysis,
       );
 
-      // Step 7: Persist report
-      // Use parameterized update — avoids raw SQL string construction issues with JSONB.
-      // Strip U+0000 escape sequences first: PostgreSQL JSONB rejects null bytes even
-      // when properly JSON-encoded as  .
+      // Strip U+0000 (PostgreSQL JSONB rejects null bytes)
       const safeReport = JSON.parse(
         JSON.stringify(report).replace(/\\u0000/g, ''),
       ) as Record<string, unknown>;
 
       await this.jobRepository.update(jobId, {
         status: AnalysisStatus.COMPLETED,
-        overallRisk: report.overallRisk,
         report: safeReport as any,
-        confidence: report.confidence,
         analysisDurationMs: analysisDuration,
       });
 
       this.logger.logWithJob(
         jobId,
         'info',
-        `Analysis completed: risk=${report.overallRisk}, confidence=${report.confidence.toFixed(2)}, duration=${analysisDuration}ms`,
+        `Analysis completed: duration=${analysisDuration}ms`,
         'AnalysisProcessor',
       );
 
-      // Step 8: Cleanup (§11 — in-memory analysis principle)
       this.downloader.cleanup(extensionId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -296,6 +241,20 @@ export class AnalysisProcessor extends WorkerHost {
     }
   }
 
+  private async preprocessAndAnalyzeStatic(
+    extractPath: string,
+    crxHash: string,
+    jobId: string,
+  ): Promise<PreprocessorOutput> {
+    const preprocessed = await this.preprocessor.preprocess(
+      extractPath,
+      crxHash,
+      jobId,
+    );
+    await this.staticAnalysis.analyze(preprocessed, jobId);
+    return preprocessed;
+  }
+
   private async updateJobStatus(
     jobId: string,
     status: AnalysisStatus,
@@ -303,9 +262,6 @@ export class AnalysisProcessor extends WorkerHost {
     await this.jobRepository.update(jobId, { status });
   }
 
-  /**
-   * RNF02: Force-kill lingering browser/chromium processes after timeout.
-   */
   private forceKillBrowserProcesses(jobId: string): void {
     try {
       execSync('pkill -9 -f chromium || pkill -9 -f chrome || true', {
@@ -318,13 +274,10 @@ export class AnalysisProcessor extends WorkerHost {
         'AnalysisProcessor',
       );
     } catch {
-      // Best effort — process may already be dead
+      /* best effort */
     }
   }
 
-  /**
-   * RNF02: Timeout with forced termination guarantee.
-   */
   private async withTimeout<T>(
     promise: Promise<T>,
     timeoutMs: number,

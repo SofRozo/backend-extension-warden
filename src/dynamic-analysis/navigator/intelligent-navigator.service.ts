@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ConfigService } from '@nestjs/config';
 import { LlmClientService } from '../../agents/llm/llm-client.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type { DomainCategory } from '../../agents/interfaces/agents.interfaces.js';
@@ -78,6 +81,11 @@ const categoryTask = (
       `Navega en ${domain} (correo/productividad). Busca formularios de login o composición. ` +
       `Usa ${FAKE_EMAIL} / ${FAKE_PASSWORD} si hay login. ` +
       'Observa si la extensión lee o modifica correos o documentos.',
+    sensible_llm:
+      `Navega en ${domain} (plataforma de modelo de lenguaje / IA). ` +
+      `Si hay login, intenta autenticarte con ${FAKE_EMAIL} / ${FAKE_PASSWORD}. ` +
+      'Observa si la extensión lee prompts, respuestas o tokens de sesión, ' +
+      'o si inyecta prompts en la conversación.',
     sensible_gubernamental:
       `Navega en ${domain} (portal gubernamental). Busca formularios de autenticación o trámites. ` +
       `Usa ${FAKE_EMAIL} / ${FAKE_PASSWORD}. ` +
@@ -112,10 +120,12 @@ export class IntelligentNavigatorService {
   constructor(
     private readonly llm: LlmClientService,
     private readonly logger: StructuredLogger,
+    private readonly config: ConfigService,
   ) {}
 
   async navigateDomain(
     page: any,
+    browserContext: any,
     domain: string,
     category: DomainCategory,
     proposito: string,
@@ -134,8 +144,18 @@ export class IntelligentNavigatorService {
       'IntelligentNavigator',
     );
 
+    const honeypotSessionUsed = await this.injectHoneypotSession(
+      browserContext,
+      page,
+      domain,
+      jobId,
+    );
+
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      if (honeypotSessionUsed) {
+        await this.restoreLocalStorage(page);
+      }
       await page.waitForTimeout(STEP_WAIT_MS); // Let extension activate
     } catch (err) {
       const msg = `Failed to load ${url}: ${err instanceof Error ? err.message : String(err)}`;
@@ -148,6 +168,7 @@ export class IntelligentNavigatorService {
         0,
         false,
         false,
+        honeypotSessionUsed,
         msg,
       );
     }
@@ -226,7 +247,87 @@ export class IntelligentNavigatorService {
       requestsAfter - requestsBefore,
       domModificationsDetected,
       credentialsSubmitted,
+      honeypotSessionUsed,
     );
+  }
+
+  // ─── Honeypot session helpers ─────────────────────────────────────────────
+
+  private async injectHoneypotSession(
+    browserContext: any,
+    page: any,
+    domain: string,
+    jobId: string,
+  ): Promise<boolean> {
+    const statePath = this.findStateFile(domain);
+    if (!statePath) return false;
+
+    let raw: string;
+    try {
+      raw = fs.readFileSync(statePath, 'utf-8');
+    } catch {
+      return false;
+    }
+    let state: { cookies?: any[]; origins?: any[] };
+    try {
+      state = JSON.parse(raw);
+    } catch {
+      return false;
+    }
+    if (Array.isArray(state.cookies) && state.cookies.length > 0) {
+      try {
+        await browserContext.addCookies(state.cookies);
+      } catch {
+        return false;
+      }
+    }
+    if (Array.isArray(state.origins)) {
+      page.__honeypotOrigins = state.origins;
+    }
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `Navigator — injected honeypot session for ${domain}`,
+      'IntelligentNavigator',
+    );
+    return true;
+  }
+
+  private async restoreLocalStorage(page: any): Promise<void> {
+    const origins = page.__honeypotOrigins as Array<{
+      origin: string;
+      localStorage?: Array<{ name: string; value: string }>;
+    }>;
+    if (!Array.isArray(origins)) return;
+    for (const o of origins) {
+      for (const item of o.localStorage ?? []) {
+        try {
+          await page.evaluate(
+            ([k, v]: [string, string]) => localStorage.setItem(k, v),
+            [item.name, item.value],
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }
+
+  private findStateFile(domain: string): string | undefined {
+    const configured = this.config.get<string>('demo.storageStatePath');
+    const candidates = [
+      configured,
+      './data/honeypot/states',
+      '/data/honeypot/states',
+    ].filter((p): p is string => !!p);
+    const bare = domain.replace(/^www\./, '');
+    for (const base of candidates) {
+      for (const d of [domain, bare]) {
+        const p = path.join(base, `${d}.json`);
+        if (fs.existsSync(p)) return p;
+      }
+    }
+    return undefined;
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -539,6 +640,7 @@ export class IntelligentNavigatorService {
     requestsToThisDomain: number,
     domModificationsDetected: boolean,
     credentialsSubmitted: boolean,
+    honeypotSessionUsed: boolean,
     error?: string,
   ): SandboxDomainObservation {
     return {
@@ -549,6 +651,7 @@ export class IntelligentNavigatorService {
       requestsToThisDomain,
       domModificationsDetected,
       credentialsSubmitted,
+      honeypotSessionUsed,
       error,
     };
   }

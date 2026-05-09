@@ -1,235 +1,249 @@
 import { Injectable } from '@nestjs/common';
 import { LlmClientService } from '../llm/llm-client.service.js';
+import { ThreatIntelService } from '../../threat-intel/threat-intel.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import type { ManifestInfo } from '../../common/interfaces/analysis.interfaces.js';
 import type {
-  Agent1Output,
-  Agent2Output,
-  Agent3Output,
-  Agent3Evaluation,
-  Agent3PermissionAbuse,
-} from '../interfaces/agents.interfaces.js';
+  DomainFinding,
+  VerdictedDomainFinding,
+  VerdictPositive,
+  ThreatIntelResult,
+} from '../../common/interfaces/analysis.interfaces.js';
+import type { Agent1Output } from '../interfaces/agents.interfaces.js';
 
-// ─── Prompt ───────────────────────────────────────────────────────────────────
+const PROMPT = `Eres un auditor de seguridad evaluando los DOMINIOS contactados por una extensión de navegador.
 
-const PROMPT = `Eres un auditor de seguridad especializado en extensiones de navegador.
+PROPÓSITO DECLARADO (Agente 1):
+{contexto_agente1}
 
-Tu trabajo es determinar si cada hallazgo del análisis estático representa un
-ABUSO DE PERMISOS o un COMPORTAMIENTO LEGÍTIMO, considerando el propósito de la extensión.
+DOMINIOS A EVALUAR — cada uno representa un descubrimiento individual con su archivo, ruta y línea.
+Algunos vienen ya clasificados deterministicamente como prioritarios (financiero/identidad/llm/redes/correo/gob),
+otros son desconocidos y se enriquecieron con threat intelligence.
 
-PROPÓSITO Y CONTEXTO (Agente 1):
-{output_agente_1}
+LISTA:
+{hallazgos}
 
-HALLAZGOS DEL ANÁLISIS DE CÓDIGO (Agente 2):
-{output_agente_2}
+Para CADA dominio decide:
+- "veredicto": "positivo" si el contacto con ese dominio es REALMENTE preocupante para el propósito declarado
+  (exfiltración a un sitio sin justificación, acceso a datos sensibles innecesarios, dominio malicioso
+  según threat intel, etc.). "falso_positivo" si tiene una explicación benigna razonable
+  (ej. extensión de redes sociales contactando instagram.com).
+- "razon": 1-2 oraciones explicando por qué.
 
-PERMISOS DECLARADOS EN EL MANIFEST:
-{permisos}
+REGLAS:
+- Dominio marcado como malicioso por threat intel → SIEMPRE positivo.
+- Dominio que no tiene relación con el propósito declarado → positivo.
+- Dominio prioritario que coincide con la categoría de la extensión → falso_positivo.
 
-DOMINIOS SENSIBLES IDENTIFICADOS:
-{dominios_sensibles}
-
-Para cada hallazgo razona así:
-1. ¿Este comportamiento es necesario para el propósito declarado de la extensión?
-2. ¿El archivo que lo hace tiene el rol correcto?
-   (content_script haciendo cosas que solo debería hacer el background = sospechoso)
-3. ¿Los datos accedidos fluyen hacia dominios externos? ¿Cuáles?
-4. ¿Existe una explicación benigna razonable?
-
-EJEMPLOS DE RAZONAMIENTO:
-- html2canvas en extensión de mascota virtual → LEGÍTIMO (captura el estado del perrito en la página)
-- html2canvas capturando página de login → ABUSO (captura credenciales visibles en la pantalla)
-- keydown listener en popup → LEGÍTIMO (UX del popup, no captura teclas del sitio)
-- keydown listener en content_script enviando datos a servidor → ABUSO (keylogger)
-- fetch() a instagram.com desde extensión de redes sociales → INVESTIGAR (posible legítimo)
-- fetch() a instagram.com desde extensión de mascota virtual → ABUSO (sin justificación)
-- Código ofuscado en extensión funcional → SEÑAL DE ALERTA independiente del propósito
-
-Si no hay hallazgos o todos son legítimos, reporta evaluaciones vacías y veredicto "benigna".
-
-Responde en JSON exactamente así (sin texto adicional):
+Responde EXACTAMENTE con un JSON con esta forma (sin texto adicional):
 {
   "evaluaciones": [
-    {
-      "hallazgo": "descripción del hallazgo del Agente 2",
-      "archivo": "ruta/archivo.js",
-      "es_abuso": true,
-      "confianza": "alta|media|baja",
-      "razonamiento": "explicación detallada de por qué es o no un abuso",
-      "severidad_final": "critica|alta|media|baja|falso_positivo"
-    }
-  ],
-  "permisos_abusados": [
-    {
-      "permiso": "nombre del permiso de Chrome",
-      "como_se_abusa": "descripción de cómo se usa indebidamente",
-      "evidencia": "archivo:descripción específica"
-    }
-  ],
-  "veredicto_preliminar": "benigna|sospechosa|maliciosa",
-  "razon_veredicto": "explicación del veredicto en 1-2 oraciones"
-}`;
+    { "indice": 0, "veredicto": "positivo" | "falso_positivo", "razon": "..." }
+  ]
+}
 
-// ─── Validation helpers ───────────────────────────────────────────────────────
+DEBES devolver una entrada por cada hallazgo numerado en la lista, en el mismo orden.`;
 
-const VALID_VERDICTS = new Set(['benigna', 'sospechosa', 'maliciosa']);
-const VALID_SEVERITIES = new Set([
-  'critica',
-  'alta',
-  'media',
-  'baja',
-  'falso_positivo',
-]);
-const VALID_CONFIDENCE = new Set(['alta', 'media', 'baja']);
+const VALID_VERDICTS: VerdictPositive[] = ['positivo', 'falso_positivo'];
 
 @Injectable()
 export class Agent3AbuseService {
   constructor(
     private readonly llm: LlmClientService,
+    private readonly threatIntel: ThreatIntelService,
     private readonly logger: StructuredLogger,
   ) {}
 
   async analyze(
     agent1: Agent1Output,
-    agent2: Agent2Output,
-    manifest: ManifestInfo,
+    priority: DomainFinding[],
+    unknown: DomainFinding[],
     jobId: string,
-  ): Promise<Agent3Output> {
-    if (agent2.hallazgos.length === 0) {
-      this.logger.logWithJob(
-        jobId,
-        'info',
-        'Agent 3 — no findings from Agent 2, returning clean verdict',
-        'Agent3AbuseService',
-      );
-      return {
-        evaluaciones: [],
-        permisos_abusados: [],
-        veredicto_preliminar: 'benigna',
-        razon_veredicto:
-          'El Agente 2 no identificó hallazgos de comportamiento sospechoso.',
-      };
+  ): Promise<{
+    priority: VerdictedDomainFinding[];
+    unknown: VerdictedDomainFinding[];
+  }> {
+    if (priority.length === 0 && unknown.length === 0) {
+      return { priority: [], unknown: [] };
     }
 
-    // Build the context sections
-    const outputAgente1 = JSON.stringify(
+    // ── Threat-intel enrichment for unknown domains ───────────────────────────
+    const uniqueUnknownDomains = [...new Set(unknown.map((u) => u.domain))];
+    const tiByDomain = new Map<string, ThreatIntelResult[]>();
+    if (uniqueUnknownDomains.length > 0) {
+      try {
+        const tiResults = await this.threatIntel.queryDomains(
+          uniqueUnknownDomains,
+          jobId,
+        );
+        for (const r of tiResults) {
+          const list = tiByDomain.get(r.domain) ?? [];
+          list.push(r);
+          tiByDomain.set(r.domain, list);
+        }
+      } catch (err) {
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `Threat intel enrichment failed: ${err instanceof Error ? err.message : String(err)}`,
+          'Agent3AbuseService',
+        );
+      }
+    }
+
+    // ── Build single LLM payload covering BOTH lists with a global index ──────
+    const all: Array<{ kind: 'priority' | 'unknown'; idx: number; finding: DomainFinding; tiSummary?: string }> =
+      [
+        ...priority.map((finding, idx) => ({
+          kind: 'priority' as const,
+          idx,
+          finding,
+        })),
+        ...unknown.map((finding, idx) => ({
+          kind: 'unknown' as const,
+          idx,
+          finding,
+          tiSummary: this.summarizeThreatIntel(tiByDomain.get(finding.domain) ?? []),
+        })),
+      ];
+
+    const contextoAgente1 = JSON.stringify(
       {
         proposito: agent1.proposito,
         categoria: agent1.categoria,
         acciones_esperadas: agent1.acciones_esperadas,
-        acciones_NO_esperadas: agent1.acciones_NO_esperadas,
-        senales_alarma_manifest: agent1.senales_alarma_manifest,
-        nivel_riesgo_inicial: agent1.nivel_riesgo_inicial,
       },
       null,
       2,
     );
 
-    // Only pass hallazgos + obfuscation info to Agent 3 — it doesn't need the full domain list
-    const outputAgente2 = JSON.stringify(
-      {
-        hallazgos: agent2.hallazgos,
-        hay_ofuscacion: agent2.hay_ofuscacion,
-        archivos_ofuscados: agent2.archivos_ofuscados,
-        flujos_datos_sospechosos: agent2.flujos_datos_sospechosos,
-        apis_chrome_resumen: agent2.apis_chrome_resumen,
-      },
-      null,
-      2,
+    const hallazgosTexto = all
+      .map((entry, i) => {
+        const f = entry.finding;
+        return (
+          `[${i}] kind=${entry.kind} | domain=${f.domain} | category=${f.category} | ` +
+          `fileType=${f.fileType} | filePath=${f.filePath} | line=${f.line} | ` +
+          `discoveryType=${f.discoveryType}` +
+          (entry.tiSummary ? `\n    threatIntel: ${entry.tiSummary}` : '')
+        );
+      })
+      .join('\n');
+
+    const prompt = PROMPT.replace('{contexto_agente1}', contextoAgente1).replace(
+      '{hallazgos}',
+      hallazgosTexto,
     );
-
-    const permisos = JSON.stringify(
-      {
-        api_permissions: manifest.apiPermissions,
-        host_permissions: manifest.hostPermissions,
-      },
-      null,
-      2,
-    );
-
-    // Only show sensitive domains that go to Playwright — these are the ones
-    // that matter for evaluating if data is being sent to the wrong place
-    const dominiosSensibles =
-      agent2.dominios_para_playwright.length > 0
-        ? agent2.dominios_para_playwright
-            .map((d) => `  - ${d.domain} [${d.category}]: ${d.reasoning}`)
-            .join('\n')
-        : '  (ninguno identificado)';
-
-    const prompt = PROMPT.replace('{output_agente_1}', outputAgente1)
-      .replace('{output_agente_2}', outputAgente2)
-      .replace('{permisos}', permisos)
-      .replace('{dominios_sensibles}', dominiosSensibles);
 
     this.logger.logWithJob(
       jobId,
       'info',
-      `Agent 3 — evaluating ${agent2.hallazgos.length} findings`,
+      `Agent 3 — evaluating ${priority.length} priority + ${unknown.length} unknown domain findings`,
       'Agent3AbuseService',
     );
 
-    const raw = await this.llm.callLLM(prompt, jobId);
-    return this.validate(raw, jobId);
-  }
-
-  private validate(raw: unknown, jobId: string): Agent3Output {
-    const r = raw as Record<string, unknown>;
-
-    if (!r || typeof r !== 'object') {
-      throw new Error('Agent 3 returned non-object response');
-    }
-
-    const evaluaciones: Agent3Evaluation[] = [];
-    if (Array.isArray(r.evaluaciones)) {
-      for (const item of r.evaluaciones) {
-        const e = item as Partial<Agent3Evaluation>;
-        if (!e.hallazgo) continue;
-
-        evaluaciones.push({
-          hallazgo: String(e.hallazgo),
-          archivo: String(e.archivo ?? '(desconocido)'),
-          es_abuso: Boolean(e.es_abuso),
-          confianza: VALID_CONFIDENCE.has(e.confianza ?? '')
-            ? (e.confianza as Agent3Evaluation['confianza'])
-            : 'media',
-          razonamiento: String(e.razonamiento ?? ''),
-          severidad_final: VALID_SEVERITIES.has(e.severidad_final ?? '')
-            ? (e.severidad_final as Agent3Evaluation['severidad_final'])
-            : 'media',
-        });
-      }
-    }
-
-    const permisos_abusados: Agent3PermissionAbuse[] = [];
-    if (Array.isArray(r.permisos_abusados)) {
-      for (const item of r.permisos_abusados) {
-        const p = item as Partial<Agent3PermissionAbuse>;
-        if (!p.permiso) continue;
-        permisos_abusados.push({
-          permiso: String(p.permiso),
-          como_se_abusa: String(p.como_se_abusa ?? ''),
-          evidencia: String(p.evidencia ?? ''),
-        });
-      }
-    }
-
-    const veredicto = String(r.veredicto_preliminar ?? 'sospechosa');
-    if (!VALID_VERDICTS.has(veredicto)) {
+    let raw: unknown;
+    try {
+      raw = await this.llm.callLLM(prompt, jobId);
+    } catch (err) {
       this.logger.logWithJob(
         jobId,
         'warn',
-        `Agent 3 returned unexpected veredicto="${veredicto}", defaulting to "sospechosa"`,
+        `Agent 3 LLM call failed: ${err instanceof Error ? err.message : String(err)}`,
+        'Agent3AbuseService',
+      );
+      // Fail-open: priority domains are positive, unknowns inherit threat-intel signal
+      return {
+        priority: priority.map((f) => this.fallback(f, 'LLM no disponible — dominio prioritario marcado como positivo por defecto', 'positivo')),
+        unknown: unknown.map((f) => {
+          const ti = tiByDomain.get(f.domain) ?? [];
+          const malicious = ti.some((t) => t.isMalicious);
+          return this.fallback(
+            f,
+            malicious
+              ? 'Threat intel marcó el dominio como malicioso (LLM no disponible)'
+              : 'Sin información — LLM no disponible',
+            malicious ? 'positivo' : 'falso_positivo',
+            this.summarizeThreatIntel(ti),
+          );
+        }),
+      };
+    }
+
+    return this.mergeVerdicts(all, raw, jobId);
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  private mergeVerdicts(
+    all: Array<{ kind: 'priority' | 'unknown'; idx: number; finding: DomainFinding; tiSummary?: string }>,
+    raw: unknown,
+    jobId: string,
+  ): { priority: VerdictedDomainFinding[]; unknown: VerdictedDomainFinding[] } {
+    const r = raw as { evaluaciones?: Array<Record<string, unknown>> };
+    const byIndex = new Map<number, { veredicto: VerdictPositive; razon: string }>();
+
+    if (Array.isArray(r?.evaluaciones)) {
+      for (const e of r.evaluaciones) {
+        const i =
+          typeof e.indice === 'number'
+            ? e.indice
+            : Number.parseInt(String(e.indice ?? ''), 10);
+        if (!Number.isInteger(i) || i < 0 || i >= all.length) continue;
+        const veredicto = String(e.veredicto ?? 'positivo') as VerdictPositive;
+        byIndex.set(i, {
+          veredicto: VALID_VERDICTS.includes(veredicto) ? veredicto : 'positivo',
+          razon: String(e.razon ?? ''),
+        });
+      }
+    }
+
+    if (byIndex.size !== all.length) {
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `Agent 3 returned ${byIndex.size}/${all.length} verdicts; missing entries default to "positivo"`,
         'Agent3AbuseService',
       );
     }
 
-    return {
-      evaluaciones,
-      permisos_abusados,
-      veredicto_preliminar: VALID_VERDICTS.has(veredicto)
-        ? (veredicto as Agent3Output['veredicto_preliminar'])
-        : 'sospechosa',
-      razon_veredicto: String(r.razon_veredicto ?? ''),
-    };
+    const priorityOut: VerdictedDomainFinding[] = [];
+    const unknownOut: VerdictedDomainFinding[] = [];
+    for (let i = 0; i < all.length; i++) {
+      const entry = all[i];
+      const v = byIndex.get(i) ?? {
+        veredicto: 'positivo' as VerdictPositive,
+        razon: 'Agente 3 no emitió veredicto explícito',
+      };
+      const out: VerdictedDomainFinding = {
+        ...entry.finding,
+        veredicto: v.veredicto,
+        razon: v.razon,
+        threatIntelSummary: entry.tiSummary,
+      };
+      if (entry.kind === 'priority') priorityOut.push(out);
+      else unknownOut.push(out);
+    }
+
+    return { priority: priorityOut, unknown: unknownOut };
+  }
+
+  private fallback(
+    f: DomainFinding,
+    razon: string,
+    veredicto: VerdictPositive,
+    threatIntelSummary?: string,
+  ): VerdictedDomainFinding {
+    return { ...f, veredicto, razon, threatIntelSummary };
+  }
+
+  private summarizeThreatIntel(results: ThreatIntelResult[]): string {
+    if (results.length === 0) return 'sin información de threat intel';
+    const malicious = results.filter((r) => r.isMalicious);
+    if (malicious.length > 0) {
+      return `MALICIOSO según ${malicious.map((r) => r.provider).join(', ')}`;
+    }
+    const cats = [...new Set(results.flatMap((r) => r.categories ?? []))].slice(0, 4);
+    return cats.length > 0
+      ? `limpio — categorías: ${cats.join(', ')}`
+      : 'limpio según threat intel';
   }
 }

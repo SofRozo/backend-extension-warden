@@ -3,15 +3,32 @@ import * as parser from '@babel/parser';
 import _traverse from '@babel/traverse';
 import * as t from '@babel/types';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
-import {
-  StaticFinding,
-  DomSelector,
-} from '../../common/interfaces/analysis.interfaces.js';
 import { RISK_PATTERNS, type RiskPattern } from '../patterns/risk-patterns.js';
 import {
   FindingCategory,
   RiskLevel,
 } from '../../common/enums/risk-level.enum.js';
+
+// Internal contract — consumed only by StaticAnalysisService which translates
+// AstFinding/AstSelector into PreprocessingFinding entries for resultado1.
+export interface AstFinding {
+  category: FindingCategory;
+  pattern: string;
+  description: string;
+  severity: RiskLevel;
+  location: { file: string; line: number; column: number };
+  codeSnippet?: string;
+}
+
+export interface AstSelector {
+  selector: string;
+  method: string;
+  file: string;
+  line: number;
+}
+
+type StaticFinding = AstFinding;
+type DomSelector = AstSelector;
 
 const traverse =
   typeof _traverse === 'function'
