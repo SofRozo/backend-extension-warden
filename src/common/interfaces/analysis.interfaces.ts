@@ -10,6 +10,11 @@ export type FileRole =
   | 'content_script'
   | 'background'
   | 'popup'
+  | 'options_ui'
+  | 'devtools'
+  | 'sandbox'
+  | 'override_page'
+  | 'side_panel'
   | 'library'
   | 'unknown'
   | 'manifest';
@@ -58,6 +63,16 @@ export interface ManifestInfo {
   backgroundScripts: string[];
   serviceWorker?: string;
   popupUrl?: string;
+  /** options_ui.page or options_page — settings page */
+  optionsPage?: string;
+  /** devtools_page — hidden page for DevTools panels */
+  devtoolsPage?: string;
+  /** side_panel.default_path — persistent side panel */
+  sidePanelPath?: string;
+  /** sandbox.pages — pages that can use eval/inline script */
+  sandboxPages: string[];
+  /** chrome_url_overrides — newtab / history / bookmarks replacement */
+  chromeUrlOverrides: Record<string, string>;
   rawManifest: Record<string, unknown>;
 }
 

@@ -45,9 +45,13 @@ export class AnalysisProcessor extends WorkerHost {
   }
 
   async process(
-    job: Job<{ extensionId: string; jobId: string }>,
+    job: Job<{
+      extensionId: string;
+      jobId: string;
+      navigator?: 'stagehand' | 'intelligent_navigator';
+    }>,
   ): Promise<void> {
-    const { extensionId, jobId } = job.data;
+    const { extensionId, jobId, navigator } = job.data;
     const startTime = Date.now();
 
     this.logger.logWithJob(
@@ -138,6 +142,7 @@ export class AnalysisProcessor extends WorkerHost {
             preprocessed.resultado2_priority,
             proposito,
             jobId,
+            navigator,
           ),
           dynamicTimeoutMs,
           'Dynamic analysis timeout (RNF02: 180s exceeded)',

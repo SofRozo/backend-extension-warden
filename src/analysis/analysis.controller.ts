@@ -37,11 +37,13 @@ export class AnalysisController {
     const job = await this.analysisService.createAnalysisJob(
       dto.extensionId,
       dto.demo === true,
+      dto.navigator,
     );
     return {
       jobId: job.id,
       status: job.status,
       queue: dto.demo === true ? 'analysis-demo' : 'analysis',
+      navigator: dto.navigator ?? 'default (env)',
       message: 'Analysis job queued successfully',
     };
   }

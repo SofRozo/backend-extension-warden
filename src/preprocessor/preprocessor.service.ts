@@ -50,30 +50,43 @@ export class PreprocessorService {
     const roleMap = this.buildRoleMap(manifest);
     const remoteCodeViolations: RemoteCodeViolation[] = [];
 
-    // Classify JS files referenced from the popup HTML that are not declared
-    // in the manifest directly (e.g. bundled via <script src="...">) as 'popup'.
+    // Classify JS files referenced from HTML pages that are not declared
+    // in the manifest directly (e.g. bundled via <script src="...">).
     // Also collect external <script src="https://..."> tags as MV3 policy violations.
-    const { localScripts, externalScripts } = this.parsePopupScripts(
-      extractPath,
-      manifest.popupUrl,
-    );
-    for (const scriptPath of localScripts) {
-      if (!roleMap.has(scriptPath)) {
-        roleMap.set(scriptPath, 'popup');
+    const htmlPages = [
+      { url: manifest.popupUrl, role: 'popup' as FileRole },
+      { url: manifest.optionsPage, role: 'options_ui' as FileRole },
+      { url: manifest.devtoolsPage, role: 'devtools' as FileRole },
+      { url: manifest.sidePanelPath, role: 'side_panel' as FileRole },
+      ...manifest.sandboxPages.map((url) => ({ url, role: 'sandbox' as FileRole })),
+      ...Object.values(manifest.chromeUrlOverrides)
+        .filter((url) => typeof url === 'string')
+        .map((url) => ({ url, role: 'override_page' as FileRole })),
+    ];
+
+    for (const { url, role } of htmlPages) {
+      const { localScripts, externalScripts } = this.parseHtmlScripts(
+        extractPath,
+        url,
+      );
+      for (const scriptPath of localScripts) {
+        if (!roleMap.has(scriptPath)) {
+          roleMap.set(scriptPath, role);
+        }
       }
-    }
-    for (const src of externalScripts) {
-      remoteCodeViolations.push({
-        htmlFile: manifest.popupUrl ?? 'popup.html',
-        externalSrc: src,
-      });
-      if (manifest.manifestVersion === 3) {
-        this.logger.logWithJob(
-          jobId,
-          'warn',
-          `MV3 policy violation: external script "${src}" loaded from "${manifest.popupUrl}" — remote code execution is forbidden in Manifest V3`,
-          'PreprocessorService',
-        );
+      for (const src of externalScripts) {
+        remoteCodeViolations.push({
+          htmlFile: url ?? 'unknown.html',
+          externalSrc: src,
+        });
+        if (manifest.manifestVersion === 3 && role !== 'sandbox') {
+          this.logger.logWithJob(
+            jobId,
+            'warn',
+            `MV3 policy violation: external script "${src}" loaded from "${url}" — remote code execution is forbidden in Manifest V3`,
+            'PreprocessorService',
+          );
+        }
       }
     }
 
@@ -222,6 +235,20 @@ export class PreprocessorService {
         default_popup?: string;
       }) ?? {};
 
+    const optionsUi = (raw.options_ui as { page?: string }) ?? {};
+    const optionsPage = optionsUi.page ?? (raw.options_page as string | undefined);
+
+    const devtoolsPage = raw.devtools_page as string | undefined;
+
+    const sidePanel = (raw.side_panel as { default_path?: string }) ?? {};
+    const sidePanelPath = sidePanel.default_path;
+
+    const sandbox = (raw.sandbox as { pages?: string[] }) ?? {};
+    const sandboxPages = sandbox.pages ?? [];
+
+    const chromeUrlOverrides =
+      (raw.chrome_url_overrides as Record<string, string>) ?? {};
+
     return {
       manifestVersion: mv === 3 ? 3 : 2,
       name: (raw.name as string) ?? '',
@@ -234,6 +261,11 @@ export class PreprocessorService {
       backgroundScripts,
       serviceWorker,
       popupUrl: action.default_popup,
+      optionsPage,
+      devtoolsPage,
+      sidePanelPath,
+      sandboxPages,
+      chromeUrlOverrides,
       rawManifest: raw,
     };
   }
@@ -256,6 +288,23 @@ export class PreprocessorService {
     }
     if (manifest.popupUrl) {
       map.set(manifest.popupUrl.replace(/\\/g, '/'), 'popup');
+    }
+    if (manifest.optionsPage) {
+      map.set(manifest.optionsPage.replace(/\\/g, '/'), 'options_ui');
+    }
+    if (manifest.devtoolsPage) {
+      map.set(manifest.devtoolsPage.replace(/\\/g, '/'), 'devtools');
+    }
+    if (manifest.sidePanelPath) {
+      map.set(manifest.sidePanelPath.replace(/\\/g, '/'), 'side_panel');
+    }
+    for (const page of manifest.sandboxPages) {
+      map.set(page.replace(/\\/g, '/'), 'sandbox');
+    }
+    for (const page of Object.values(manifest.chromeUrlOverrides)) {
+      if (typeof page === 'string') {
+        map.set(page.replace(/\\/g, '/'), 'override_page');
+      }
     }
 
     return map;
@@ -291,6 +340,10 @@ export class PreprocessorService {
       lower === 'popup.js'
     )
       return 'popup';
+    if (lower.includes('options') || lower.includes('settings')) return 'options_ui';
+    if (lower.includes('devtools') || lower.includes('panel')) return 'devtools';
+    if (lower.includes('sandbox')) return 'sandbox';
+    if (lower.includes('sidepanel') || lower.includes('side_panel')) return 'side_panel';
     if (
       lower.includes('background') ||
       lower.includes('service-worker') ||
@@ -310,19 +363,19 @@ export class PreprocessorService {
   // ─── Popup HTML parsing ───────────────────────────────────────────────────────
 
   /**
-   * Reads the popup HTML and returns:
+   * Reads an HTML file and returns:
    * - localScripts: relative paths (from extension root) of local <script src="..."> tags,
-   *   used to assign the 'popup' role to bundled JS not declared directly in the manifest.
+   *   used to assign roles to bundled JS not declared directly in the manifest.
    * - externalScripts: full URLs of external <script src="https://..."> tags.
    *   In MV3, loading remote code from HTML is a policy violation and must be flagged.
    */
-  private parsePopupScripts(
+  private parseHtmlScripts(
     extractPath: string,
-    popupUrl: string | undefined,
+    htmlUrl: string | undefined,
   ): { localScripts: string[]; externalScripts: string[] } {
-    if (!popupUrl) return { localScripts: [], externalScripts: [] };
+    if (!htmlUrl) return { localScripts: [], externalScripts: [] };
 
-    const htmlPath = path.join(extractPath, popupUrl);
+    const htmlPath = path.join(extractPath, htmlUrl);
     let html: string;
     try {
       html = fs.readFileSync(htmlPath, 'utf-8');
@@ -330,7 +383,7 @@ export class PreprocessorService {
       return { localScripts: [], externalScripts: [] };
     }
 
-    const popupDir = path.dirname(popupUrl).replace(/\\/g, '/');
+    const popupDir = path.dirname(htmlUrl).replace(/\\/g, '/');
     const localScripts: string[] = [];
     const externalScripts: string[] = [];
     const scriptSrcRegex =

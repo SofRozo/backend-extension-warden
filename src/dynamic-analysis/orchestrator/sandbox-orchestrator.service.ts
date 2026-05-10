@@ -36,13 +36,17 @@ export class SandboxOrchestratorService {
     priorityFindings: DomainFinding[],
     proposito: string,
     jobId: string,
+    navigatorOverride?: 'stagehand' | 'intelligent_navigator',
   ): Promise<DynamicAnalysisResult> {
     const timeoutMs =
       this.config.get<number>('analysis.dynamicTimeoutMs') || 180000;
     const demoMode = this.config.get<boolean>('demo.enabled') || false;
     const demoSlowMo = this.config.get<number>('demo.slowMo') || 800;
-    const useStagehand =
-      this.config.get<boolean>('analysis.useStagehand') || false;
+
+    // Per-job override takes precedence over the global env var.
+    const useStagehand = navigatorOverride
+      ? navigatorOverride === 'stagehand'
+      : this.config.get<boolean>('analysis.useStagehand') || false;
     const startTime = Date.now();
 
     const navigatorName = useStagehand ? 'Stagehand' : 'IntelligentNavigator';
@@ -50,6 +54,7 @@ export class SandboxOrchestratorService {
       jobId,
       'info',
       `Starting dynamic analysis | navigator=${navigatorName}` +
+        (navigatorOverride ? ` (per-job override)` : ' (env default)') +
         (demoMode ? ' | DEMO MODE (headed browser visible, slowMo enabled)' : ' | headless'),
       'SandboxOrchestrator',
     );
