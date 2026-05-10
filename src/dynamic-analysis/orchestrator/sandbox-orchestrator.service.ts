@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as fs from 'fs';
-import * as path from 'path';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import {
   NetworkInterceptorService,
@@ -47,10 +45,12 @@ export class SandboxOrchestratorService {
       this.config.get<boolean>('analysis.useStagehand') || false;
     const startTime = Date.now();
 
+    const navigatorName = useStagehand ? 'Stagehand' : 'IntelligentNavigator';
     this.logger.logWithJob(
       jobId,
       'info',
-      `Starting dynamic analysis${demoMode ? ' [DEMO MODE — headed browser]' : ''}`,
+      `Starting dynamic analysis | navigator=${navigatorName}` +
+        (demoMode ? ' | DEMO MODE (headed browser visible, slowMo enabled)' : ' | headless'),
       'SandboxOrchestrator',
     );
 
@@ -59,7 +59,7 @@ export class SandboxOrchestratorService {
     this.logger.logWithJob(
       jobId,
       'info',
-      `Visiting ${targets.length} priority domain(s)`,
+      `Visiting ${targets.length} priority domain(s) with ${navigatorName}`,
       'SandboxOrchestrator',
     );
 
@@ -170,38 +170,33 @@ export class SandboxOrchestratorService {
   ): Promise<SandboxDomainObservation> {
     const page = await browser.newPage();
     this.setupPageInterception(page, collector);
-    await this.setupScreenshots(page, jobId, target.domain, collector);
     await this.setupApiInterception(page, extensionId);
 
     collector.setContext('DIRECT_NAVIGATION');
 
     try {
-      let observation: SandboxDomainObservation;
-      if (useStagehand) {
-        observation = await this.stagehand.navigateDomain(
-          page,
-          browser,
-          target.domain,
-          target.category as any,
-          proposito,
-          jobId,
-        );
-      } else {
-        observation = await this.intelligentNavigator.navigateDomain(
-          page,
-          browser,
-          target.domain,
-          target.category as any,
-          proposito,
-          jobId,
-        );
-      }
+      const observation: SandboxDomainObservation = useStagehand
+        ? await this.stagehand.navigateDomain(
+            page,
+            browser,
+            target.domain,
+            target.category as any,
+            proposito,
+            jobId,
+          )
+        : await this.intelligentNavigator.navigateDomain(
+            page,
+            browser,
+            target.domain,
+            target.category as any,
+            proposito,
+            jobId,
+          );
 
       for (const obs of observation.observations ?? []) {
-        collector.onLog('Navigator', obs, 'info');
+        collector.onLog(`Navigator:${observation.navigatorUsed}`, obs, 'info');
       }
 
-      await this.takePageScreenshot(page, 'final', collector);
       await this.collectPageEvidence(page, collector);
       return observation;
     } catch (err) {
@@ -210,8 +205,10 @@ export class SandboxOrchestratorService {
       return {
         domain: target.domain,
         url: `https://${target.domain}`,
+        navigatorUsed: useStagehand ? 'stagehand' : 'intelligent_navigator',
         observations: [msg],
         actionsPerformed: [],
+        agentSteps: [],
         requestsToThisDomain: 0,
         domModificationsDetected: false,
         credentialsSubmitted: false,
@@ -241,69 +238,6 @@ export class SandboxOrchestratorService {
   }
 
   // ─── Page setup helpers ───────────────────────────────────────────────────
-
-  private async setupScreenshots(
-    page: any,
-    jobId: string,
-    label: string,
-    collector: EvidenceCollector,
-  ): Promise<void> {
-    const baseDir =
-      this.config.get<string>('analysis.screenshotsDir') ||
-      '/tmp/ext-sandbox/screenshots';
-    const dir = path.join(baseDir, jobId);
-    fs.mkdirSync(dir, { recursive: true });
-    try {
-      fs.chmodSync(dir, 0o777);
-    } catch {
-      /* ignore on Windows */
-    }
-    let idx = 0;
-    page.__screenshotDir = dir;
-    page.__screenshotLabel = label;
-    page.__screenshotIndex = () => idx++;
-
-    await page.exposeFunction(
-      '__extSandboxCriticalMutation',
-      async (reason: string) => {
-        const filePath = path.join(dir, `${label}_critical_${idx++}_${reason}.png`);
-        try {
-          await page.screenshot({ path: filePath, fullPage: false });
-          try {
-            fs.chmodSync(filePath, 0o666);
-          } catch {
-            /* ignore */
-          }
-          collector.addScreenshot(filePath);
-        } catch {
-          /* page might have navigated */
-        }
-      },
-    );
-  }
-
-  private async takePageScreenshot(
-    page: any,
-    suffix: string,
-    collector: EvidenceCollector,
-  ): Promise<void> {
-    const dir: string = page.__screenshotDir;
-    const label: string = page.__screenshotLabel ?? 'page';
-    const getIndex: () => number = page.__screenshotIndex ?? (() => 0);
-    if (!dir) return;
-    const filePath = path.join(dir, `${label}_${getIndex()}_${suffix}.png`);
-    try {
-      await page.screenshot({ path: filePath, fullPage: false });
-      try {
-        fs.chmodSync(filePath, 0o666);
-      } catch {
-        /* ignore */
-      }
-      collector.addScreenshot(filePath);
-    } catch {
-      /* best effort */
-    }
-  }
 
   private async setupApiInterception(page: any, extensionId: string): Promise<void> {
     void extensionId;

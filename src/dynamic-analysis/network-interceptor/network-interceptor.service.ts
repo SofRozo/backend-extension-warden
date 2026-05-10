@@ -22,7 +22,6 @@ export class EvidenceCollector {
   private domMutations: DomMutation[] = [];
   private keyboardEvents: KbEvent[] = [];
   private apiCalls: ApiCall[] = [];
-  private screenshotPaths: string[] = [];
   private logs: Array<{
     module: string;
     message: string;
@@ -115,10 +114,6 @@ export class EvidenceCollector {
     this.baselineMutations = mutations;
   }
 
-  addScreenshot(path: string): void {
-    this.screenshotPaths.push(path);
-  }
-
   onLog(module: string, message: string, level: string = 'info'): void {
     this.logs.push({ module, message, level, timestamp: Date.now() });
   }
@@ -129,7 +124,6 @@ export class EvidenceCollector {
       domMutations: this.domMutations,
       keyboardEvents: this.keyboardEvents,
       apiCalls: this.apiCalls,
-      screenshotPaths: this.screenshotPaths,
       logs: this.logs,
     };
   }

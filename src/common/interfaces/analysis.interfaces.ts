@@ -175,7 +175,6 @@ export interface DynamicEvidence {
   domMutations: DomMutation[];
   keyboardEvents: KeyboardEvent[];
   apiCalls: ApiCall[];
-  screenshotPaths?: string[];
   logs?: Array<{
     module: string;
     message: string;
@@ -191,14 +190,36 @@ export interface DynamicEvidence {
 export interface SandboxDomainObservation {
   domain: string;
   url: string;
+  /** Which agent drove Playwright on this domain — useful to compare runs. */
+  navigatorUsed: 'stagehand' | 'intelligent_navigator';
   observations: string[];
   actionsPerformed: string[];
+  /**
+   * Per-step timeline emitted by the agent. Each entry includes the LLM's
+   * decision (action + reasoning) and the result of executing it.
+   */
+  agentSteps: AgentStep[];
   requestsToThisDomain: number;
   domModificationsDetected: boolean;
   credentialsSubmitted: boolean;
   /** True when the navigator injected a storageState cookie file */
   honeypotSessionUsed: boolean;
   error?: string;
+}
+
+export interface AgentStep {
+  step: number;
+  /** What the agent perceived from the page */
+  observation: string;
+  /** Action proposed by the LLM: 'click' | 'type' | 'navigate' | 'wait' | 'observe' | 'extract' | 'done' */
+  action: string;
+  /** Element/value targeted by the action */
+  target?: string;
+  /** LLM's stated reasoning for this decision */
+  reasoning: string;
+  /** Outcome of executing the action: 'success' | 'failed' | 'no-op' */
+  result: string;
+  timestamp: number;
 }
 
 export interface DynamicAnalysisResult {
@@ -304,4 +325,20 @@ export interface AnalysisReport {
     resultado2_unknown: VerdictedDomainFinding[];
     resultado_dinamico: DynamicVerdictedFinding[];
   };
+  /**
+   * Step-by-step record of what the agent (Stagehand or IntelligentNavigator)
+   * decided and executed per priority domain. Lets the frontend show a live
+   * timeline and lets the user compare agents side by side.
+   */
+  navegacionDominios: DomainNavigationLog[];
+}
+
+export interface DomainNavigationLog {
+  domain: string;
+  url: string;
+  navigatorUsed: 'stagehand' | 'intelligent_navigator';
+  honeypotSessionUsed: boolean;
+  agentSteps: AgentStep[];
+  actionsPerformed: string[];
+  error?: string;
 }

@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { LlmClientService } from '../../agents/llm/llm-client.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type { DomainCategory } from '../../agents/interfaces/agents.interfaces.js';
-import type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
+import type {
+  AgentStep,
+  SandboxDomainObservation,
+} from '../../common/interfaces/analysis.interfaces.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -134,13 +137,15 @@ export class IntelligentNavigatorService {
     const url = `https://${domain}`;
     const observations: string[] = [];
     const actionsPerformed: string[] = [];
+    const agentSteps: AgentStep[] = [];
     let credentialsSubmitted = false;
     let domModificationsDetected = false;
 
+    const tag = `Navigator|${domain}`;
     this.logger.logWithJob(
       jobId,
       'info',
-      `Navigator — starting ${domain} (${category})`,
+      `[${tag}] starting (category=${category})`,
       'IntelligentNavigator',
     );
 
@@ -150,21 +155,30 @@ export class IntelligentNavigatorService {
       domain,
       jobId,
     );
+    if (honeypotSessionUsed) {
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `[${tag}] honeypot session injected (cookies + localStorage)`,
+        'IntelligentNavigator',
+      );
+    }
 
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
       if (honeypotSessionUsed) {
         await this.restoreLocalStorage(page);
       }
-      await page.waitForTimeout(STEP_WAIT_MS); // Let extension activate
+      await page.waitForTimeout(STEP_WAIT_MS);
     } catch (err) {
       const msg = `Failed to load ${url}: ${err instanceof Error ? err.message : String(err)}`;
-      this.logger.logWithJob(jobId, 'warn', msg, 'IntelligentNavigator');
+      this.logger.logWithJob(jobId, 'warn', `[${tag}] ${msg}`, 'IntelligentNavigator');
       return this.buildObservation(
         domain,
         url,
         [msg],
         [],
+        agentSteps,
         0,
         false,
         false,
@@ -179,6 +193,14 @@ export class IntelligentNavigatorService {
     for (let step = 0; step < MAX_STEPS_PER_DOMAIN; step++) {
       try {
         const snapshot = await this.takeSnapshot(page);
+        const snapSummary = this.summarizeSnapshot(snapshot);
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          `[${tag}|paso ${step + 1}] snapshot: ${snapSummary}`,
+          'IntelligentNavigator',
+        );
+
         const action = await this.getNextAction(
           snapshot,
           task,
@@ -187,11 +209,37 @@ export class IntelligentNavigatorService {
           jobId,
         );
 
+        const target = action.element_text ?? action.selector ?? action.url ?? '';
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          `[${tag}|paso ${step + 1}] LLM decidió: action=${action.action} target="${target}"` +
+            (action.value ? ` value="${action.value.slice(0, 40)}"` : '') +
+            ` | razón: ${action.reasoning}`,
+          'IntelligentNavigator',
+        );
+
         observations.push(`[${step + 1}] ${action.observation}`);
 
-        if (action.action === 'done') break;
+        if (action.action === 'done') {
+          agentSteps.push({
+            step: step + 1,
+            observation: action.observation,
+            action: 'done',
+            reasoning: action.reasoning,
+            result: 'no-op',
+            timestamp: Date.now(),
+          });
+          this.logger.logWithJob(
+            jobId,
+            'info',
+            `[${tag}|paso ${step + 1}] ejecutado: done — fin del bucle`,
+            'IntelligentNavigator',
+          );
+          break;
+        }
 
-        const { submitted, mutationsAdded } = await this.executeAction(
+        const { submitted, mutationsAdded, success } = await this.executeAction(
           page,
           action,
           actionsPerformed,
@@ -200,11 +248,30 @@ export class IntelligentNavigatorService {
         if (submitted) credentialsSubmitted = true;
         if (mutationsAdded) domModificationsDetected = true;
 
+        const result = success ? 'success' : 'failed';
+        agentSteps.push({
+          step: step + 1,
+          observation: action.observation,
+          action: action.action,
+          target,
+          reasoning: action.reasoning,
+          result,
+          timestamp: Date.now(),
+        });
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          `[${tag}|paso ${step + 1}] ejecutado: ${result}` +
+            (mutationsAdded ? ' | mutó DOM' : '') +
+            (submitted ? ' | credenciales enviadas' : ''),
+          'IntelligentNavigator',
+        );
+
         await page.waitForTimeout(STEP_WAIT_MS);
       } catch (err) {
         const msg = `Step ${step + 1} error: ${err instanceof Error ? err.message : String(err)}`;
         observations.push(msg);
-        this.logger.logWithJob(jobId, 'warn', msg, 'IntelligentNavigator');
+        this.logger.logWithJob(jobId, 'warn', `[${tag}] ${msg}`, 'IntelligentNavigator');
         break;
       }
     }
@@ -239,16 +306,45 @@ export class IntelligentNavigatorService {
       'IntelligentNavigator',
     );
 
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `[${tag}] finished: ${actionsPerformed.length} actions, ${observations.length} observations, ` +
+        `${requestsAfter - requestsBefore} new requests to host`,
+      'IntelligentNavigator',
+    );
+
     return this.buildObservation(
       domain,
       url,
       observations,
       actionsPerformed,
+      agentSteps,
       requestsAfter - requestsBefore,
       domModificationsDetected,
       credentialsSubmitted,
       honeypotSessionUsed,
     );
+  }
+
+  /** Compact 1-line summary of the page snapshot for log noise reduction. */
+  private summarizeSnapshot(snapshotJson: string): string {
+    try {
+      const s = JSON.parse(snapshotJson) as {
+        url?: string;
+        title?: string;
+        inputs?: unknown[];
+        buttons?: unknown[];
+        iframes?: unknown[];
+      };
+      return (
+        `url=${s.url ?? '?'} | title="${(s.title ?? '').slice(0, 40)}" | ` +
+        `${s.inputs?.length ?? 0} inputs, ${s.buttons?.length ?? 0} buttons, ` +
+        `${s.iframes?.length ?? 0} iframes`
+      );
+    } catch {
+      return 'snapshot inválido';
+    }
   }
 
   // ─── Honeypot session helpers ─────────────────────────────────────────────
@@ -423,9 +519,10 @@ export class IntelligentNavigatorService {
     action: NavigatorAction,
     actionsPerformed: string[],
     jobId: string,
-  ): Promise<{ submitted: boolean; mutationsAdded: boolean }> {
+  ): Promise<{ submitted: boolean; mutationsAdded: boolean; success: boolean }> {
     let submitted = false;
     let mutationsAdded = false;
+    let success = false;
 
     try {
       switch (action.action) {
@@ -438,6 +535,7 @@ export class IntelligentNavigatorService {
               })
               .catch(() => {});
             actionsPerformed.push(`navigate:${action.url}`);
+            success = true;
           }
           break;
 
@@ -447,10 +545,12 @@ export class IntelligentNavigatorService {
             action.element_text,
             action.selector,
           );
-          if (clicked)
+          if (clicked) {
             actionsPerformed.push(
               `click:${action.element_text ?? action.selector}`,
             );
+            success = true;
+          }
           break;
         }
 
@@ -469,6 +569,7 @@ export class IntelligentNavigatorService {
               if (action.value === FAKE_EMAIL || action.value === FAKE_PASSWORD)
                 submitted = true;
               mutationsAdded = true;
+              success = true;
             }
           }
           break;
@@ -477,6 +578,7 @@ export class IntelligentNavigatorService {
         case 'wait':
           await page.waitForTimeout(3000);
           actionsPerformed.push('wait:3s');
+          success = true;
           break;
 
         case 'done':
@@ -491,7 +593,7 @@ export class IntelligentNavigatorService {
       );
     }
 
-    return { submitted, mutationsAdded };
+    return { submitted, mutationsAdded, success };
   }
 
   private async clickElement(
@@ -637,6 +739,7 @@ export class IntelligentNavigatorService {
     url: string,
     observations: string[],
     actionsPerformed: string[],
+    agentSteps: AgentStep[],
     requestsToThisDomain: number,
     domModificationsDetected: boolean,
     credentialsSubmitted: boolean,
@@ -646,8 +749,10 @@ export class IntelligentNavigatorService {
     return {
       domain,
       url,
+      navigatorUsed: 'intelligent_navigator',
       observations,
       actionsPerformed,
+      agentSteps,
       requestsToThisDomain,
       domModificationsDetected,
       credentialsSubmitted,

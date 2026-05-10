@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 /**
- * Default base dir for ephemeral analysis artifacts (CRX, extracted, screenshots).
+ * Default base dir for ephemeral analysis artifacts (CRX downloads, extracted files).
  * On Linux/Docker keeps /tmp/ext-sandbox so existing volumes/tmpfs mounts work.
  * On Windows native falls back to OS temp folder so paths actually exist.
  */
@@ -39,9 +39,6 @@ export default () => ({
       process.env.CRX_DOWNLOAD_DIR || path.join(defaultEphemeralBase(), 'crx'),
     extractDir:
       process.env.EXTRACT_DIR || path.join(defaultEphemeralBase(), 'extracted'),
-    screenshotsDir:
-      process.env.SCREENSHOTS_DIR ||
-      path.join(defaultEphemeralBase(), 'screenshots'),
     useStagehand: process.env.ANALYSIS_USE_STAGEHAND === 'true',
   },
   threatIntel: {

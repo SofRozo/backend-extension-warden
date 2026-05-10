@@ -201,6 +201,7 @@ export class AnalysisProcessor extends WorkerHost {
           crxHash: preprocessed.crxHash,
         },
         agentAnalysis,
+        dynamicResult?.domainObservations ?? [],
       );
 
       // Strip U+0000 (PostgreSQL JSONB rejects null bytes)

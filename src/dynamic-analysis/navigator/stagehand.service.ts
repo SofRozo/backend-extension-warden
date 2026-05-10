@@ -7,7 +7,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type { DomainCategory } from '../../agents/interfaces/agents.interfaces.js';
-import type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
+import type {
+  AgentStep,
+  SandboxDomainObservation,
+} from '../../common/interfaces/analysis.interfaces.js';
 
 @Injectable()
 export class StagehandService {
@@ -36,126 +39,183 @@ export class StagehandService {
     proposito: string,
     jobId: string,
   ): Promise<SandboxDomainObservation> {
+    const tag = `Stagehand|${domain}`;
     this.logger.logWithJob(
       jobId,
       'info',
-      `Stagehand — starting analysis of ${domain}`,
+      `[${tag}] starting (category=${category})`,
       'StagehandService',
     );
 
     const url = `https://${domain}`;
     const observations: string[] = [];
     const actionsPerformed: string[] = [];
+    const agentSteps: AgentStep[] = [];
+    let stepCounter = 0;
 
-    // Inject honeypot session (cookies + localStorage) before any navigation
-    // so the extension sees a logged-in user from the very first request.
     const honeypotSessionUsed = await this.injectHoneypotSession(
       browserContext,
       page,
       domain,
       jobId,
     );
+    if (honeypotSessionUsed) {
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `[${tag}] honeypot session injected (cookies + localStorage)`,
+        'StagehandService',
+      );
+    }
 
     let stagehand: Stagehand | undefined;
     try {
       const stagehandOpts = this.buildStagehandOptions();
       stagehand = new Stagehand(stagehandOpts);
-      // init() bootstraps the LLM client and its own internal browser.
-      // We pass { page } to each method to target the sandbox page (extension loaded).
       await stagehand.init();
 
       await page
         .goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 })
         .catch(() => {});
 
-      // Restore localStorage AFTER navigation (storage is per-origin)
       if (honeypotSessionUsed) {
         await this.restoreLocalStorage(page, domain, jobId);
       }
 
-      // observe() returns Action[] — potential actions identified on the page
+      // ── observe ────────────────────────────────────────────────────────
+      const observePrompt =
+        `Identifica elementos de login, formularios sensibles o campos de datos personales en ${domain} ` +
+        `relacionados con el propósito declarado: "${proposito}"`;
+      stepCounter++;
       this.logger.logWithJob(
         jobId,
         'info',
-        `Stagehand — observing ${domain}`,
+        `[${tag}|paso ${stepCounter}] observe → "${observePrompt.slice(0, 100)}…"`,
         'StagehandService',
       );
       const actions = await stagehand
-        .observe(
-          `Identifica elementos de login, formularios sensibles o campos de datos personales en ${domain} ` +
-            `relacionados con el propósito declarado: "${proposito}"`,
-          { page },
-        )
+        .observe(observePrompt, { page })
         .catch(() => []);
-
-      if (actions.length > 0) {
-        const summary = actions
-          .slice(0, 5)
-          .map((a) => a.description)
-          .join('; ');
-        observations.push(`Elementos identificados: ${summary}`);
-      }
+      const observeSummary =
+        actions.length > 0
+          ? actions
+              .slice(0, 5)
+              .map((a) => a.description)
+              .join('; ')
+          : 'sin elementos relevantes';
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `[${tag}|paso ${stepCounter}] observe ← ${actions.length} elemento(s): ${observeSummary}`,
+        'StagehandService',
+      );
+      observations.push(`[${stepCounter}] Elementos identificados: ${observeSummary}`);
+      agentSteps.push({
+        step: stepCounter,
+        observation: observeSummary,
+        action: 'observe',
+        target: observePrompt.slice(0, 80),
+        reasoning: `Stagehand identifica elementos relevantes para "${proposito}"`,
+        result: actions.length > 0 ? 'success' : 'no-op',
+        timestamp: Date.now(),
+      });
 
       const isSensitive =
-        category === 'sensible_financiero' || category === 'sensible_identidad';
+        category === 'sensible_financiero' ||
+        category === 'sensible_identidad' ||
+        category === 'sensible_llm';
 
+      // ── act ────────────────────────────────────────────────────────────
       if (isSensitive) {
-        this.logger.logWithJob(
+        stepCounter = await this.runAct(
+          stagehand,
+          page,
+          stepCounter,
+          tag,
           jobId,
-          'info',
-          'Stagehand — testing login form with honeypot credentials',
-          'StagehandService',
+          actionsPerformed,
+          agentSteps,
+          'Busca el campo de correo electrónico o nombre de usuario y escribe "test_extwarden@mailtest.com"',
+          'type:honeypot_email',
+          'Probar si el formulario captura credenciales del honeypot',
         );
 
-        const emailAct = await stagehand
-          .act(
-            'Busca el campo de correo electrónico o nombre de usuario y escribe "test_extwarden@mailtest.com"',
-            { page },
-          )
-          .catch(() => ({ success: false }));
+        if (actionsPerformed.includes('type:honeypot_email')) {
+          stepCounter = await this.runAct(
+            stagehand,
+            page,
+            stepCounter,
+            tag,
+            jobId,
+            actionsPerformed,
+            agentSteps,
+            'Busca el campo de contraseña y escribe "ExTw4rd3n_F4ke!"',
+            'type:honeypot_password',
+            'Completar el segundo factor del formulario para forzar submit',
+          );
 
-        if (emailAct.success) {
-          actionsPerformed.push('type:honeypot_email');
-
-          const passAct = await stagehand
-            .act('Busca el campo de contraseña y escribe "ExTw4rd3n_F4ke!"', {
+          if (actionsPerformed.includes('type:honeypot_password')) {
+            stepCounter = await this.runAct(
+              stagehand,
               page,
-            })
-            .catch(() => ({ success: false }));
-
-          if (passAct.success) {
-            actionsPerformed.push('type:honeypot_password');
-            await stagehand
-              .act(
-                'Haz clic en el botón de Iniciar Sesión, Login o Continuar',
-                { page },
-              )
-              .catch(() => {});
-            actionsPerformed.push('click:submit');
+              stepCounter,
+              tag,
+              jobId,
+              actionsPerformed,
+              agentSteps,
+              'Haz clic en el botón de Iniciar Sesión, Login o Continuar',
+              'click:submit',
+              'Disparar el submit para observar si la extensión intercepta',
+            );
           }
         }
       } else {
-        await stagehand
-          .act(
-            'Explora la página principal buscando secciones de configuración, perfil de usuario o paneles de control.',
-            { page },
-          )
-          .catch(() => {});
-        actionsPerformed.push('act:exploration');
+        stepCounter = await this.runAct(
+          stagehand,
+          page,
+          stepCounter,
+          tag,
+          jobId,
+          actionsPerformed,
+          agentSteps,
+          'Explora la página principal buscando secciones de configuración, perfil de usuario o paneles de control.',
+          'act:exploration',
+          'Estimular interacción genérica para que la extensión actúe',
+        );
       }
 
+      // ── extract ────────────────────────────────────────────────────────
       const ExtensionImpactSchema = z.object({
         detectado: z.boolean(),
         descripcion: z.string(),
       });
-
+      const extractPrompt =
+        '¿La extensión del navegador inyectó algún elemento visual, modificó formularios, o alteró el comportamiento de la página?';
+      stepCounter++;
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `[${tag}|paso ${stepCounter}] extract → "${extractPrompt.slice(0, 100)}…"`,
+        'StagehandService',
+      );
       const finalSummary = await stagehand
-        .extract(
-          '¿La extensión del navegador inyectó algún elemento visual, modificó formularios, o alteró el comportamiento de la página?',
-          ExtensionImpactSchema,
-          { page },
-        )
+        .extract(extractPrompt, ExtensionImpactSchema, { page })
         .catch(() => ({ detectado: false, descripcion: '' }));
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `[${tag}|paso ${stepCounter}] extract ← detectado=${finalSummary.detectado} desc="${finalSummary.descripcion}"`,
+        'StagehandService',
+      );
+      agentSteps.push({
+        step: stepCounter,
+        observation: finalSummary.descripcion || 'sin impacto visible',
+        action: 'extract',
+        target: extractPrompt.slice(0, 80),
+        reasoning: 'Resumir el impacto visible de la extensión sobre la página',
+        result: finalSummary.detectado ? 'success' : 'no-op',
+        timestamp: Date.now(),
+      });
 
       if (finalSummary.detectado) {
         observations.push(
@@ -163,11 +223,20 @@ export class StagehandService {
         );
       }
 
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `[${tag}] finished: ${actionsPerformed.length} actions, ${observations.length} observations`,
+        'StagehandService',
+      );
+
       return {
         domain,
         url,
+        navigatorUsed: 'stagehand',
         observations,
         actionsPerformed,
+        agentSteps,
         requestsToThisDomain: 0,
         domModificationsDetected: !!finalSummary.detectado,
         credentialsSubmitted:
@@ -176,12 +245,14 @@ export class StagehandService {
       };
     } catch (err) {
       const msg = `Stagehand failed for ${domain}: ${err instanceof Error ? err.message : String(err)}`;
-      this.logger.logWithJob(jobId, 'warn', msg, 'StagehandService');
+      this.logger.logWithJob(jobId, 'warn', `[${tag}] ${msg}`, 'StagehandService');
       return {
         domain,
         url,
+        navigatorUsed: 'stagehand',
         observations: [msg],
         actionsPerformed: [],
+        agentSteps,
         requestsToThisDomain: 0,
         domModificationsDetected: false,
         credentialsSubmitted: false,
@@ -191,6 +262,53 @@ export class StagehandService {
     } finally {
       await stagehand?.close().catch(() => {});
     }
+  }
+
+  /**
+   * Wrapper around stagehand.act() that logs the prompt, the outcome and
+   * registers the step into agentSteps. Mutates actionsPerformed when the
+   * action succeeds. Returns the next step counter.
+   */
+  private async runAct(
+    stagehand: Stagehand,
+    page: any,
+    stepCounter: number,
+    tag: string,
+    jobId: string,
+    actionsPerformed: string[],
+    agentSteps: AgentStep[],
+    prompt: string,
+    actionLabel: string,
+    reasoning: string,
+  ): Promise<number> {
+    const next = stepCounter + 1;
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `[${tag}|paso ${next}] act → "${prompt.slice(0, 100)}…" | razón: ${reasoning}`,
+      'StagehandService',
+    );
+    const res = await stagehand
+      .act(prompt, { page })
+      .catch(() => ({ success: false }));
+    const success = (res as { success?: boolean }).success === true;
+    this.logger.logWithJob(
+      jobId,
+      'info',
+      `[${tag}|paso ${next}] act ← ${success ? 'success' : 'failed'} | ${actionLabel}`,
+      'StagehandService',
+    );
+    if (success) actionsPerformed.push(actionLabel);
+    agentSteps.push({
+      step: next,
+      observation: success ? `acción ejecutada: ${actionLabel}` : 'acción no ejecutada',
+      action: 'act',
+      target: prompt.slice(0, 80),
+      reasoning,
+      result: success ? 'success' : 'failed',
+      timestamp: Date.now(),
+    });
+    return next;
   }
 
   // ─── Honeypot session helpers ─────────────────────────────────────────────

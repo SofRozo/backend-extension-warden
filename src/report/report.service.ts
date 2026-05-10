@@ -6,6 +6,8 @@ import {
   VerdictedStaticFinding,
   VerdictedDomainFinding,
   DynamicVerdictedFinding,
+  DomainNavigationLog,
+  SandboxDomainObservation,
 } from '../common/interfaces/analysis.interfaces.js';
 
 const FILE_TYPE_LABEL: Record<string, string> = {
@@ -27,11 +29,24 @@ export class ReportService {
     analysisDuration: number,
     metadata: { name?: string; version?: string; author?: string; crxHash: string },
     agentAnalysis: AgentAnalysisResult,
+    domainObservations: SandboxDomainObservation[] = [],
   ): AnalysisReport {
     const resultado1 = agentAnalysis.agent2 ?? [];
     const priority = agentAnalysis.agent3?.priority ?? [];
     const unknown = agentAnalysis.agent3?.unknown ?? [];
     const dinamico = agentAnalysis.agent4 ?? [];
+
+    const navegacionDominios: DomainNavigationLog[] = domainObservations.map(
+      (o) => ({
+        domain: o.domain,
+        url: o.url,
+        navigatorUsed: o.navigatorUsed,
+        honeypotSessionUsed: o.honeypotSessionUsed,
+        agentSteps: o.agentSteps,
+        actionsPerformed: o.actionsPerformed,
+        error: o.error,
+      }),
+    );
 
     const dominios = this.uniqueDomainsFromPriority(priority);
     const hallazgosEstaticos = resultado1
@@ -73,6 +88,7 @@ export class ReportService {
         resultado2_unknown: unknown,
         resultado_dinamico: dinamico,
       },
+      navegacionDominios,
     };
   }
 
