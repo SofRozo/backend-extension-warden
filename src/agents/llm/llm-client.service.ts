@@ -33,7 +33,7 @@ export class LlmClientService {
       config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
     this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
-    this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 120_000;
+    this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 600_000;
   }
 
   /** Returns false when neither Ollama nor Gemini is configured. */
@@ -88,7 +88,6 @@ export class LlmClientService {
           prompt +
           '\n\nResponde SOLO con JSON válido. Sin texto adicional ni bloques de código markdown.',
         stream: false,
-        format: 'json',
       },
       { timeout: this.timeoutMs },
     );

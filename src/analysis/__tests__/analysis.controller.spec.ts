@@ -41,6 +41,7 @@ describe('AnalysisController', () => {
       expect(mockService.createAnalysisJob).toHaveBeenCalledWith(
         'ext-abc',
         false,
+        undefined,
       );
     });
   });

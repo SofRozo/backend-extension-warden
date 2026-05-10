@@ -37,6 +37,7 @@ export class StagehandService {
     domain: string,
     category: DomainCategory,
     proposito: string,
+    extensionPath: string,
     jobId: string,
   ): Promise<SandboxDomainObservation> {
     const tag = `Stagehand|${domain}`;
@@ -70,12 +71,13 @@ export class StagehandService {
 
     let stagehand: Stagehand | undefined;
     try {
-      const stagehandOpts = this.buildStagehandOptions();
+      const stagehandOpts = this.buildStagehandOptions(extensionPath);
       stagehand = new Stagehand(stagehandOpts);
       await stagehand.init();
+      const page = (stagehand as any).page;
 
       await page
-        .goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 })
+        .goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 })
         .catch(() => {});
 
       if (honeypotSessionUsed) {
@@ -95,29 +97,39 @@ export class StagehandService {
       );
       const actions = await stagehand
         .observe(observePrompt, { page })
-        .catch(() => []);
+        .catch((e) => {
+          this.logger.logWithJob(
+            jobId,
+            'error',
+            `[Stagehand] Error en observe: ${e.message || String(e)}`,
+            'StagehandService',
+          );
+          observations.push(`Error en observe: ${e.message || String(e)}`);
+          return [];
+        });
+
       const observeSummary =
         actions.length > 0
           ? actions
-              .slice(0, 5)
-              .map((a) => a.description)
-              .join('; ')
+              .map((a: any) => `- ${a.description} (selector: ${a.selector})`)
+              .join('\n')
           : 'sin elementos relevantes';
+
       this.logger.logWithJob(
         jobId,
         'info',
         `[${tag}|paso ${stepCounter}] observe ← ${actions.length} elemento(s): ${observeSummary}`,
         'StagehandService',
       );
-      observations.push(`[${stepCounter}] Elementos identificados: ${observeSummary}`);
+
       agentSteps.push({
         step: stepCounter,
-        observation: observeSummary,
         action: 'observe',
         target: observePrompt.slice(0, 80),
         reasoning: `Stagehand identifica elementos relevantes para "${proposito}"`,
         result: actions.length > 0 ? 'success' : 'no-op',
         timestamp: Date.now(),
+        observation: observeSummary,
       });
 
       const isSensitive =
@@ -198,24 +210,54 @@ export class StagehandService {
         `[${tag}|paso ${stepCounter}] extract → "${extractPrompt.slice(0, 100)}…"`,
         'StagehandService',
       );
-      const finalSummary = await stagehand
-        .extract(extractPrompt, ExtensionImpactSchema, { page })
-        .catch(() => ({ detectado: false, descripcion: '' }));
-      this.logger.logWithJob(
-        jobId,
-        'info',
-        `[${tag}|paso ${stepCounter}] extract ← detectado=${finalSummary.detectado} desc="${finalSummary.descripcion}"`,
-        'StagehandService',
-      );
-      agentSteps.push({
-        step: stepCounter,
-        observation: finalSummary.descripcion || 'sin impacto visible',
-        action: 'extract',
-        target: extractPrompt.slice(0, 80),
-        reasoning: 'Resumir el impacto visible de la extensión sobre la página',
-        result: finalSummary.detectado ? 'success' : 'no-op',
-        timestamp: Date.now(),
-      });
+      
+      let finalSummary = { detectado: false, descripcion: '' };
+      try {
+        finalSummary = await stagehand.extract(
+          extractPrompt,
+          z.object({
+            detectado: z.boolean(),
+            descripcion: z.string(),
+          }),
+          { page },
+        );
+        
+        this.logger.logWithJob(
+          jobId,
+          'info',
+          `[${tag}|paso ${stepCounter}] extract ← detectado=${finalSummary.detectado} desc="${finalSummary.descripcion}"`,
+          'StagehandService',
+        );
+        agentSteps.push({
+          step: stepCounter,
+          observation: finalSummary.descripcion || 'sin impacto visible',
+          action: 'extract',
+          target: extractPrompt.slice(0, 80),
+          reasoning: 'Resumir el impacto visible de la extensión sobre la página',
+          result: finalSummary.detectado ? 'success' : 'no-op',
+          timestamp: Date.now(),
+        });
+      } catch (e) {
+        this.logger.error(
+          `[Stagehand] Error en extract: ${e instanceof Error ? e.message : String(e)}`,
+          'StagehandService',
+        );
+        this.logger.logWithJob(
+          jobId,
+          'error',
+          `[Stagehand] Error en extract: ${e instanceof Error ? e.message : String(e)}`,
+          'StagehandService',
+        );
+        agentSteps.push({
+          step: stepCounter,
+          observation: 'error en extracción',
+          action: 'extract',
+          target: extractPrompt.slice(0, 80),
+          reasoning: 'Resumir el impacto visible de la extensión sobre la página',
+          result: 'failed',
+          timestamp: Date.now(),
+        });
+      }
 
       if (finalSummary.detectado) {
         observations.push(
@@ -429,11 +471,21 @@ export class StagehandService {
     return undefined;
   }
 
-  private buildStagehandOptions(): ConstructorParameters<typeof Stagehand>[0] {
+  private buildStagehandOptions(
+    extensionPath?: string,
+  ): ConstructorParameters<typeof Stagehand>[0] {
     const base = {
       env: 'LOCAL' as const,
       verbose: 0 as const,
-      localBrowserLaunchOptions: { headless: true },
+      localBrowserLaunchOptions: {
+        headless: false,
+        args: extensionPath
+          ? [
+              `--disable-extensions-except=${extensionPath}`,
+              `--load-extension=${extensionPath}`,
+            ]
+          : [],
+      },
       disablePino: true,
     };
 
@@ -443,6 +495,12 @@ export class StagehandService {
       const ollamaProvider = createOpenAICompatible({
         name: 'ollama',
         baseURL: `${this.ollamaHost}/v1`,
+        fetch: (url, options) => {
+          return fetch(url, {
+            ...options,
+            signal: AbortSignal.timeout(600_000),
+          });
+        },
       });
       const llmClient = new AISdkClient({
         model: ollamaProvider.chatModel(this.modeloOllama),

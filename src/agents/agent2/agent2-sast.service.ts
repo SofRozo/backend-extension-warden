@@ -89,41 +89,55 @@ export class Agent2SastService {
       2,
     );
 
-    const hallazgosTexto = resultado1
-      .map(
-        (f, i) =>
-          `[${i}] fileType=${f.fileType} | filePath=${f.filePath} | line=${f.line} | ` +
-          `discoveryType=${f.discoveryType} | detail=${f.detail}` +
-          (f.codeSnippet ? `\n    código: ${f.codeSnippet.slice(0, 200)}` : ''),
-      )
-      .join('\n');
-
-    const prompt = PROMPT.replace('{contexto_agente1}', contextoAgente1).replace(
-      '{hallazgos}',
-      hallazgosTexto,
-    );
-
     this.logger.logWithJob(
       jobId,
       'info',
-      `Agent 2 — evaluating ${resultado1.length} resultado1 findings`,
+      `Agent 2 — evaluating ${resultado1.length} resultado1 findings in batches...`,
       'Agent2SastService',
     );
 
-    let raw: unknown;
-    try {
-      raw = await this.llm.callLLM(prompt, jobId);
-    } catch (err) {
+    const batchSize = 10;
+    const finalVerdicts: VerdictedStaticFinding[] = [];
+
+    for (let i = 0; i < resultado1.length; i += batchSize) {
+      const chunk = resultado1.slice(i, i + batchSize);
+      const hallazgosTexto = chunk
+        .map(
+          (f, j) =>
+            `[${i + j}] ${f.fileType} | ${f.discoveryType} | ${f.detail}` +
+            (f.codeSnippet ? `\n    código: ${f.codeSnippet.slice(0, 80)}` : ''),
+        )
+        .join('\n');
+
+      const prompt = PROMPT.replace('{contexto_agente1}', contextoAgente1).replace(
+        '{hallazgos}',
+        hallazgosTexto,
+      );
+
       this.logger.logWithJob(
         jobId,
-        'warn',
-        `Agent 2 LLM call failed: ${err instanceof Error ? err.message : String(err)}`,
+        'debug',
+        `Agent 2 — batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(resultado1.length / batchSize)}`,
         'Agent2SastService',
       );
-      return resultado1.map((f) => this.fallback(f, 'LLM no disponible'));
+
+      let raw: unknown;
+      try {
+        raw = await this.llm.callLLM(prompt, jobId);
+        const merged = this.mergeVerdicts(chunk, raw, i, jobId);
+        finalVerdicts.push(...merged);
+      } catch (err) {
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `Agent 2 batch failure: ${err instanceof Error ? err.message : String(err)}`,
+          'Agent2SastService',
+        );
+        finalVerdicts.push(...chunk.map((f) => this.fallback(f, 'Error en lote')));
+      }
     }
 
-    return this.mergeVerdicts(resultado1, raw, jobId);
+    return finalVerdicts;
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -131,6 +145,7 @@ export class Agent2SastService {
   private mergeVerdicts(
     findings: PreprocessingFinding[],
     raw: unknown,
+    startIndex: number,
     jobId: string,
   ): VerdictedStaticFinding[] {
     const r = raw as { evaluaciones?: Array<Record<string, unknown>> };
@@ -142,9 +157,10 @@ export class Agent2SastService {
           typeof e.indice === 'number'
             ? e.indice
             : Number.parseInt(String(e.indice ?? ''), 10);
-        if (!Number.isInteger(idx) || idx < 0 || idx >= findings.length) continue;
+        // The index in the JSON response is the absolute index [i + j]
+        if (!Number.isInteger(idx) || idx < startIndex || idx >= startIndex + findings.length) continue;
         const veredicto = String(e.veredicto ?? 'positivo') as VerdictPositive;
-        byIndex.set(idx, {
+        byIndex.set(idx - startIndex, {
           veredicto: VALID_VERDICTS.includes(veredicto) ? veredicto : 'positivo',
           razon: String(e.razon ?? ''),
         });

@@ -137,6 +137,7 @@ export class SandboxOrchestratorService {
             useStagehand,
             collector,
             extensionId,
+            extensionPath,
             jobId,
           );
           domainObservations.push(obs);
@@ -171,6 +172,7 @@ export class SandboxOrchestratorService {
     useStagehand: boolean,
     collector: EvidenceCollector,
     extensionId: string,
+    extensionPath: string,
     jobId: string,
   ): Promise<SandboxDomainObservation> {
     const page = await browser.newPage();
@@ -187,6 +189,7 @@ export class SandboxOrchestratorService {
             target.domain,
             target.category as any,
             proposito,
+            extensionPath,
             jobId,
           )
         : await this.intelligentNavigator.navigateDomain(
