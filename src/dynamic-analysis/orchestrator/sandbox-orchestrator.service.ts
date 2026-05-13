@@ -55,7 +55,9 @@ export class SandboxOrchestratorService {
       'info',
       `Starting dynamic analysis | navigator=${navigatorName}` +
         (navigatorOverride ? ` (per-job override)` : ' (env default)') +
-        (demoMode ? ' | DEMO MODE (headed browser visible, slowMo enabled)' : ' | headless'),
+        (demoMode
+          ? ' | DEMO MODE (headed browser visible, slowMo enabled)'
+          : ' | headless'),
       'SandboxOrchestrator',
     );
 
@@ -239,7 +241,8 @@ export class SandboxOrchestratorService {
     );
     for (const f of sorted) {
       const key = f.domain.toLowerCase();
-      if (!seen.has(key)) seen.set(key, { domain: f.domain, category: f.category });
+      if (!seen.has(key))
+        seen.set(key, { domain: f.domain, category: f.category });
     }
     // Cap at 5 domains so the dynamic phase respects its budget.
     return [...seen.values()].slice(0, 5);
@@ -247,7 +250,10 @@ export class SandboxOrchestratorService {
 
   // ─── Page setup helpers ───────────────────────────────────────────────────
 
-  private async setupApiInterception(page: any, extensionId: string): Promise<void> {
+  private async setupApiInterception(
+    page: any,
+    extensionId: string,
+  ): Promise<void> {
     void extensionId;
     await page.addInitScript(() => {
       (window as any).__extSandboxApiCalls = [];
@@ -296,10 +302,7 @@ export class SandboxOrchestratorService {
     });
   }
 
-  private setupPageInterception(
-    page: any,
-    collector: EvidenceCollector,
-  ): void {
+  private setupPageInterception(page: any, collector: EvidenceCollector): void {
     page.on('request', (request: any) => {
       try {
         const url: string = request.url();
@@ -378,7 +381,9 @@ export class SandboxOrchestratorService {
         const text: string =
           typeof msg.text === 'function' ? msg.text() : String(msg);
         if (!text.startsWith('[SANDBOX_API]')) return;
-        const payload = JSON.parse(text.substring('[SANDBOX_API]'.length).trim());
+        const payload = JSON.parse(
+          text.substring('[SANDBOX_API]'.length).trim(),
+        );
         if (payload.kind === 'api') {
           collector.onApiCall(payload.api, payload.args ?? '');
         } else if (payload.kind === 'fetch') {

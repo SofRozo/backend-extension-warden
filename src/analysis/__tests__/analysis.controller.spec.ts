@@ -42,6 +42,7 @@ describe('AnalysisController', () => {
         'ext-abc',
         false,
         undefined,
+        undefined,
       );
     });
   });

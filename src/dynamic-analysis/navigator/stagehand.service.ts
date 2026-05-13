@@ -210,7 +210,7 @@ export class StagehandService {
         `[${tag}|paso ${stepCounter}] extract → "${extractPrompt.slice(0, 100)}…"`,
         'StagehandService',
       );
-      
+
       let finalSummary = { detectado: false, descripcion: '' };
       try {
         finalSummary = await stagehand.extract(
@@ -221,7 +221,7 @@ export class StagehandService {
           }),
           { page },
         );
-        
+
         this.logger.logWithJob(
           jobId,
           'info',
@@ -233,7 +233,8 @@ export class StagehandService {
           observation: finalSummary.descripcion || 'sin impacto visible',
           action: 'extract',
           target: extractPrompt.slice(0, 80),
-          reasoning: 'Resumir el impacto visible de la extensión sobre la página',
+          reasoning:
+            'Resumir el impacto visible de la extensión sobre la página',
           result: finalSummary.detectado ? 'success' : 'no-op',
           timestamp: Date.now(),
         });
@@ -253,7 +254,8 @@ export class StagehandService {
           observation: 'error en extracción',
           action: 'extract',
           target: extractPrompt.slice(0, 80),
-          reasoning: 'Resumir el impacto visible de la extensión sobre la página',
+          reasoning:
+            'Resumir el impacto visible de la extensión sobre la página',
           result: 'failed',
           timestamp: Date.now(),
         });
@@ -287,7 +289,12 @@ export class StagehandService {
       };
     } catch (err) {
       const msg = `Stagehand failed for ${domain}: ${err instanceof Error ? err.message : String(err)}`;
-      this.logger.logWithJob(jobId, 'warn', `[${tag}] ${msg}`, 'StagehandService');
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `[${tag}] ${msg}`,
+        'StagehandService',
+      );
       return {
         domain,
         url,
@@ -343,7 +350,9 @@ export class StagehandService {
     if (success) actionsPerformed.push(actionLabel);
     agentSteps.push({
       step: next,
-      observation: success ? `acción ejecutada: ${actionLabel}` : 'acción no ejecutada',
+      observation: success
+        ? `acción ejecutada: ${actionLabel}`
+        : 'acción no ejecutada',
       action: 'act',
       target: prompt.slice(0, 80),
       reasoning,

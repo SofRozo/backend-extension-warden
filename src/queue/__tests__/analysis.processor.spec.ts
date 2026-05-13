@@ -6,7 +6,7 @@ import { AnalysisJob } from '../../analysis/entities/analysis-job.entity.js';
 import { DownloaderService } from '../../downloader/downloader.service.js';
 import { PreprocessorService } from '../../preprocessor/preprocessor.service.js';
 import { AgentsOrchestratorService } from '../../agents/agents-orchestrator.service.js';
-import { Agent4DynamicService } from '../../agents/agent4/agent4-dynamic.service.js';
+import { Agent2DynamicService } from '../../agents/agent2/agent2-dynamic.service.js';
 import { StaticAnalysisService } from '../../static-analysis/static-analysis.service.js';
 import { SandboxOrchestratorService } from '../../dynamic-analysis/orchestrator/sandbox-orchestrator.service.js';
 import { ReportService } from '../../report/report.service.js';
@@ -22,7 +22,7 @@ describe('AnalysisProcessor', () => {
   let mockDynamic: any;
   let mockReport: any;
   let mockAgents: any;
-  let mockAgent4: any;
+  let mockAgent2Dynamic: any;
 
   beforeEach(async () => {
     mockRepository = {
@@ -69,7 +69,12 @@ describe('AnalysisProcessor', () => {
     mockDynamic = {
       executeDynamicAnalysis: jest.fn().mockResolvedValue({
         strategy: 'direct_navigation',
-        evidence: { networkRequests: [], domMutations: [], keyboardEvents: [], apiCalls: [] },
+        evidence: {
+          networkRequests: [],
+          domMutations: [],
+          keyboardEvents: [],
+          apiCalls: [],
+        },
         duration: 5000,
         timedOut: false,
         domainObservations: [],
@@ -95,14 +100,12 @@ describe('AnalysisProcessor', () => {
       run: jest.fn().mockResolvedValue({
         agent1: null,
         agent2: null,
-        agent3: null,
-        agent4: null,
         ranSuccessfully: false,
         errors: [],
       }),
     };
 
-    mockAgent4 = {
+    mockAgent2Dynamic = {
       analyze: jest.fn().mockResolvedValue([]),
     };
 
@@ -114,7 +117,7 @@ describe('AnalysisProcessor', () => {
         { provide: DownloaderService, useValue: mockDownloader },
         { provide: PreprocessorService, useValue: mockPreprocessor },
         { provide: AgentsOrchestratorService, useValue: mockAgents },
-        { provide: Agent4DynamicService, useValue: mockAgent4 },
+        { provide: Agent2DynamicService, useValue: mockAgent2Dynamic },
         { provide: StaticAnalysisService, useValue: mockStatic },
         { provide: SandboxOrchestratorService, useValue: mockDynamic },
         { provide: ReportService, useValue: mockReport },
@@ -146,12 +149,13 @@ describe('AnalysisProcessor', () => {
       expect(mockDownloader.downloadAndExtract).toHaveBeenCalledWith(
         'ext-test',
         'job-123',
+        undefined,
       );
       expect(mockPreprocessor.preprocess).toHaveBeenCalled();
       expect(mockStatic.analyze).toHaveBeenCalled();
       expect(mockAgents.run).toHaveBeenCalled();
       expect(mockDynamic.executeDynamicAnalysis).toHaveBeenCalled();
-      expect(mockAgent4.analyze).toHaveBeenCalled();
+      expect(mockAgent2Dynamic.analyze).toHaveBeenCalled();
       expect(mockReport.generateReport).toHaveBeenCalled();
       expect(mockDownloader.cleanup).toHaveBeenCalledWith('ext-test');
     });
@@ -186,7 +190,9 @@ describe('AnalysisProcessor', () => {
         new Error('Download failed'),
       );
 
-      await expect(processor.process(mockJob)).rejects.toThrow('Download failed');
+      await expect(processor.process(mockJob)).rejects.toThrow(
+        'Download failed',
+      );
 
       expect(mockRepository.update).toHaveBeenCalledWith('job-123', {
         status: AnalysisStatus.FAILED,

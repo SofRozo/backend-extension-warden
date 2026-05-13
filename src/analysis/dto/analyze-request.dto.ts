@@ -5,17 +5,27 @@ import {
   IsBoolean,
   IsOptional,
   IsIn,
+  ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class AnalyzeRequestDto {
+  @ValidateIf((o: AnalyzeRequestDto) => !o.packagePath)
   @IsString()
   @IsNotEmpty()
   @Matches(/^[a-z]{32}$/, {
     message:
       'extensionId must be a valid Chrome Web Store extension ID (32 lowercase letters)',
   })
-  extensionId: string;
+  extensionId?: string;
+
+  @ValidateIf((o: AnalyzeRequestDto) => !o.extensionId)
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/\.(crx|zip)$/i, {
+    message: 'packagePath must point to a .crx or .zip package',
+  })
+  packagePath?: string;
 
   /**
    * Route this job to the visual demo queue (`analysis-demo`) instead of the

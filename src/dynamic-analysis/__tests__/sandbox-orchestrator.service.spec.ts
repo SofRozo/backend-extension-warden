@@ -46,7 +46,9 @@ describe('SandboxOrchestratorService', () => {
       ],
     }).compile();
 
-    service = module.get<SandboxOrchestratorService>(SandboxOrchestratorService);
+    service = module.get<SandboxOrchestratorService>(
+      SandboxOrchestratorService,
+    );
   });
 
   it('returns empty result when there are no priority findings', async () => {

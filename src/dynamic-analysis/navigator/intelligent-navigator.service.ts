@@ -93,6 +93,11 @@ const categoryTask = (
       `Navega en ${domain} (portal gubernamental). Busca formularios de autenticación o trámites. ` +
       `Usa ${FAKE_EMAIL} / ${FAKE_PASSWORD}. ` +
       'Detecta si la extensión captura datos de identidad.',
+    sensible_data_broker:
+      `Navega en ${domain} (data broker / agregador de datos personales). ` +
+      'Explora la navegación principal sin enviar credenciales reales. ' +
+      'Observa qué información envía la extensión a este dominio, ' +
+      'si exfiltra cookies, historial, identificadores o telemetría del usuario.',
     desconocido:
       `Navega en ${domain} (dominio desconocido). Explora la navegación principal. ` +
       'Busca formularios y observa qué hace la extensión en este sitio.',
@@ -172,7 +177,12 @@ export class IntelligentNavigatorService {
       await page.waitForTimeout(STEP_WAIT_MS);
     } catch (err) {
       const msg = `Failed to load ${url}: ${err instanceof Error ? err.message : String(err)}`;
-      this.logger.logWithJob(jobId, 'warn', `[${tag}] ${msg}`, 'IntelligentNavigator');
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `[${tag}] ${msg}`,
+        'IntelligentNavigator',
+      );
       return this.buildObservation(
         domain,
         url,
@@ -209,7 +219,8 @@ export class IntelligentNavigatorService {
           jobId,
         );
 
-        const target = action.element_text ?? action.selector ?? action.url ?? '';
+        const target =
+          action.element_text ?? action.selector ?? action.url ?? '';
         this.logger.logWithJob(
           jobId,
           'info',
@@ -271,7 +282,12 @@ export class IntelligentNavigatorService {
       } catch (err) {
         const msg = `Step ${step + 1} error: ${err instanceof Error ? err.message : String(err)}`;
         observations.push(msg);
-        this.logger.logWithJob(jobId, 'warn', `[${tag}] ${msg}`, 'IntelligentNavigator');
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `[${tag}] ${msg}`,
+          'IntelligentNavigator',
+        );
         break;
       }
     }
@@ -519,7 +535,11 @@ export class IntelligentNavigatorService {
     action: NavigatorAction,
     actionsPerformed: string[],
     jobId: string,
-  ): Promise<{ submitted: boolean; mutationsAdded: boolean; success: boolean }> {
+  ): Promise<{
+    submitted: boolean;
+    mutationsAdded: boolean;
+    success: boolean;
+  }> {
     let submitted = false;
     let mutationsAdded = false;
     let success = false;

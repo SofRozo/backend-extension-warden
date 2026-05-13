@@ -20,12 +20,14 @@ export class AnalysisService {
   ) {}
 
   async createAnalysisJob(
-    extensionId: string,
+    extensionId?: string,
     demo: boolean = false,
     navigator?: 'stagehand' | 'intelligent_navigator',
+    packagePath?: string,
   ): Promise<AnalysisJob> {
+    const sourceId = extensionId ?? `local-${Date.now()}`;
     const job = this.jobRepository.create({
-      extensionId,
+      extensionId: sourceId,
       status: AnalysisStatus.QUEUED,
     });
 
@@ -37,6 +39,7 @@ export class AnalysisService {
       'analyze-extension',
       {
         extensionId,
+        packagePath,
         jobId: savedJob.id,
         demo,
         navigator,
@@ -59,7 +62,7 @@ export class AnalysisService {
       'info',
       `Job created and queued (queue=${targetQueue.name}` +
         (navigator ? `, navigator=${navigator}` : '') +
-        `) for extension ${extensionId}`,
+        `) for extension ${sourceId}`,
       'AnalysisService',
     );
 

@@ -10,8 +10,109 @@ import type {
   FileRole,
   ExtractedChromeApi,
   ExtractedDomain,
+  ExtractedUrl,
   RemoteCodeViolation,
+  ResourceInventoryEntry,
+  ResourceType,
+  DependencyGraph,
+  DependencyEdge,
+  NestedArchiveFinding,
 } from '../common/interfaces/analysis.interfaces.js';
+
+const PERMISSION_RISK_WEIGHTS: Record<
+  string,
+  {
+    category: 'low' | 'medium' | 'high' | 'critical';
+    weight: 1 | 2 | 5 | 10;
+    hostSensitive: boolean;
+  }
+> = {
+  tabCapture: { category: 'critical', weight: 10, hostSensitive: true },
+  pageCapture: { category: 'critical', weight: 10, hostSensitive: true },
+  debugger: { category: 'critical', weight: 10, hostSensitive: false },
+  nativeMessaging: { category: 'critical', weight: 10, hostSensitive: false },
+  proxy: { category: 'critical', weight: 10, hostSensitive: false },
+  vpnProvider: { category: 'critical', weight: 10, hostSensitive: false },
+  cookies: { category: 'high', weight: 5, hostSensitive: true },
+  scripting: { category: 'high', weight: 5, hostSensitive: true },
+  declarativeNetRequest: { category: 'high', weight: 5, hostSensitive: true },
+  webRequest: { category: 'high', weight: 5, hostSensitive: true },
+  webRequestBlocking: { category: 'high', weight: 5, hostSensitive: true },
+  userScripts: { category: 'high', weight: 5, hostSensitive: true },
+  declarativeNetRequestWithHostAccess: {
+    category: 'high',
+    weight: 5,
+    hostSensitive: true,
+  },
+  desktopCapture: { category: 'high', weight: 5, hostSensitive: true },
+  history: { category: 'high', weight: 5, hostSensitive: false },
+  downloads: { category: 'high', weight: 5, hostSensitive: false },
+  'downloads.open': { category: 'high', weight: 5, hostSensitive: false },
+  privacy: { category: 'high', weight: 5, hostSensitive: false },
+  browsingData: { category: 'high', weight: 5, hostSensitive: false },
+  contentSettings: { category: 'high', weight: 5, hostSensitive: false },
+  webNavigation: { category: 'high', weight: 5, hostSensitive: false },
+  webAuthenticationProxy: { category: 'high', weight: 5, hostSensitive: false },
+  certificateProvider: { category: 'high', weight: 5, hostSensitive: false },
+  platformKeys: { category: 'high', weight: 5, hostSensitive: false },
+  activeTab: { category: 'medium', weight: 2, hostSensitive: false },
+  alarms: { category: 'medium', weight: 2, hostSensitive: false },
+  bookmarks: { category: 'medium', weight: 2, hostSensitive: false },
+  clipboardRead: { category: 'medium', weight: 2, hostSensitive: false },
+  clipboardWrite: { category: 'medium', weight: 2, hostSensitive: false },
+  geolocation: { category: 'medium', weight: 2, hostSensitive: false },
+  identity: { category: 'medium', weight: 2, hostSensitive: false },
+  'identity.email': { category: 'medium', weight: 2, hostSensitive: false },
+  management: { category: 'medium', weight: 2, hostSensitive: false },
+  sessions: { category: 'medium', weight: 2, hostSensitive: false },
+  topSites: { category: 'medium', weight: 2, hostSensitive: false },
+  contextMenus: { category: 'medium', weight: 2, hostSensitive: false },
+  tabGroups: { category: 'medium', weight: 2, hostSensitive: false },
+  dns: { category: 'medium', weight: 2, hostSensitive: false },
+  tabs: { category: 'medium', weight: 2, hostSensitive: false },
+  offscreen: { category: 'medium', weight: 2, hostSensitive: false },
+  processes: { category: 'medium', weight: 2, hostSensitive: false },
+  storage: { category: 'low', weight: 1, hostSensitive: false },
+  unlimitedStorage: { category: 'low', weight: 1, hostSensitive: false },
+  notifications: { category: 'low', weight: 1, hostSensitive: false },
+  idle: { category: 'low', weight: 1, hostSensitive: false },
+  power: { category: 'low', weight: 1, hostSensitive: false },
+  tts: { category: 'low', weight: 1, hostSensitive: false },
+  ttsEngine: { category: 'low', weight: 1, hostSensitive: false },
+  fontSettings: { category: 'low', weight: 1, hostSensitive: false },
+  declarativeContent: { category: 'low', weight: 1, hostSensitive: false },
+  gcm: { category: 'low', weight: 1, hostSensitive: false },
+  sidePanel: { category: 'low', weight: 1, hostSensitive: false },
+  search: { category: 'low', weight: 1, hostSensitive: false },
+  favicon: { category: 'low', weight: 1, hostSensitive: false },
+  readingList: { category: 'low', weight: 1, hostSensitive: false },
+  printing: { category: 'low', weight: 1, hostSensitive: false },
+  printingMetrics: { category: 'low', weight: 1, hostSensitive: false },
+  documentScan: { category: 'low', weight: 1, hostSensitive: false },
+  loginState: { category: 'low', weight: 1, hostSensitive: false },
+  'accessibilityFeatures.modify': {
+    category: 'low',
+    weight: 1,
+    hostSensitive: false,
+  },
+  'accessibilityFeatures.read': {
+    category: 'low',
+    weight: 1,
+    hostSensitive: false,
+  },
+  background: { category: 'low', weight: 1, hostSensitive: false },
+  declarativeNetRequestFeedback: {
+    category: 'low',
+    weight: 1,
+    hostSensitive: false,
+  },
+  'downloads.ui': { category: 'low', weight: 1, hostSensitive: false },
+  'system.cpu': { category: 'low', weight: 1, hostSensitive: false },
+  'system.display': { category: 'low', weight: 1, hostSensitive: false },
+  'system.memory': { category: 'low', weight: 1, hostSensitive: false },
+  'system.storage': { category: 'low', weight: 1, hostSensitive: false },
+  printerProvider: { category: 'low', weight: 1, hostSensitive: false },
+};
 
 @Injectable()
 export class PreprocessorService {
@@ -49,19 +150,33 @@ export class PreprocessorService {
     const manifest = this.parseManifest(rawManifest);
     const roleMap = this.buildRoleMap(manifest);
     const remoteCodeViolations: RemoteCodeViolation[] = [];
+    const resources = this.inventoryResources(extractPath);
+    const nestedArchives = resources
+      .filter((r) => r.type === 'archive')
+      .map<NestedArchiveFinding>((r) => ({
+        path: r.path,
+        line: 1,
+        detail: `Nested archive resource detected (${r.sizeBytes} bytes)`,
+      }));
 
     // Classify JS files referenced from HTML pages that are not declared
     // in the manifest directly (e.g. bundled via <script src="...">).
     // Also collect external <script src="https://..."> tags as MV3 policy violations.
-    const htmlPages = [
-      { url: manifest.popupUrl, role: 'popup' as FileRole },
-      { url: manifest.optionsPage, role: 'options_ui' as FileRole },
-      { url: manifest.devtoolsPage, role: 'devtools' as FileRole },
-      { url: manifest.sidePanelPath, role: 'side_panel' as FileRole },
-      ...manifest.sandboxPages.map((url) => ({ url, role: 'sandbox' as FileRole })),
+    const htmlPages: Array<{ url: string | undefined; role: FileRole }> = [
+      { url: manifest.popupUrl, role: 'popup' },
+      { url: manifest.optionsPage, role: 'options_ui' },
+      { url: manifest.devtoolsPage, role: 'devtools' },
+      { url: manifest.sidePanelPath, role: 'side_panel' },
+      ...manifest.sandboxPages.map<{ url: string; role: FileRole }>((url) => ({
+        url,
+        role: 'sandbox',
+      })),
       ...Object.values(manifest.chromeUrlOverrides)
-        .filter((url) => typeof url === 'string')
-        .map((url) => ({ url, role: 'override_page' as FileRole })),
+        .filter((url): url is string => typeof url === 'string')
+        .map<{ url: string; role: FileRole }>((url) => ({
+          url,
+          role: 'override_page',
+        })),
     ];
 
     for (const { url, role } of htmlPages) {
@@ -90,7 +205,9 @@ export class PreprocessorService {
       }
     }
 
-    const jsFiles = this.findJsFiles(extractPath);
+    const jsFiles = resources
+      .filter((r) => r.type === 'javascript')
+      .map((r) => path.join(extractPath, r.path));
 
     this.logger.logWithJob(
       jobId,
@@ -145,14 +262,19 @@ export class PreprocessorService {
       }
 
       const cleanCode = this.stripComments(processedCode);
-      const urls = this.extractUrls(cleanCode);
+      const extractedUrls = this.extractUrls(cleanCode);
+      const resourceMeta = resources.find((r) => r.path === relativePath);
 
       files.push({
         path: relativePath,
         role,
         isObfuscated: finalIsObfuscated,
+        isMinified:
+          resourceMeta?.isMinified ?? this.isAggressivelyMinified(rawCode),
+        originalLineCount: rawCode.split('\n').length,
         cleanCode,
-        urls,
+        urls: extractedUrls.map((u) => u.url),
+        extractedUrls,
         domains: this.extractDomains(cleanCode),
         chromeApis: this.extractChromeApis(cleanCode),
         usesFetch: this.usesFetch(cleanCode),
@@ -161,6 +283,14 @@ export class PreprocessorService {
         usesDomManipulation: this.usesDomManipulation(cleanCode),
       });
     }
+
+    const dependencyGraph = this.buildDependencyGraph(
+      extractPath,
+      manifest,
+      files,
+      resources,
+      remoteCodeViolations,
+    );
 
     const obfuscatedFileCount = files.filter((f) => f.isObfuscated).length;
 
@@ -176,6 +306,9 @@ export class PreprocessorService {
       extractPath,
       manifest,
       files,
+      resources,
+      nestedArchives,
+      dependencyGraph,
       obfuscatedFileCount,
       hasObfuscation: obfuscatedFileCount > 0,
       remoteCodeViolations,
@@ -192,6 +325,7 @@ export class PreprocessorService {
     const mv = (raw.manifest_version as number) ?? 2;
 
     const allPerms = (raw.permissions as string[]) ?? [];
+    const optionalPermissions = (raw.optional_permissions as string[]) ?? [];
     const isHostPerm = (p: string) => /^https?:\/\/|\*:\/\/|<all_urls>/.test(p);
 
     let apiPermissions: string[];
@@ -236,7 +370,8 @@ export class PreprocessorService {
       }) ?? {};
 
     const optionsUi = (raw.options_ui as { page?: string }) ?? {};
-    const optionsPage = optionsUi.page ?? (raw.options_page as string | undefined);
+    const optionsPage =
+      optionsUi.page ?? (raw.options_page as string | undefined);
 
     const devtoolsPage = raw.devtools_page as string | undefined;
 
@@ -249,6 +384,20 @@ export class PreprocessorService {
     const chromeUrlOverrides =
       (raw.chrome_url_overrides as Record<string, string>) ?? {};
 
+    const webAccessibleResources = Array.isArray(raw.web_accessible_resources)
+      ? raw.web_accessible_resources
+      : [];
+    const externallyConnectable = raw.externally_connectable as
+      | Record<string, unknown>
+      | undefined;
+    const dnr = raw.declarative_net_request as
+      | { rule_resources?: Array<{ path?: string }> }
+      | undefined;
+    const declarativeNetRequestRules =
+      dnr?.rule_resources?.map((r) => r.path).filter((p): p is string => !!p) ??
+      [];
+    const oauth2 = raw.oauth2 as Record<string, unknown> | undefined;
+
     return {
       manifestVersion: mv === 3 ? 3 : 2,
       name: (raw.name as string) ?? '',
@@ -257,6 +406,7 @@ export class PreprocessorService {
       author: raw.author as string | undefined,
       apiPermissions,
       hostPermissions,
+      optionalPermissions,
       contentScripts,
       backgroundScripts,
       serviceWorker,
@@ -266,6 +416,15 @@ export class PreprocessorService {
       sidePanelPath,
       sandboxPages,
       chromeUrlOverrides,
+      webAccessibleResources,
+      externallyConnectable,
+      declarativeNetRequestRules,
+      oauth2,
+      permissionRisk: this.classifyPermissionRisk(
+        apiPermissions,
+        optionalPermissions,
+        hostPermissions,
+      ),
       rawManifest: raw,
     };
   }
@@ -340,10 +499,13 @@ export class PreprocessorService {
       lower === 'popup.js'
     )
       return 'popup';
-    if (lower.includes('options') || lower.includes('settings')) return 'options_ui';
-    if (lower.includes('devtools') || lower.includes('panel')) return 'devtools';
+    if (lower.includes('options') || lower.includes('settings'))
+      return 'options_ui';
+    if (lower.includes('devtools') || lower.includes('panel'))
+      return 'devtools';
     if (lower.includes('sandbox')) return 'sandbox';
-    if (lower.includes('sidepanel') || lower.includes('side_panel')) return 'side_panel';
+    if (lower.includes('sidepanel') || lower.includes('side_panel'))
+      return 'side_panel';
     if (
       lower.includes('background') ||
       lower.includes('service-worker') ||
@@ -481,10 +643,45 @@ export class PreprocessorService {
 
   // ─── Structured data extraction ───────────────────────────────────────────────
 
-  private extractUrls(code: string): string[] {
+  private extractUrls(code: string): ExtractedUrl[] {
+    const urls: ExtractedUrl[] = [];
+    const seen = new Set<string>();
+    const lines = code.split('\n');
     const urlRegex =
       /https?:\/\/[a-zA-Z0-9][-a-zA-Z0-9]*(?:\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(?:\/[^\s'"`,;)\]}>]*)?/g;
-    return [...new Set(code.match(urlRegex) ?? [])];
+    const dynamicUrlRegex =
+      /\b(?:fetch|axios(?:\.\w+)?|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\s*\([^)\n]*(?:\+|`|\$\{)/;
+    for (let i = 0; i < lines.length; i++) {
+      urlRegex.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = urlRegex.exec(lines[i])) !== null) {
+        const key = `${m[0]}:${i + 1}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        urls.push({
+          url: m[0],
+          line: i + 1,
+          context: lines[i].trim().slice(0, 240),
+          classification: this.classifyUrl(m[0]),
+        });
+      }
+      if (dynamicUrlRegex.test(lines[i])) {
+        const key = `dynamic:${i + 1}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          urls.push({
+            url: '<dynamic>',
+            line: i + 1,
+            context: lines[i].trim().slice(0, 240),
+            classification: {
+              category: 'dynamic',
+              reasons: ['URL appears dynamically constructed'],
+            },
+          });
+        }
+      }
+    }
+    return urls;
   }
 
   private extractDomains(code: string): ExtractedDomain[] {
@@ -597,6 +794,392 @@ export class PreprocessorService {
     return files;
   }
 
+  private inventoryResources(root: string): ResourceInventoryEntry[] {
+    const resources: ResourceInventoryEntry[] = [];
+    const visit = (dir: string) => {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name === 'node_modules' || entry.name === '_metadata')
+            continue;
+          visit(fullPath);
+          continue;
+        }
+        const relative = path.relative(root, fullPath).replace(/\\/g, '/');
+        const type = this.resourceType(entry.name);
+        let sizeBytes = 0;
+        let text = '';
+        try {
+          const stat = fs.statSync(fullPath);
+          sizeBytes = stat.size;
+          if (
+            ['javascript', 'html', 'json', 'css'].includes(type) &&
+            stat.size <= 2 * 1024 * 1024
+          ) {
+            text = fs.readFileSync(fullPath, 'utf-8');
+          }
+        } catch {
+          /* ignore unreadable resources */
+        }
+        resources.push({
+          path: relative,
+          type,
+          sizeBytes,
+          isMinified:
+            (type === 'javascript' || type === 'css') &&
+            text.length > 0 &&
+            this.isAggressivelyMinified(text),
+          lineCount: text ? text.split('\n').length : 0,
+        });
+      }
+    };
+    visit(root);
+    return resources;
+  }
+
+  private resourceType(name: string): ResourceType {
+    if (/\.(js|mjs|cjs|jsx)$/i.test(name)) return 'javascript';
+    if (/\.html?$/i.test(name)) return 'html';
+    if (/\.json$/i.test(name)) return 'json';
+    if (/\.css$/i.test(name)) return 'css';
+    if (/\.(zip|crx|xpi|7z|rar|tar|gz)$/i.test(name)) return 'archive';
+    return 'other';
+  }
+
+  private buildDependencyGraph(
+    extractPath: string,
+    manifest: ManifestInfo,
+    files: ProcessedFile[],
+    resources: ResourceInventoryEntry[],
+    remoteCodeViolations: RemoteCodeViolation[],
+  ): DependencyGraph {
+    const resourceSet = new Set(resources.map((r) => r.path));
+    const jsSet = new Set(files.map((f) => f.path));
+    const entries = new Set<string>();
+    const edges: DependencyEdge[] = [];
+    const unresolved: DependencyEdge[] = [];
+
+    const addManifestEntry = (to: string | undefined) => {
+      const normalized = this.normalizeRelativePath(to);
+      if (!normalized) return;
+      entries.add(normalized);
+      edges.push({
+        from: 'manifest.json',
+        to: normalized,
+        type: 'manifest',
+        line: 1,
+      });
+    };
+
+    for (const cs of manifest.contentScripts) {
+      for (const js of cs.js) addManifestEntry(js);
+      for (const css of cs.css ?? []) addManifestEntry(css);
+    }
+    for (const bg of manifest.backgroundScripts) addManifestEntry(bg);
+    addManifestEntry(manifest.serviceWorker);
+    addManifestEntry(manifest.popupUrl);
+    addManifestEntry(manifest.optionsPage);
+    addManifestEntry(manifest.devtoolsPage);
+    addManifestEntry(manifest.sidePanelPath);
+    for (const page of manifest.sandboxPages) addManifestEntry(page);
+    for (const page of Object.values(manifest.chromeUrlOverrides))
+      addManifestEntry(page);
+    for (const rulePath of manifest.declarativeNetRequestRules)
+      addManifestEntry(rulePath);
+
+    for (const r of resources.filter((x) => x.type === 'html')) {
+      for (const edge of this.htmlDependencyEdges(extractPath, r.path)) {
+        edges.push(edge);
+        if (edge.to.startsWith('http')) continue;
+        if (!resourceSet.has(edge.to)) unresolved.push(edge);
+      }
+    }
+
+    for (const file of files) {
+      if (!file.cleanCode) continue;
+      for (const edge of this.jsDependencyEdges(file)) {
+        edges.push(edge);
+        if (!resourceSet.has(edge.to)) unresolved.push(edge);
+      }
+    }
+
+    const adjacency = new Map<string, DependencyEdge[]>();
+    for (const edge of edges) {
+      const list = adjacency.get(edge.from) ?? [];
+      list.push(edge);
+      adjacency.set(edge.from, list);
+    }
+
+    const reachable = new Set<string>();
+    const queue = [...entries];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (reachable.has(current)) continue;
+      reachable.add(current);
+      for (const edge of adjacency.get(current) ?? []) {
+        if (!edge.to.startsWith('http') && resourceSet.has(edge.to))
+          queue.push(edge.to);
+      }
+      if (/\.(html?)$/i.test(current)) {
+        for (const edge of adjacency.get(current) ?? []) queue.push(edge.to);
+      }
+    }
+
+    for (const v of remoteCodeViolations) {
+      edges.push({
+        from: v.htmlFile,
+        to: v.externalSrc,
+        type: 'html_script',
+        line: 1,
+      });
+    }
+
+    return {
+      entries: [...entries],
+      edges,
+      reachable: [...reachable].filter(
+        (p) => resourceSet.has(p) || jsSet.has(p),
+      ),
+      orphanScripts: [...jsSet].filter((p) => !reachable.has(p)),
+      unresolved,
+    };
+  }
+
+  private htmlDependencyEdges(
+    extractPath: string,
+    htmlPath: string,
+  ): DependencyEdge[] {
+    const fullPath = path.join(extractPath, htmlPath);
+    let html = '';
+    try {
+      html = fs.readFileSync(fullPath, 'utf-8');
+    } catch {
+      return [];
+    }
+    const dir = path.dirname(htmlPath).replace(/\\/g, '/');
+    const edges: DependencyEdge[] = [];
+    const scriptRe = /<script[^>]+src=['"]([^'"]+)['"]/gi;
+    let m: RegExpExecArray | null;
+    while ((m = scriptRe.exec(html)) !== null) {
+      const before = html.slice(0, m.index);
+      const line = before.split('\n').length;
+      const to = /^https?:\/\//i.test(m[1])
+        ? m[1]
+        : this.resolveRelative(dir, m[1].replace(/\?.*$/, ''));
+      edges.push({ from: htmlPath, to, type: 'html_script', line });
+    }
+    return edges;
+  }
+
+  private jsDependencyEdges(file: ProcessedFile): DependencyEdge[] {
+    const code = file.cleanCode ?? '';
+    const lines = code.split('\n');
+    const edges: DependencyEdge[] = [];
+    const patterns: Array<{ re: RegExp; type: DependencyEdge['type'] }> = [
+      {
+        re: /\bimport\s+(?:[^'"]+\s+from\s+)?['"]([^'"]+)['"]/g,
+        type: 'static_import',
+      },
+      { re: /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g, type: 'dynamic_import' },
+      { re: /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g, type: 'require' },
+      { re: /\bnew\s+Worker\s*\(\s*['"]([^'"]+)['"]\s*\)/g, type: 'worker' },
+      {
+        re: /\bfiles\s*:\s*\[\s*['"]([^'"]+)['"]\s*\]/g,
+        type: 'scripting_executeScript',
+      },
+      {
+        re: /\.src\s*=\s*['"]([^'"]+\.js[^'"]*)['"]/g,
+        type: 'script_injection',
+      },
+    ];
+    const dir = path.dirname(file.path).replace(/\\/g, '/');
+    for (let i = 0; i < lines.length; i++) {
+      for (const pattern of patterns) {
+        pattern.re.lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = pattern.re.exec(lines[i])) !== null) {
+          if (!this.isLocalDependency(m[1])) continue;
+          edges.push({
+            from: file.path,
+            to: this.resolveRelative(dir, m[1].replace(/\?.*$/, '')),
+            type: pattern.type,
+            line: i + 1,
+          });
+        }
+      }
+    }
+    return edges;
+  }
+
+  private isLocalDependency(specifier: string): boolean {
+    return (
+      specifier.startsWith('.') ||
+      specifier.startsWith('/') ||
+      /\.(js|mjs|cjs|jsx|html?|css|json)$/i.test(specifier)
+    );
+  }
+
+  private resolveRelative(fromDir: string, specifier: string): string {
+    const raw = specifier.startsWith('/')
+      ? specifier.slice(1)
+      : path.posix.normalize(
+          path.posix.join(fromDir === '.' ? '' : fromDir, specifier),
+        );
+    return raw.replace(/^\.\//, '').replace(/\\/g, '/');
+  }
+
+  private normalizeRelativePath(value: string | undefined): string | null {
+    if (!value || /^https?:\/\//i.test(value)) return null;
+    return value.replace(/^\//, '').replace(/\\/g, '/');
+  }
+
+  private classifyPermissionRisk(
+    apiPermissions: string[],
+    optionalPermissions: string[],
+    hostPermissions: string[],
+  ): ManifestInfo['permissionRisk'] {
+    const classify = (
+      permission: string,
+    ): {
+      category: 'low' | 'medium' | 'high' | 'critical';
+      weight: 1 | 2 | 5 | 10;
+      hostSensitive: boolean;
+    } => {
+      if (permission === '<all_urls>' || permission === '*://*/*') {
+        return { category: 'critical', weight: 10, hostSensitive: true };
+      }
+      if (/^https?:\/\/|\*:\/\//.test(permission)) {
+        return { category: 'medium', weight: 2, hostSensitive: true };
+      }
+      return (
+        PERMISSION_RISK_WEIGHTS[permission] ?? {
+          category: 'medium',
+          weight: 2,
+          hostSensitive: false,
+        }
+      );
+    };
+    return [
+      ...apiPermissions.map((permission) => ({
+        permission,
+        ...classify(permission),
+        source: 'permissions' as const,
+      })),
+      ...optionalPermissions.map((permission) => ({
+        permission,
+        ...classify(permission),
+        source: 'optional_permissions' as const,
+      })),
+      ...hostPermissions.map((permission) => ({
+        permission,
+        ...classify(permission),
+        source: 'host_permissions' as const,
+      })),
+    ];
+  }
+
+  private classifyUrl(url: string): ExtractedUrl['classification'] {
+    try {
+      const parsed = new URL(url);
+      const domain = parsed.hostname.toLowerCase();
+      const reasons: string[] = [];
+      const trusted = [
+        'googleapis.com',
+        'gstatic.com',
+        'mozilla.org',
+        'microsoft.com',
+      ];
+      const analytics = [
+        'google-analytics.com',
+        'googletagmanager.com',
+        'segment.io',
+        'mixpanel.com',
+        'sentry.io',
+      ];
+      const suspiciousTlds = [
+        'zip',
+        'mov',
+        'top',
+        'xyz',
+        'click',
+        'cam',
+        'icu',
+        'cyou',
+      ];
+      const isIp = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(domain);
+      const isLocal =
+        domain === 'localhost' ||
+        domain === '127.0.0.1' ||
+        domain.endsWith('.local');
+      const tld = domain.split('.').pop() ?? '';
+      if (parsed.protocol !== 'https:') reasons.push('non-HTTPS protocol');
+      if (isIp) reasons.push('raw IP address');
+      if (isLocal) reasons.push('localhost/private development endpoint');
+      if (suspiciousTlds.includes(tld)) reasons.push(`suspicious TLD .${tld}`);
+      if (trusted.some((d) => domain === d || domain.endsWith(`.${d}`))) {
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'trusted',
+          reasons,
+        };
+      }
+      if (analytics.some((d) => domain === d || domain.endsWith(`.${d}`))) {
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'analytics',
+          reasons,
+        };
+      }
+      if (isIp)
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'raw_ip',
+          reasons,
+        };
+      if (isLocal)
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'localhost',
+          reasons,
+        };
+      if (parsed.protocol !== 'https:')
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'non_https',
+          reasons,
+        };
+      if (suspiciousTlds.includes(tld))
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'suspicious_tld',
+          reasons,
+        };
+      return {
+        protocol: parsed.protocol,
+        domain,
+        category: 'unknown',
+        reasons,
+      };
+    } catch {
+      return {
+        category: 'dynamic',
+        reasons: ['URL could not be statically parsed'],
+      };
+    }
+  }
+
   private emptyFile(
     filePath: string,
     role: FileRole,
@@ -606,7 +1189,10 @@ export class PreprocessorService {
       path: filePath,
       role,
       isObfuscated,
+      isMinified: false,
+      originalLineCount: 0,
       urls: [],
+      extractedUrls: [],
       domains: [],
       chromeApis: [],
       usesFetch: false,

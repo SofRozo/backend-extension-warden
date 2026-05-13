@@ -25,6 +25,7 @@ export class DownloaderService {
   async downloadAndExtract(
     extensionId: string,
     jobId: string,
+    packagePath?: string,
   ): Promise<DownloadResult> {
     const downloadDir =
       this.config.get<string>('analysis.crxDownloadDir') ||
@@ -36,17 +37,38 @@ export class DownloaderService {
     fs.mkdirSync(downloadDir, { recursive: true });
     fs.mkdirSync(extractDir, { recursive: true });
 
-    const crxPath = path.join(downloadDir, `${extensionId}.crx`);
+    const crxPath = path.join(
+      downloadDir,
+      `${extensionId}${packagePath?.toLowerCase().endsWith('.zip') ? '.zip' : '.crx'}`,
+    );
     const extExtractPath = path.join(extractDir, extensionId);
 
-    this.logger.logWithJob(
-      jobId,
-      'info',
-      `Downloading CRX for extension ${extensionId}`,
-      'DownloaderService',
-    );
-
-    await this.downloadCrx(extensionId, crxPath);
+    if (packagePath) {
+      const resolved = path.resolve(packagePath);
+      if (!fs.existsSync(resolved)) {
+        throw new Error(`Extension package not found: ${resolved}`);
+      }
+      if (!/\.(crx|zip)$/i.test(resolved)) {
+        throw new Error(
+          'Unsupported extension package type; expected .crx or .zip',
+        );
+      }
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `Using local extension package ${resolved}`,
+        'DownloaderService',
+      );
+      fs.copyFileSync(resolved, crxPath);
+    } else {
+      this.logger.logWithJob(
+        jobId,
+        'info',
+        `Downloading CRX for extension ${extensionId}`,
+        'DownloaderService',
+      );
+      await this.downloadCrx(extensionId, crxPath);
+    }
 
     const crxHash = await this.computeHash(crxPath);
 
@@ -57,7 +79,7 @@ export class DownloaderService {
       'DownloaderService',
     );
 
-    this.extractCrx(crxPath, extExtractPath);
+    this.extractPackage(crxPath, extExtractPath);
 
     const manifestPath = path.join(extExtractPath, 'manifest.json');
     let manifestData: Record<string, unknown> = {};
@@ -178,7 +200,7 @@ export class DownloaderService {
     });
   }
 
-  private extractCrx(crxPath: string, extractPath: string): void {
+  private extractPackage(crxPath: string, extractPath: string): void {
     if (fs.existsSync(extractPath)) {
       fs.rmSync(extractPath, { recursive: true, force: true });
     }
@@ -211,6 +233,13 @@ export class DownloaderService {
     fs.writeFileSync(tmpZipPath, zipBuffer);
 
     const zip = new AdmZip(tmpZipPath);
+    const root = path.resolve(extractPath);
+    for (const entry of zip.getEntries()) {
+      const target = path.resolve(root, entry.entryName);
+      if (target !== root && !target.startsWith(root + path.sep)) {
+        throw new Error(`Unsafe archive path detected: ${entry.entryName}`);
+      }
+    }
     zip.extractAllTo(extractPath, true);
 
     fs.unlinkSync(tmpZipPath);

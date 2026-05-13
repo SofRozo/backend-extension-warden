@@ -8,7 +8,13 @@ import {
   HttpStatus,
   NotFoundException,
   BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { AnalysisService } from './analysis.service.js';
 import { AnalyzeRequestDto } from './dto/analyze-request.dto.js';
 import { AnalysisStatus } from '../common/enums/risk-level.enum.js';
@@ -29,7 +35,10 @@ const STATUS_PROGRESS: Record<AnalysisStatus, number> = {
 
 @Controller()
 export class AnalysisController {
-  constructor(private readonly analysisService: AnalysisService) {}
+  constructor(
+    private readonly analysisService: AnalysisService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Post('analyze')
   @HttpCode(HttpStatus.ACCEPTED)
@@ -38,13 +47,63 @@ export class AnalysisController {
       dto.extensionId,
       dto.demo === true,
       dto.navigator,
+      dto.packagePath,
     );
     return {
       jobId: job.id,
       status: job.status,
       queue: dto.demo === true ? 'analysis-demo' : 'analysis',
       navigator: dto.navigator ?? 'default (env)',
+      source: dto.packagePath ? 'packagePath' : 'chromeWebStore',
       message: 'Analysis job queued successfully',
+    };
+  }
+
+  @Post('analyze/upload')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseInterceptors(FileInterceptor('file'))
+  async analyzeUpload(
+    @UploadedFile()
+    file: { originalname?: string; buffer?: Buffer } | undefined,
+  ) {
+    if (!file?.originalname || !file?.buffer) {
+      throw new BadRequestException('Upload field "file" is required');
+    }
+    if (!/\.(crx|zip)$/i.test(file.originalname)) {
+      throw new BadRequestException(
+        'Only .crx and .zip extension packages are supported',
+      );
+    }
+
+    const uploadDir =
+      this.config.get<string>('analysis.uploadDir') ||
+      path.join(process.cwd(), 'uploads');
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    const safeBase = path
+      .basename(file.originalname)
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const localId = `upload-${Date.now()}-${safeBase.replace(/\.(crx|zip)$/i, '')}`;
+    const packagePath = path.join(
+      uploadDir,
+      `${localId}${path.extname(safeBase).toLowerCase()}`,
+    );
+    fs.writeFileSync(packagePath, file.buffer);
+
+    const job = await this.analysisService.createAnalysisJob(
+      localId,
+      false,
+      undefined,
+      packagePath,
+    );
+    return {
+      jobId: job.id,
+      extensionId: localId,
+      extensionName: safeBase,
+      status: job.status,
+      queue: 'analysis',
+      source: 'upload',
+      message: 'Uploaded extension analysis job queued successfully',
     };
   }
 

@@ -1,8 +1,22 @@
 import { DetonationStrategy } from '../enums/risk-level.enum.js';
-import type {
-  Agent1Output,
-  DomainCategory,
-} from '../../agents/interfaces/agents.interfaces.js';
+import type { Agent1Output } from '../../agents/interfaces/agents.interfaces.js';
+
+/**
+ * Sensitive-domain classification. Lives in analysis.interfaces.ts (not under
+ * agents/) because classification is purely deterministic and is consumed by
+ * the static-analysis layer; agents only read the resulting categories.
+ */
+export type DomainCategory =
+  | 'propio_extension'
+  | 'infraestructura_tecnica'
+  | 'sensible_redes_sociales'
+  | 'sensible_financiero'
+  | 'sensible_identidad'
+  | 'sensible_correo_productividad'
+  | 'sensible_gubernamental'
+  | 'sensible_llm'
+  | 'sensible_data_broker'
+  | 'desconocido';
 
 // ─── File classification ─────────────────────────────────────────────────────
 
@@ -31,13 +45,97 @@ export interface ExtractedDomain {
   line: number;
 }
 
+export type ResourceType =
+  | 'javascript'
+  | 'html'
+  | 'json'
+  | 'css'
+  | 'archive'
+  | 'other';
+
+export interface ResourceInventoryEntry {
+  path: string;
+  type: ResourceType;
+  sizeBytes: number;
+  isMinified: boolean;
+  lineCount: number;
+}
+
+export interface NestedArchiveFinding {
+  path: string;
+  line: number;
+  detail: string;
+}
+
+export interface DependencyEdge {
+  from: string;
+  to: string;
+  type:
+    | 'manifest'
+    | 'html_script'
+    | 'static_import'
+    | 'dynamic_import'
+    | 'require'
+    | 'worker'
+    | 'scripting_executeScript'
+    | 'script_injection';
+  line: number;
+}
+
+export interface DependencyGraph {
+  entries: string[];
+  edges: DependencyEdge[];
+  reachable: string[];
+  orphanScripts: string[];
+  unresolved: DependencyEdge[];
+}
+
+export interface ExtractedUrl {
+  url: string;
+  line: number;
+  context: string;
+  classification: UrlClassification;
+}
+
+export interface UrlClassification {
+  protocol?: string;
+  domain?: string;
+  category:
+    | 'trusted'
+    | 'analytics'
+    | 'unknown'
+    | 'suspicious_tld'
+    | 'raw_ip'
+    | 'localhost'
+    | 'non_https'
+    | 'dynamic';
+  reasons: string[];
+}
+
 export interface ProcessedFile {
   path: string;
   role: FileRole;
   isObfuscated: boolean;
+  isMinified?: boolean;
+  originalLineCount?: number;
   cleanCode?: string;
   urls: string[];
+  extractedUrls?: ExtractedUrl[];
+  /**
+   * Every domain string seen in the source — includes URLs in `window.open`,
+   * link attributes, comments, etc. Useful for inventory but NOT a sufficient
+   * signal that the extension actually contacted the domain.
+   */
   domains: ExtractedDomain[];
+  /**
+   * Subset of `domains`: only domains that appear as the argument of a
+   * network sink (fetch / XHR / WebSocket / sendBeacon / chrome.*sendMessage).
+   * These are the domains the extension actually contacts from its scripts.
+   * Domains in `window.open`, `chrome.tabs.create`, `<a href>`, etc. are
+   * deliberately excluded — those are navigation affordances, not contacts.
+   * Populated by StaticAnalysisService when it runs the AST pass.
+   */
+  contactedDomains?: ExtractedDomain[];
   chromeApis: ExtractedChromeApi[];
   usesFetch: boolean;
   usesXHR: boolean;
@@ -55,6 +153,7 @@ export interface ManifestInfo {
   author?: string;
   apiPermissions: string[];
   hostPermissions: string[];
+  optionalPermissions: string[];
   contentScripts: Array<{
     matches: string[];
     js: string[];
@@ -73,6 +172,17 @@ export interface ManifestInfo {
   sandboxPages: string[];
   /** chrome_url_overrides — newtab / history / bookmarks replacement */
   chromeUrlOverrides: Record<string, string>;
+  webAccessibleResources: unknown[];
+  externallyConnectable?: Record<string, unknown>;
+  declarativeNetRequestRules: string[];
+  oauth2?: Record<string, unknown>;
+  permissionRisk: Array<{
+    permission: string;
+    category: 'low' | 'medium' | 'high' | 'critical';
+    weight: 1 | 2 | 5 | 10;
+    hostSensitive: boolean;
+    source: 'permissions' | 'optional_permissions' | 'host_permissions';
+  }>;
   rawManifest: Record<string, unknown>;
 }
 
@@ -89,15 +199,21 @@ export interface RemoteCodeViolation {
  */
 export type StaticDiscoveryType =
   | 'permiso_chrome_manifest_no_usado'
+  | 'permiso_chrome_manifest_riesgoso'
   | 'uso_api_chrome'
   | 'funcion_javascript_riesgosa'
   | 'flujo_datos_a_red'
   | 'codigo_ofuscado'
+  | 'archivo_minificado'
+  | 'archivo_huerfano'
+  | 'archivo_anidado'
+  | 'dependencia_no_resuelta'
   | 'script_remoto_mv3'
   | 'listener_teclado'
   | 'inyeccion_dom'
   | 'lectura_cookies'
-  | 'lectura_storage_navegador';
+  | 'lectura_storage_navegador'
+  | 'correlacion_riesgo';
 
 export interface PreprocessingFinding {
   fileType: FileRole;
@@ -108,13 +224,16 @@ export interface PreprocessingFinding {
   line: number;
   /** Optional code snippet to help the agent reason */
   codeSnippet?: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  category?: string;
+  why?: string;
+  confidence?: number;
+  scoreImpact?: number;
 }
 
 // ─── Resultado 2 — URL/domain findings ───────────────────────────────────────
 
-export type DomainDiscoveryType =
-  | 'url_en_codigo'
-  | 'host_permission_manifest';
+export type DomainDiscoveryType = 'url_en_codigo' | 'host_permission_manifest';
 
 export interface DomainFinding {
   fileType: FileRole;
@@ -137,6 +256,9 @@ export interface PreprocessorOutput {
   extractPath: string;
   manifest: ManifestInfo;
   files: ProcessedFile[];
+  resources: ResourceInventoryEntry[];
+  nestedArchives: NestedArchiveFinding[];
+  dependencyGraph: DependencyGraph;
   obfuscatedFileCount: number;
   hasObfuscation: boolean;
   /** MV3 policy violations — also surfaced as PreprocessingFinding entries */
@@ -147,6 +269,11 @@ export interface PreprocessorOutput {
   resultado2_priority: DomainFinding[];
   /** Resultado 2 — domains that need LLM/threat-intel reasoning (desconocido) */
   resultado2_unknown: DomainFinding[];
+  riskScore?: {
+    score: number;
+    level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    reasons: string[];
+  };
 }
 
 // ─── Dynamic analysis ────────────────────────────────────────────────────────
@@ -200,7 +327,7 @@ export interface DynamicEvidence {
 
 /**
  * Stagehand observation per priority domain — raw signals collected by the
- * navigator (Stagehand or IntelligentNavigator) before Agent 4 verdicts them.
+ * navigator (Stagehand or IntelligentNavigator) before Agent 2 verdicts them.
  */
 export interface SandboxDomainObservation {
   domain: string;
@@ -262,7 +389,11 @@ export interface ThreatIntelResult {
 // ─── Verdicted findings (output of agents 2/3/4) ─────────────────────────────
 
 export type VerdictPositive = 'positivo' | 'falso_positivo';
-export type DynamicVerdict = 'maliciosa' | 'sospechosa' | 'benigna' | 'inaccesible';
+export type DynamicVerdict =
+  | 'maliciosa'
+  | 'sospechosa'
+  | 'benigna'
+  | 'inaccesible';
 
 export interface VerdictedStaticFinding extends PreprocessingFinding {
   veredicto: VerdictPositive;
@@ -284,17 +415,17 @@ export interface DynamicVerdictedFinding extends DomainFinding {
 
 // ─── Combined agent results ──────────────────────────────────────────────────
 
+/**
+ * Output of the agent pipeline after the refactor that dropped the
+ * SAST-per-finding and domain-abuse-per-finding agents. The static-analysis
+ * layer (deterministic) now owns resultado1/resultado2; agents only contribute
+ * the holistic narrative (Agent 1) and the dynamic per-domain verdict
+ * (Agent 2 — originally numbered "Agent 4" before the others were removed).
+ */
 export interface AgentAnalysisResult {
   agent1: Agent1Output | null;
-  /** Resultado 1 con veredicto+razón por hallazgo */
-  agent2: VerdictedStaticFinding[] | null;
-  /** Resultado 2 (priority + unknown) con veredicto+razón */
-  agent3: {
-    priority: VerdictedDomainFinding[];
-    unknown: VerdictedDomainFinding[];
-  } | null;
-  /** Veredicto dinámico replicado por hallazgo de Resultado 2 priority */
-  agent4: DynamicVerdictedFinding[] | null;
+  /** Per-priority-domain dynamic verdict produced by Agent 2 from Stagehand observations. */
+  agent2: DynamicVerdictedFinding[] | null;
   ranSuccessfully: boolean;
   errors: string[];
 }
@@ -346,6 +477,11 @@ export interface AnalysisReport {
    * timeline and lets the user compare agents side by side.
    */
   navegacionDominios: DomainNavigationLog[];
+  puntuacion_riesgo?: {
+    score: number;
+    level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    reasons: string[];
+  };
 }
 
 export interface DomainNavigationLog {

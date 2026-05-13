@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import type { DomainCategory } from '../interfaces/agents.interfaces.js';
+import type { DomainCategory } from '../common/interfaces/analysis.interfaces.js';
 
 /**
- * Deterministic domain classifier — runs in the preprocessor before any LLM
- * is involved. Returns null when the domain is unknown so the LLM (Agent 3)
- * can reason about it.
+ * Deterministic domain classifier. Runs during static analysis and categorises
+ * every domain reference (from code or from manifest host_permissions) into
+ * one of the buckets defined by `DomainCategory`. No LLM involved — the lists
+ * below are curated and the matching is exact (with `www.` stripping and TLD
+ * fallback for governmental domains).
+ *
+ * Categories `sensible_*` are flagged for prioritised visit during the dynamic
+ * (Stagehand) phase. Categories `propio_extension` and `infraestructura_tecnica`
+ * are dropped from the final report — they are not interesting to surface.
+ * Returns `null` only when the domain matches nothing, in which case the
+ * static-analysis layer files it under `resultado2_unknown`.
  */
 
 // ─── Known domain lists ───────────────────────────────────────────────────────
@@ -37,6 +45,14 @@ const TECH_INFRASTRUCTURE = new Set([
   'yarnpkg.com',
   'bootstrapcdn.com',
   'jquery.com',
+  'run.app', // Google Cloud Run
+  'a.run.app',
+  'appspot.com', // Google App Engine
+  'herokuapp.com',
+  'netlify.app',
+  'vercel.app',
+  'pages.dev',
+  'github.io',
 ]);
 
 const SOCIAL_MEDIA: Record<string, string> = {
@@ -62,6 +78,8 @@ const SOCIAL_MEDIA: Record<string, string> = {
   'twitch.tv': 'Twitch',
   'www.twitch.tv': 'Twitch',
   'discord.com': 'Discord',
+  'discord.gg': 'Discord',
+  'discordapp.com': 'Discord',
   'telegram.org': 'Telegram',
   't.me': 'Telegram',
   'whatsapp.com': 'WhatsApp',
@@ -135,6 +153,42 @@ const GOVERNMENT: Record<string, string> = {
   'gov.uk': 'UK Government',
 };
 
+const DATA_BROKERS: Record<string, string> = {
+  // Marketing / identity resolution data brokers
+  'acxiom.com': 'Acxiom',
+  'liveramp.com': 'LiveRamp',
+  'oracle.com/cx/marketing/data-cloud': 'Oracle Data Cloud',
+  'bluekai.com': 'Oracle BlueKai',
+  'datalogix.com': 'Oracle Datalogix',
+  'experian.com': 'Experian',
+  'experiandirect.com': 'Experian Direct',
+  'equifax.com': 'Equifax',
+  'transunion.com': 'TransUnion',
+  'lexisnexis.com': 'LexisNexis',
+  'risk.lexisnexis.com': 'LexisNexis Risk',
+  'epsilon.com': 'Epsilon',
+  'merkleinc.com': 'Merkle',
+  'towerdata.com': 'TowerData',
+  'spokeo.com': 'Spokeo',
+  'whitepages.com': 'Whitepages',
+  'beenverified.com': 'BeenVerified',
+  'intelius.com': 'Intelius',
+  'mylife.com': 'MyLife',
+  'peoplefinder.com': 'PeopleFinder',
+  'pipl.com': 'Pipl',
+  'thomsonreuters.com': 'Thomson Reuters',
+  // Ad-tech tracking / DMPs that exfiltrate behavioural data
+  'criteo.com': 'Criteo',
+  'taboola.com': 'Taboola',
+  'outbrain.com': 'Outbrain',
+  'pubmatic.com': 'PubMatic',
+  'rubiconproject.com': 'Rubicon Project',
+  'openx.net': 'OpenX',
+  'adsrvr.org': 'The Trade Desk',
+  'adnxs.com': 'Xandr/AppNexus',
+  'rlcdn.com': 'LiveRamp ATS',
+};
+
 const LLM_PLATFORMS: Record<string, string> = {
   'chat.openai.com': 'ChatGPT',
   'chatgpt.com': 'ChatGPT',
@@ -162,7 +216,7 @@ const LLM_PLATFORMS: Record<string, string> = {
 // ─── Public result type ───────────────────────────────────────────────────────
 
 export interface DeterministicResult {
-  /** null means "unknown — needs LLM reasoning" */
+  /** null means "unknown — not in any curated list" */
   category: DomainCategory | null;
   platform?: string;
 }
@@ -179,7 +233,14 @@ export class DomainClassifierService {
     const d = domain.toLowerCase();
     const dNoWww = d.replace(/^www\./, '');
 
-    if (TECH_INFRASTRUCTURE.has(d) || TECH_INFRASTRUCTURE.has(dNoWww)) {
+    if (
+      TECH_INFRASTRUCTURE.has(d) ||
+      TECH_INFRASTRUCTURE.has(dNoWww) ||
+      d.endsWith('.run.app') ||
+      d.endsWith('.appspot.com') ||
+      d.endsWith('.netlify.app') ||
+      d.endsWith('.vercel.app')
+    ) {
       return { category: 'infraestructura_tecnica' };
     }
 
@@ -205,6 +266,9 @@ export class DomainClassifierService {
     if (email)
       return { category: 'sensible_correo_productividad', platform: email };
 
+    const broker = DATA_BROKERS[d] ?? DATA_BROKERS[dNoWww];
+    if (broker) return { category: 'sensible_data_broker', platform: broker };
+
     const gov = GOVERNMENT[d] ?? GOVERNMENT[dNoWww];
     if (gov) return { category: 'sensible_gubernamental', platform: gov };
 
@@ -223,11 +287,12 @@ export class DomainClassifierService {
     const map: Partial<Record<DomainCategory, number>> = {
       sensible_financiero: 1,
       sensible_identidad: 2,
-      sensible_llm: 3,
-      sensible_correo_productividad: 4,
-      sensible_redes_sociales: 5,
-      sensible_gubernamental: 5,
-      desconocido: 6,
+      sensible_data_broker: 3,
+      sensible_llm: 4,
+      sensible_correo_productividad: 5,
+      sensible_redes_sociales: 6,
+      sensible_gubernamental: 6,
+      desconocido: 7,
     };
     return map[category];
   }
@@ -237,6 +302,7 @@ export class DomainClassifierService {
     const priority: DomainCategory[] = [
       'sensible_financiero',
       'sensible_identidad',
+      'sensible_data_broker',
       'sensible_llm',
       'sensible_correo_productividad',
       'sensible_redes_sociales',
@@ -253,16 +319,35 @@ export class DomainClassifierService {
     extensionAuthor?: string,
   ): boolean {
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const domainBase = normalize(domain.split('.')[0]);
+    const parts = domain.split('.');
 
-    if (domainBase.length < 4) return false;
+    // For api.gethappydog.com -> we want "gethappydog"
+    let domainBase = '';
+    if (parts.length >= 2) {
+      // Very naive "registrable domain" logic: take the part before the TLD
+      domainBase = normalize(parts[parts.length - 2]);
+    } else {
+      domainBase = normalize(parts[0]);
+    }
 
+    if (domainBase.length < 3) return false;
+
+    const nameNormalized = normalize(extensionName);
     const nameParts = extensionName
       .toLowerCase()
       .split(/\s+/)
       .map(normalize)
       .filter((p) => p.length > 3);
 
+    // 1. Exact match with normalized name (happydog vs happy dog)
+    if (
+      nameNormalized.includes(domainBase) ||
+      domainBase.includes(nameNormalized)
+    ) {
+      return true;
+    }
+
+    // 2. Partial match with name parts
     if (
       nameParts.some((p) => domainBase.includes(p) || p.includes(domainBase))
     ) {

@@ -28,7 +28,10 @@ export default () => ({
     password: process.env.REDIS_PASSWORD || '',
   },
   analysis: {
-    preprocessTimeoutMs: parseInt(process.env.PREPROCESS_TIMEOUT_MS || '180000', 10),
+    preprocessTimeoutMs: parseInt(
+      process.env.PREPROCESS_TIMEOUT_MS || '180000',
+      10,
+    ),
     staticTimeoutMs: parseInt(process.env.STATIC_TIMEOUT_MS || '60000', 10),
     dynamicTimeoutMs: parseInt(process.env.DYNAMIC_TIMEOUT_MS || '1200000', 10),
     maxConcurrentWorkers: parseInt(
@@ -39,6 +42,8 @@ export default () => ({
       process.env.CRX_DOWNLOAD_DIR || path.join(defaultEphemeralBase(), 'crx'),
     extractDir:
       process.env.EXTRACT_DIR || path.join(defaultEphemeralBase(), 'extracted'),
+    uploadDir:
+      process.env.UPLOAD_DIR || path.join(defaultEphemeralBase(), 'uploads'),
     useStagehand: process.env.ANALYSIS_USE_STAGEHAND === 'true',
   },
   threatIntel: {

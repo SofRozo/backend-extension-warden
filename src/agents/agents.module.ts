@@ -1,26 +1,30 @@
 import { Module } from '@nestjs/common';
 import { LlmClientService } from './llm/llm-client.service.js';
-import { DomainClassifierService } from './agent2/domain-classifier.service.js';
 import { Agent1IntentionService } from './agent1/agent1-intention.service.js';
-import { Agent2SastService } from './agent2/agent2-sast.service.js';
-import { Agent3AbuseService } from './agent3/agent3-abuse.service.js';
-import { Agent4DynamicService } from './agent4/agent4-dynamic.service.js';
+import { Agent2DynamicService } from './agent2/agent2-dynamic.service.js';
 import { AgentsOrchestratorService } from './agents-orchestrator.service.js';
 import { StructuredLogger } from '../common/logger/logger.service.js';
-import { ThreatIntelModule } from '../threat-intel/threat-intel.module.js';
 
+/**
+ * Agent pipeline (post-refactor):
+ *  - Agent 1 = holistic analyst. Receives manifest + static findings + dynamic
+ *    observations and produces the final verdict + narratives.
+ *  - Agent 2 = dynamic verdict over Stagehand/IntelligentNavigator observations
+ *    (originally numbered "Agent 4" before the SAST-per-finding and
+ *    domain-abuse-per-finding agents were removed).
+ *
+ * The previous Agents 2 (SAST) and 3 (domain abuse) were dropped in favour of
+ * deterministic static analysis. Domain classification is now done in the
+ * static-analysis layer (DomainClassifierService).
+ */
 @Module({
-  imports: [ThreatIntelModule],
   providers: [
     StructuredLogger,
     LlmClientService,
-    DomainClassifierService,
     Agent1IntentionService,
-    Agent2SastService,
-    Agent3AbuseService,
-    Agent4DynamicService,
+    Agent2DynamicService,
     AgentsOrchestratorService,
   ],
-  exports: [AgentsOrchestratorService, Agent4DynamicService, LlmClientService],
+  exports: [AgentsOrchestratorService, Agent2DynamicService, LlmClientService],
 })
 export class AgentsModule {}

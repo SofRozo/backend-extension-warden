@@ -10,7 +10,7 @@ import { StaticAnalysisService } from '../static-analysis/static-analysis.servic
 import { SandboxOrchestratorService } from '../dynamic-analysis/orchestrator/sandbox-orchestrator.service.js';
 import { ReportService } from '../report/report.service.js';
 import { AgentsOrchestratorService } from '../agents/agents-orchestrator.service.js';
-import { Agent4DynamicService } from '../agents/agent4/agent4-dynamic.service.js';
+import { Agent2DynamicService } from '../agents/agent2/agent2-dynamic.service.js';
 import { StructuredLogger } from '../common/logger/logger.service.js';
 import { AnalysisStatus } from '../common/enums/risk-level.enum.js';
 import { ConfigService } from '@nestjs/config';
@@ -18,6 +18,7 @@ import type {
   DynamicAnalysisResult,
   AgentAnalysisResult,
   PreprocessorOutput,
+  DynamicVerdictedFinding,
 } from '../common/interfaces/analysis.interfaces.js';
 
 export const WORKER_QUEUE_NAME =
@@ -34,7 +35,7 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly downloader: DownloaderService,
     private readonly preprocessor: PreprocessorService,
     private readonly agentsOrchestrator: AgentsOrchestratorService,
-    private readonly agent4: Agent4DynamicService,
+    private readonly agent2Dynamic: Agent2DynamicService,
     private readonly staticAnalysis: StaticAnalysisService,
     private readonly dynamicAnalysis: SandboxOrchestratorService,
     private readonly reportService: ReportService,
@@ -46,18 +47,20 @@ export class AnalysisProcessor extends WorkerHost {
 
   async process(
     job: Job<{
-      extensionId: string;
+      extensionId?: string;
+      packagePath?: string;
       jobId: string;
       navigator?: 'stagehand' | 'intelligent_navigator';
     }>,
   ): Promise<void> {
-    const { extensionId, jobId, navigator } = job.data;
+    const { extensionId, packagePath, jobId, navigator } = job.data;
+    const analysisId = extensionId ?? `local-${jobId}`;
     const startTime = Date.now();
 
     this.logger.logWithJob(
       jobId,
       'info',
-      `Processing analysis for extension ${extensionId}`,
+      `Processing analysis for extension ${analysisId}`,
       'AnalysisProcessor',
     );
 
@@ -65,8 +68,9 @@ export class AnalysisProcessor extends WorkerHost {
       // Step 1: Download CRX
       await this.updateJobStatus(jobId, AnalysisStatus.DOWNLOADING);
       const downloadResult = await this.downloader.downloadAndExtract(
-        extensionId,
+        analysisId,
         jobId,
+        packagePath,
       );
 
       // Step 2: Preprocess + Static Analysis (preprocessing fills resultado1
@@ -90,38 +94,14 @@ export class AnalysisProcessor extends WorkerHost {
         crxHash: preprocessed.crxHash,
       });
 
-      // Step 3: Agents 1 → 2 → 3 (static phase). Degrades gracefully when LLM
-      // is not configured: agent1/2/3 are returned as null.
-      await this.updateJobStatus(jobId, AnalysisStatus.AI_ANALYSIS);
-      let agentAnalysis: AgentAnalysisResult;
-      try {
-        const agentTimeoutMs =
-          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 3_600_000;
-        agentAnalysis = await this.withTimeout(
-          this.agentsOrchestrator.run(preprocessed, jobId),
-          agentTimeoutMs,
-          'AI analysis timeout exceeded',
-        );
-      } catch (err) {
-        this.logger.logWithJob(
-          jobId,
-          'warn',
-          `AI static analysis failed: ${err instanceof Error ? err.message : String(err)}`,
-          'AnalysisProcessor',
-        );
-        agentAnalysis = {
-          agent1: null,
-          agent2: null,
-          agent3: null,
-          agent4: null,
-          ranSuccessfully: false,
-          errors: [err instanceof Error ? err.message : String(err)],
-        };
-      }
-
-      // Step 4: Dynamic Analysis — visit priority domains
+      // Step 3: Dynamic Analysis — visit priority domains. The propósito hint
+      // for Stagehand now comes from the manifest directly (description + name)
+      // because Agent 1 runs LATER (it needs the dynamic evidence to synthesise
+      // the holistic verdict).
       let dynamicResult: DynamicAnalysisResult | null = null;
       await this.updateJobStatus(jobId, AnalysisStatus.DYNAMIC_ANALYSIS);
+
+      const propositoHint = this.buildPropositoHint(preprocessed);
 
       try {
         const baseDynamicTimeoutMs =
@@ -131,16 +111,12 @@ export class AnalysisProcessor extends WorkerHost {
           ? baseDynamicTimeoutMs + 210000
           : baseDynamicTimeoutMs;
 
-        const proposito =
-          agentAnalysis.agent1?.proposito ??
-          'Analizar comportamiento de la extensión';
-
         dynamicResult = await this.withTimeout(
           this.dynamicAnalysis.executeDynamicAnalysis(
             preprocessed.extractPath,
-            extensionId,
+            analysisId,
             preprocessed.resultado2_priority,
-            proposito,
+            propositoHint,
             jobId,
             navigator,
           ),
@@ -157,38 +133,65 @@ export class AnalysisProcessor extends WorkerHost {
         this.forceKillBrowserProcesses(jobId);
       }
 
-      // Step 5: Agent 4 — emit per-domain verdict and replicate it on each
-      // priority finding so resultado_dinamico has one entry per priority
-      // discovery.
+      // Step 4: Agent 2 (dynamic) — emit per-domain verdict from Stagehand observations.
+      let agent2Result: DynamicVerdictedFinding[] = [];
       try {
-        const proposito =
-          agentAnalysis.agent1?.proposito ??
-          'Analizar comportamiento de la extensión';
         const observations = dynamicResult?.domainObservations ?? [];
-        const agent4Result = await this.withTimeout(
-          this.agent4.analyze(
-            proposito,
+        agent2Result = await this.withTimeout(
+          this.agent2Dynamic.analyze(
+            propositoHint,
             preprocessed.resultado2_priority,
             observations,
             jobId,
           ),
           60_000,
-          'Agent 4 timeout',
+          'Agent 2 (dynamic) timeout',
         );
-        agentAnalysis = { ...agentAnalysis, agent4: agent4Result };
         this.logger.logWithJob(
           jobId,
           'info',
-          `Agent 4 complete: ${agent4Result.length} verdicted dynamic findings`,
+          `Agent 2 (dynamic) complete: ${agent2Result.length} verdicted dynamic findings`,
           'AnalysisProcessor',
         );
       } catch (err) {
         this.logger.logWithJob(
           jobId,
           'warn',
-          `Agent 4 skipped: ${err instanceof Error ? err.message : String(err)}`,
+          `Agent 2 (dynamic) skipped: ${err instanceof Error ? err.message : String(err)}`,
           'AnalysisProcessor',
         );
+      }
+
+      // Step 5: Agent 1 (holistic). Runs LAST so it sees the full evidence
+      // bundle: deterministic static findings + dominio classification +
+      // dynamic observations + Agent 2 verdicts. Produces the verdict, risk
+      // level, and the narrative arrays the user reads in the report.
+      await this.updateJobStatus(jobId, AnalysisStatus.AI_ANALYSIS);
+      let agentAnalysis: AgentAnalysisResult;
+      try {
+        const agentTimeoutMs =
+          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 3_600_000;
+        agentAnalysis = await this.withTimeout(
+          this.agentsOrchestrator.run(preprocessed, jobId, {
+            dynamicObservations: dynamicResult?.domainObservations ?? [],
+            dynamicVerdicts: agent2Result,
+          }),
+          agentTimeoutMs,
+          'AI analysis timeout exceeded',
+        );
+      } catch (err) {
+        this.logger.logWithJob(
+          jobId,
+          'warn',
+          `AI holistic analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+          'AnalysisProcessor',
+        );
+        agentAnalysis = {
+          agent1: null,
+          agent2: agent2Result,
+          ranSuccessfully: false,
+          errors: [err instanceof Error ? err.message : String(err)],
+        };
       }
 
       // Step 6: Generate Report
@@ -197,7 +200,7 @@ export class AnalysisProcessor extends WorkerHost {
 
       const report = this.reportService.generateReport(
         jobId,
-        extensionId,
+        analysisId,
         analysisDuration,
         {
           name: preprocessed.manifest.name || undefined,
@@ -205,8 +208,10 @@ export class AnalysisProcessor extends WorkerHost {
           author: preprocessed.manifest.author || undefined,
           crxHash: preprocessed.crxHash,
         },
+        preprocessed,
         agentAnalysis,
         dynamicResult?.domainObservations ?? [],
+        preprocessed.riskScore,
       );
 
       // Strip U+0000 (PostgreSQL JSONB rejects null bytes)
@@ -227,7 +232,7 @@ export class AnalysisProcessor extends WorkerHost {
         'AnalysisProcessor',
       );
 
-      this.downloader.cleanup(extensionId);
+      this.downloader.cleanup(analysisId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.logWithJob(
@@ -242,9 +247,33 @@ export class AnalysisProcessor extends WorkerHost {
         errorMessage,
       });
 
-      this.downloader.cleanup(extensionId);
+      this.downloader.cleanup(analysisId);
       throw err;
     }
+  }
+
+  /**
+   * Builds a short text hint for Stagehand describing what the extension
+   * *claims* to do, used to bias the navigator's prompts. Deterministic — no
+   * LLM involved. Falls back to a generic instruction when manifest fields are
+   * empty.
+   */
+  private buildPropositoHint(preprocessed: PreprocessorOutput): string {
+    const { manifest } = preprocessed;
+    const parts: string[] = [];
+    if (manifest.name) parts.push(`Nombre: ${manifest.name}`);
+    if (manifest.description)
+      parts.push(`Descripción: ${manifest.description}`);
+    if (manifest.contentScripts.length > 0) {
+      const matches = manifest.contentScripts
+        .flatMap((cs) => cs.matches)
+        .slice(0, 5);
+      if (matches.length) parts.push(`Activa en: ${matches.join(', ')}`);
+    }
+    return (
+      parts.join('. ') ||
+      'Analizar comportamiento de la extensión (sin descripción declarada)'
+    );
   }
 
   private async preprocessAndAnalyzeStatic(

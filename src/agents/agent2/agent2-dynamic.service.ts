@@ -54,7 +54,7 @@ Responde EXACTAMENTE con JSON (sin texto adicional):
 DEBES devolver una entrada por cada dominio observado.`;
 
 @Injectable()
-export class Agent4DynamicService {
+export class Agent2DynamicService {
   constructor(
     private readonly llm: LlmClientService,
     private readonly logger: StructuredLogger,
@@ -102,8 +102,7 @@ export class Agent4DynamicService {
     }
 
     return priorityFindings.map((f) => {
-      const v =
-        verdictByDomain.get(f.domain.toLowerCase()) ??
+      const v = verdictByDomain.get(f.domain.toLowerCase()) ??
         verdictByDomain.get(f.domain) ?? {
           domain: f.domain,
           veredicto: 'inaccesible' as DynamicVerdict,
@@ -154,8 +153,8 @@ export class Agent4DynamicService {
       this.logger.logWithJob(
         jobId,
         'warn',
-        `Agent 4 LLM call failed: ${err instanceof Error ? err.message : String(err)}`,
-        'Agent4DynamicService',
+        `Agent 2 (dynamic) LLM call failed: ${err instanceof Error ? err.message : String(err)}`,
+        'Agent2DynamicService',
       );
       return observations.map((o) => this.heuristicVerdict(o));
     }
@@ -180,8 +179,8 @@ export class Agent4DynamicService {
       this.logger.logWithJob(
         jobId,
         'warn',
-        'Agent 4 returned no domain verdicts — using heuristic fallback',
-        'Agent4DynamicService',
+        'Agent 2 (dynamic) returned no domain verdicts — using heuristic fallback',
+        'Agent2DynamicService',
       );
       return observations.map((o) => this.heuristicVerdict(o));
     }

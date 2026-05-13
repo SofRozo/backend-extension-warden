@@ -1,5 +1,32 @@
-// ─── Agent 1 — Intention & Purpose ───────────────────────────────────────────
+// ─── Agent 1 — Holistic analyst ──────────────────────────────────────────────
 
+/**
+ * Agent 1 is now the ONLY LLM agent in the static phase. It analyses the whole
+ * extension on its own — receives the manifest, the deterministic static
+ * findings, the priority/unknown domain lists, and (when available) the
+ * dynamic Stagehand observations + Agent 2 verdicts — and produces a verdict
+ * with a written explanation.
+ *
+ * Agent 1 produces the HOLISTIC summary only: intent + verdict + explanation.
+ * The per-finding narratives (`hallazgos_estaticos_positivos` and
+ * `hallazgos_dinamicos_positivos`) are NOT Agent 1's job — they are produced
+ * deterministically by the static-analysis layer and the report formatter so
+ * the report is meaningful even when no LLM is configured.
+ *
+ * Field semantics:
+ *  - proposito / categoria / acciones_*           → high-level intent
+ *  - nivel_riesgo_inicial / razon_nivel_riesgo    → preserved for the frontend
+ *    Agent1Summary block
+ *  - veredicto_global                             → holistic verdict
+ *    (maliciosa | sospechosa | benigna)
+ *  - explicacion                                  → 2-4 sentence paragraph the
+ *    user reads in the drawer header
+ *  - hallazgos_propios                            → items the agent discovered
+ *    by reading the source code directly. These COMPLEMENT (do not replace)
+ *    the deterministic static findings; the agent catches novel/contextual
+ *    patterns the rules don't know about (encoded strings decoding to URLs,
+ *    suspicious conditional logic, anti-analysis tricks, timer/date gates, etc.).
+ */
 export interface Agent1Output {
   proposito: string;
   categoria: string;
@@ -8,23 +35,33 @@ export interface Agent1Output {
   senales_alarma_manifest: string[];
   nivel_riesgo_inicial: 'bajo' | 'medio' | 'alto' | 'critico';
   razon_nivel_riesgo: string;
+  veredicto_global: 'maliciosa' | 'sospechosa' | 'benigna';
+  explicacion: string;
+  hallazgos_propios?: AgentFinding[];
 }
 
-// ─── Domain categories ───────────────────────────────────────────────────────
-
-export type DomainCategory =
-  | 'propio_extension'
-  | 'infraestructura_tecnica'
-  | 'sensible_redes_sociales'
-  | 'sensible_financiero'
-  | 'sensible_identidad'
-  | 'sensible_correo_productividad'
-  | 'sensible_gubernamental'
-  | 'sensible_llm'
-  | 'desconocido';
-
 /**
- * Backwards-compatible re-exports so the rest of the codebase keeps importing
- * SandboxDomainObservation from this module.
+ * A finding the LLM agent identified by reading code directly. Separate from
+ * the deterministic PreprocessingFinding so the UI can label them as
+ * "additional review by the agent" and avoid double-counting against the rules.
  */
-export type { SandboxDomainObservation } from '../../common/interfaces/analysis.interfaces.js';
+export interface AgentFinding {
+  archivo: string;
+  linea?: number;
+  /** Free-form short label, e.g. "exfiltración", "obfuscación", "anti-análisis". */
+  tipo: string;
+  descripcion: string;
+  severidad: 'bajo' | 'medio' | 'alto' | 'critico';
+  /** Optional code excerpt the agent referenced. */
+  snippet?: string;
+}
+
+// ─── Re-exports ──────────────────────────────────────────────────────────────
+// DomainCategory now lives in common/interfaces/analysis.interfaces.ts because
+// classification is deterministic and consumed by the static-analysis layer.
+// We re-export here so existing imports keep working.
+
+export type {
+  DomainCategory,
+  SandboxDomainObservation,
+} from '../../common/interfaces/analysis.interfaces.js';
