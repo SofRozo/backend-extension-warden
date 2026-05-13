@@ -17,7 +17,7 @@ export class StaticAnalysisService {
     private readonly astParser: AstParserService,
     private readonly domainClassifier: DomainClassifierService,
     private readonly logger: StructuredLogger,
-  ) {}
+  ) { }
 
   /**
    * Mutates `preprocessed` to fill resultado1 / resultado2_priority /
@@ -346,8 +346,8 @@ export class StaticAnalysisService {
       jobId,
       'info',
       `Static analysis complete: ${preprocessed.resultado1.length} resultado1, ` +
-        `${preprocessed.resultado2_priority.length} priority domains, ` +
-        `${preprocessed.resultado2_unknown.length} unknown domains`,
+      `${preprocessed.resultado2_priority.length} priority domains, ` +
+      `${preprocessed.resultado2_unknown.length} unknown domains`,
       'StaticAnalysisService',
     );
   }
@@ -1028,7 +1028,7 @@ export class StaticAnalysisService {
 
     // B6: clipboardRead + network sink in SAME FILE
     const clipboardFetchSameFile = findFindingWithSamefile(
-      (f) => perms.has('clipboardRead'),
+      (_) => perms.has('clipboardRead'),
       isFetch,
     );
     if (clipboardFetchSameFile) {
@@ -1040,7 +1040,7 @@ export class StaticAnalysisService {
 
     // B7: history permission + network sink in SAME FILE
     const historyFetchSameFile = findFindingWithSamefile(
-      (f) => perms.has('history'),
+      (_) => perms.has('history'),
       isFetch,
     );
     if (historyFetchSameFile) {
