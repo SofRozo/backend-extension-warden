@@ -90,7 +90,7 @@ export class UserRiskSummaryService {
       });
     }
 
-    return summary;
+    return this.orderSummary(summary);
   }
 
   buildVerdict(summary: UserRiskSummaryItem[]): UserFacingVerdict {
@@ -387,6 +387,28 @@ export class UserRiskSummaryService {
       default:
         return 1;
     }
+  }
+
+  private orderSummary(items: UserRiskSummaryItem[]): UserRiskSummaryItem[] {
+    const categoryPriority: Record<UserRiskSummaryId, number> = {
+      captura_credenciales: 100,
+      keylogging: 95,
+      lectura_informacion: 90,
+      manipulacion_trafico: 85,
+      modificacion_paginas: 80,
+      seguimiento_privacidad: 75,
+      acceso_general_navegador: 65,
+      acceso_historial: 55,
+      descargas_archivos: 45,
+      ofuscacion_transparencia: 35,
+    };
+
+    return [...items].sort((a, b) => {
+      const statusDelta =
+        this.userStatusWeight(b.estado) - this.userStatusWeight(a.estado);
+      if (statusDelta !== 0) return statusDelta;
+      return (categoryPriority[b.id] ?? 0) - (categoryPriority[a.id] ?? 0);
+    });
   }
 
   private isBroadHostPattern(pattern: string): boolean {

@@ -373,8 +373,8 @@ export class AstParserService {
               source,
               nodePath.node,
               this.isInternalMessageSink(callee)
-                ? `la memoria oculta de la extensión (${callee})`
-                : `un servidor en Internet (${callee})`,
+                ? `extension message sink ${callee} (mensajería interna que puede mover datos desde un content script al background)`
+                : `network sink ${callee} (servidor en Internet)`,
               this.isInternalMessageSink(callee) ? 0.78 : 0.9,
             );
           }
@@ -1078,7 +1078,11 @@ export class AstParserService {
         ['value', 'innerText', 'textContent', 'innerHTML'].includes(prop)
       ) {
         const objectSource = this.sourceDescription(expr.object, taintedVars);
-        if (objectSource) return `${objectSource}.${prop}`;
+        if (objectSource) {
+          return objectSource.endsWith(`.${prop}`)
+            ? objectSource
+            : `${objectSource}.${prop}`;
+        }
       }
     }
     if (member) {

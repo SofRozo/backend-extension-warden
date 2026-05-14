@@ -298,6 +298,9 @@ export class ReportService {
   }
 
   private staticNarrativeGroupKey(f: VerdictedStaticFinding): string {
+    if (f.discoveryType === 'flujo_datos_a_red') {
+      return `flow:${f.fileType}:${this.flowSourceKind(f.detail)}:${this.flowSinkKind(f.detail)}`;
+    }
     if (f.discoveryType === 'lectura_cookies') {
       return `${f.discoveryType}:${f.fileType}:document.cookie`;
     }
@@ -315,6 +318,26 @@ export class ReportService {
       return `${f.discoveryType}:${f.detail.split(':')[0]}`;
     }
     return `${f.discoveryType}:${f.filePath}:${f.detail}`;
+  }
+
+  private flowSourceKind(detail: string): string {
+    if (/password|credential|token|bearer|cookie|sessionStorage|localStorage|chrome\.storage/i.test(detail)) {
+      return 'session-or-credential-data';
+    }
+    if (/document\.querySelector|DOM selection|innerText|textContent|document\.body|document\.forms/i.test(detail)) {
+      return 'page-dom-data';
+    }
+    return this.normalizeTechnicalDetail(detail.split(' viaja hacia ')[0] ?? detail);
+  }
+
+  private flowSinkKind(detail: string): string {
+    if (/fetch|XMLHttpRequest|sendBeacon|WebSocket|axios|servidor en Internet|network sink/i.test(detail)) {
+      return 'internet-network';
+    }
+    if (/chrome\.runtime\.sendMessage|window\.postMessage|extension message|memoria oculta/i.test(detail)) {
+      return 'extension-message';
+    }
+    return this.normalizeTechnicalDetail(detail.split(' viaja hacia ')[1] ?? detail);
   }
 
   private staticNarrativePriority(f: VerdictedStaticFinding): number {
@@ -360,46 +383,55 @@ export class ReportService {
   }
 
   private describeStaticFinding(f: VerdictedStaticFinding): string {
+    const detail = this.normalizeTechnicalDetail(f.detail);
     if (f.discoveryType === 'flujo_datos_a_red') {
-      if (f.detail.includes('memoria oculta') || f.detail.includes('extension message')) {
-        return `que la extensión está extrayendo tu información personal de esta página y pasándola a su código invisible en segundo plano (${f.detail}).`;
+      if (detail.includes('memoria oculta') || detail.includes('extension message')) {
+        return `que la extensión está extrayendo información desde una página o almacenamiento del navegador y pasándola a otro contexto de la extensión (${detail}).`;
       }
-      return `que la extensión está enviando tu información directamente a servidores en Internet (${f.detail}).`;
+      return `que la extensión está enviando información leída desde la página o el navegador hacia una salida de red (${detail}).`;
     }
     if (f.discoveryType === 'lectura_cookies') {
-      return `acceso a cookies mediante ${f.detail}; esto puede exponer identificadores de sesión.`;
+      return `acceso a cookies mediante ${detail}; esto puede exponer identificadores de sesión.`;
     }
     if (f.discoveryType === 'lectura_storage_navegador') {
-      return `lectura de almacenamiento del navegador mediante ${f.detail}; ahí pueden existir tokens o estado de sesión.`;
+      return `lectura de almacenamiento del navegador mediante ${detail}; ahí pueden existir tokens o estado de sesión.`;
     }
     if (f.discoveryType === 'listener_teclado') {
-      return `un listener de entrada/teclado (${f.detail}); en páginas visitadas puede capturar credenciales o formularios.`;
+      return `un listener de entrada/teclado (${detail}); en páginas visitadas puede capturar credenciales o formularios.`;
     }
     if (f.discoveryType === 'inyeccion_dom') {
-      return `inyección o modificación de DOM/script (${f.detail}); esto puede alterar páginas o ejecutar código adicional.`;
+      return `inyección o modificación de DOM/script (${detail}); esto puede alterar páginas o ejecutar código adicional.`;
     }
     if (f.discoveryType === 'funcion_javascript_riesgosa') {
       if (
         f.detail.includes('sendMessage') ||
         f.detail.includes('postMessage')
       ) {
-        return `uso de mensajería (${f.detail}); puede mover datos desde una página hacia un contexto con más permisos.`;
+        return `uso de mensajería (${detail}); puede mover datos desde una página hacia un contexto con más permisos.`;
       }
-      return `uso de una función sensible (${f.detail}); el riesgo depende de los datos que procesa y del destino.`;
+      return `uso de una función sensible (${detail}); el riesgo depende de los datos que procesa y del destino.`;
     }
     if (f.discoveryType === 'permiso_chrome_manifest_riesgoso') {
-      return `un permiso con alto impacto potencial (${f.detail}).`;
+      return `un permiso con alto impacto potencial (${detail}).`;
     }
     if (f.discoveryType === 'codigo_ofuscado') {
-      return `ofuscación fuerte en el código (${f.detail}); esto no prueba malware por sí solo, pero sí dificulta revisar qué hace la extensión. Minificar nombres para reducir tamaño es normal; ocultar cadenas, reconstruir código o esconder llamadas sensibles es una mala señal.`;
+      return `ofuscación fuerte en el código (${detail}); esto no prueba malware por sí solo, pero sí dificulta revisar qué hace la extensión. Minificar nombres para reducir tamaño es normal; ocultar cadenas, reconstruir código o esconder llamadas sensibles es una mala señal.`;
     }
     if (f.discoveryType === 'archivo_minificado') {
-      return `código minificado (${f.detail}); esto suele ser normal en extensiones publicadas, pero hace que los hallazgos de esa línea sean más densos y difíciles de revisar manualmente.`;
+      return `código minificado (${detail}); esto suele ser normal en extensiones publicadas, pero hace que los hallazgos de esa línea sean más densos y difíciles de revisar manualmente.`;
     }
     if (f.discoveryType === 'correlacion_riesgo') {
-      return `una combinación de señales que aumenta el riesgo: ${f.detail}.`;
+      return `una combinación de señales que aumenta el riesgo: ${detail}.`;
     }
-    return `${f.discoveryType} (${f.detail}).`;
+    return `${f.discoveryType} (${detail}).`;
+  }
+
+  private normalizeTechnicalDetail(detail: string): string {
+    return detail
+      .replace(/(?:\.value){2,}/g, '.value')
+      .replace(/sensitive API source chrome\.storage\.session\.get\.value/g, 'datos leídos desde chrome.storage.session')
+      .replace(/DOM selection via document\.querySelector/g, 'datos leídos del DOM con document.querySelector')
+      .replace(/ viaja hacia /g, ' -> ');
   }
 
   private humanizeReason(reason: string): string {

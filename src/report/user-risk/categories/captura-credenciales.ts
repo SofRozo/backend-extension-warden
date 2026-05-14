@@ -110,13 +110,24 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
   const passwordSelector = hasDetail(context, PASSWORD_FIELD_RE);
   const tokenSignal = hasDetail(context, TOKEN_RE);
   const cookieRead = hasFinding(context, 'lectura_cookies');
-  const networkFlow = hasFinding(context, 'flujo_datos_a_red');
+  const credentialFlow = context.positives.some(
+    (finding) =>
+      finding.discoveryType === 'flujo_datos_a_red' &&
+      /cookie|password|credential|token|bearer|privatekey|seed phrase|mnemonic|sessionStorage|localStorage|chrome\.storage/i.test(
+        finding.detail,
+      ),
+  );
+  const storageSignal = hasDetail(
+    context,
+    /sessionStorage|localStorage|chrome\.storage/i,
+  );
   const formIntercept = hasDetail(context, FORM_INTERCEPT_RE);
   const identityApi = hasDetail(context, IDENTITY_API_RE);
 
   // Critico: cualquier señal de credencial + envío a red, o pwd selector + form intercept
   const isCritical =
-    (credentialSignal || passwordSelector || tokenSignal) && networkFlow;
+    (credentialSignal || passwordSelector || tokenSignal || cookieRead) &&
+    credentialFlow;
   const isPwdInterception = passwordSelector && formIntercept;
   // Sospechoso: cualquier señal de credencial individual o cookies/identity
   const isSuspicious =
@@ -136,7 +147,9 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
       ? 'critico'
       : isSuspicious
         ? 'sospechoso'
-        : 'no_detectado',
+        : storageSignal
+          ? 'capacidad'
+          : 'no_detectado',
     isCritical
       ? 'Hay señales de credenciales o sesiones combinadas con envío de datos: patrón clásico de robo de credenciales.'
       : isPwdInterception
@@ -145,6 +158,8 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
           ? 'La extensión puede acceder a cookies o sesiones; no vimos necesariamente robo confirmado.'
           : isSuspicious
             ? 'La extensión referencia credenciales o usa APIs de identidad. No es prueba de abuso, pero requiere justificación.'
+            : storageSignal
+              ? 'Vimos acceso a almacenamiento donde podrían existir tokens o estado de sesión, pero no una captura fuerte de credenciales.'
             : 'No vimos señales fuertes de captura de credenciales.',
     [
       credentialSignal && 'Referencias a contraseñas/tokens/frases sensibles.',
@@ -158,7 +173,7 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
         'Escucha eventos submit o construye FormData: puede leer formularios antes del envío.',
       identityApi &&
         'Llama a chrome.identity.getAuthToken / launchWebAuthFlow: puede obtener tokens OAuth/Google del usuario.',
-      networkFlow && 'Flujo de credenciales hacia red o mensajería.',
+      credentialFlow && 'Flujo de credenciales o sesión hacia red o mensajería.',
     ],
     [
       '¿Puede capturar contraseñas?',

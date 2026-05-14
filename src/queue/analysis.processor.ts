@@ -299,13 +299,20 @@ export class AnalysisProcessor extends WorkerHost {
 
   private forceKillBrowserProcesses(jobId: string): void {
     try {
-      execSync('pkill -9 -f chromium || pkill -9 -f chrome || true', {
-        timeout: 5000,
-      });
+      if (process.platform === 'win32') {
+        execSync(
+          'taskkill /F /IM chrome.exe /T & taskkill /F /IM chromium.exe /T & taskkill /F /IM msedge.exe /T',
+          { timeout: 5000, stdio: 'ignore' },
+        );
+      } else {
+        execSync('pkill -9 -f chromium || pkill -9 -f chrome || true', {
+          timeout: 5000,
+        });
+      }
       this.logger.logWithJob(
         jobId,
         'warn',
-        'Force-killed lingering browser processes (SIGKILL)',
+        'Force-killed lingering browser processes',
         'AnalysisProcessor',
       );
     } catch {
