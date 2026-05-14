@@ -103,6 +103,7 @@ export class UserRiskSummaryService {
       criticalIds.has('captura_credenciales') ||
       criticalIds.has('keylogging') ||
       criticalIds.has('modificacion_paginas') ||
+      criticalIds.has('manipulacion_trafico') ||
       critical.some((item) =>
         /dinámico|observó|malicioso|exfiltr/i.test(item.resumen),
       );

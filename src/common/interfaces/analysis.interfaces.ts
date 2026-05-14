@@ -213,6 +213,8 @@ export type StaticDiscoveryType =
   | 'inyeccion_dom'
   | 'lectura_cookies'
   | 'lectura_storage_navegador'
+  | 'interceptacion_api'
+  | 'suplantacion_api_navegador'
   | 'correlacion_riesgo';
 
 export interface PreprocessingFinding {

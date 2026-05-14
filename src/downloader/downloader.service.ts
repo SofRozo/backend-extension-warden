@@ -229,20 +229,43 @@ export class DownloaderService {
     }
 
     const zipBuffer = buffer.subarray(zipStartOffset);
-    const tmpZipPath = crxPath + '.zip';
-    fs.writeFileSync(tmpZipPath, zipBuffer);
 
-    const zip = new AdmZip(tmpZipPath);
-    const root = path.resolve(extractPath);
-    for (const entry of zip.getEntries()) {
-      const target = path.resolve(root, entry.entryName);
-      if (target !== root && !target.startsWith(root + path.sep)) {
-        throw new Error(`Unsafe archive path detected: ${entry.entryName}`);
+    // If the file is already a valid ZIP (offset 0), we can use the CRX
+    // file directly. Otherwise write the stripped zip to a temp file.
+    let zipFilePath: string;
+    let createdTempZip = false;
+
+    if (zipStartOffset === 0) {
+      // File is already a ZIP — use it directly
+      zipFilePath = crxPath;
+    } else {
+      // CRX wrapper: write stripped ZIP content as temp file, then
+      // immediately delete the original CRX to free tmpfs space.
+      zipFilePath = crxPath + '.zip';
+      fs.writeFileSync(zipFilePath, zipBuffer);
+      createdTempZip = true;
+      // Free the CRX — we no longer need it and it can be 80MB+
+      try { fs.unlinkSync(crxPath); } catch { /* best effort */ }
+    }
+
+    try {
+      const zip = new AdmZip(zipFilePath);
+      const root = path.resolve(extractPath);
+      for (const entry of zip.getEntries()) {
+        const target = path.resolve(root, entry.entryName);
+        if (target !== root && !target.startsWith(root + path.sep)) {
+          throw new Error(`Unsafe archive path detected: ${entry.entryName}`);
+        }
+      }
+      zip.extractAllTo(extractPath, true);
+    } finally {
+      // Always clean up the zip file (temp or original) to reclaim space
+      try { fs.unlinkSync(zipFilePath); } catch { /* best effort */ }
+      // Also clean the CRX if it still exists (plain ZIP case)
+      if (zipStartOffset === 0) {
+        try { fs.unlinkSync(crxPath); } catch { /* best effort */ }
       }
     }
-    zip.extractAllTo(extractPath, true);
-
-    fs.unlinkSync(tmpZipPath);
   }
 
   private async computeHash(filePath: string): Promise<string> {
@@ -263,11 +286,18 @@ export class DownloaderService {
       this.config.get<string>('analysis.extractDir') ||
       '/tmp/ext-sandbox/extracted';
 
-    const crxPath = path.join(downloadDir, `${extensionId}.crx`);
+    // Clean all possible file variants (.crx, .zip, .crx.zip)
+    const filesToClean = [
+      path.join(downloadDir, `${extensionId}.crx`),
+      path.join(downloadDir, `${extensionId}.zip`),
+      path.join(downloadDir, `${extensionId}.crx.zip`),
+    ];
     const extExtractPath = path.join(extractDir, extensionId);
 
     try {
-      if (fs.existsSync(crxPath)) fs.unlinkSync(crxPath);
+      for (const f of filesToClean) {
+        if (fs.existsSync(f)) fs.unlinkSync(f);
+      }
       if (fs.existsSync(extExtractPath))
         fs.rmSync(extExtractPath, { recursive: true, force: true });
     } catch {

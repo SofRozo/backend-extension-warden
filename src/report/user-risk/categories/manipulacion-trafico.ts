@@ -23,7 +23,7 @@ export const manipulacionTraficoStaticRules: UserRiskStaticRule[] = [
     id: 'manipulacion_trafico',
     matches: (finding) =>
       finding.discoveryType === 'correlacion_riesgo' &&
-      /webrequest|traffic|redirect|proxy|declarativenetrequest/i.test(
+      /webrequest|traffic|redirect|proxy|declarativenetrequest|surveillance|intercept/i.test(
         finding.detail,
       ),
     evidence: (finding) =>
@@ -102,12 +102,44 @@ export const manipulacionTraficoStaticRules: UserRiskStaticRule[] = [
     evidence: (finding) =>
       `Puede influir en proxy/VPN o ruta de tráfico en ${finding.filePath}:${finding.line}.`,
   },
+  // ── API hooking (XHR/fetch prototype replacement) ──────────────────
+  {
+    ruleId: 'traffic.xhr_fetch_hook',
+    label: 'Intercepción de XHR/fetch (monkey-patching)',
+    id: 'manipulacion_trafico',
+    matches: (finding) =>
+      finding.discoveryType === 'interceptacion_api' &&
+      /xhr_prototype_hook|fetch_hook/i.test(finding.detail),
+    evidence: (finding) =>
+      `Reemplaza API nativa de red (${finding.detail.split(' — ')[0]}) para interceptar tráfico en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'traffic.history_api_hook',
+    label: 'Intercepción de History API',
+    id: 'manipulacion_trafico',
+    matches: (finding) =>
+      finding.discoveryType === 'interceptacion_api' &&
+      /history/i.test(finding.detail),
+    evidence: (finding) =>
+      `Reemplaza history.pushState/replaceState para monitorear navegación en ${finding.filePath}:${finding.line}.`,
+  },
+  // ── Geolocation API spoofing → mapped to traffic manipulation
+  // because VPN extensions use it alongside proxy to mask user location
+  {
+    ruleId: 'traffic.geolocation_spoof',
+    label: 'Suplantación de geolocalización',
+    id: 'manipulacion_trafico',
+    matches: (finding) =>
+      finding.discoveryType === 'suplantacion_api_navegador',
+    evidence: (finding) =>
+      `Reemplaza API de geolocalización del navegador (${finding.detail.split(' — ')[0]}) en ${finding.filePath}:${finding.line}.`,
+  },
 ];
 
 export const evaluateManipulacionTrafico: UserRiskCategoryEvaluator = (
   context,
 ) => {
-  const { perms } = context;
+  const { perms, positives } = context;
   const hasTrafficPermission =
     perms.has('proxy') ||
     perms.has('webRequest') ||
@@ -123,11 +155,21 @@ export const evaluateManipulacionTrafico: UserRiskCategoryEvaluator = (
   const redirect = hasDetail(context, REDIRECT_RE);
   const downloadIntercept = hasDetail(context, DOWNLOAD_INTERCEPT_RE);
 
-  // Critico: proxy/webRequestBlocking, o reglas dinámicas + headers reescritos
+  // Check for API hooking (XHR/fetch prototype replacement)
+  const hasApiHooking = positives.some(
+    (f) => f.discoveryType === 'interceptacion_api',
+  );
+  const hasGeoSpoof = positives.some(
+    (f) => f.discoveryType === 'suplantacion_api_navegador',
+  );
+
+  // Critico: proxy/webRequestBlocking, reglas dinámicas + headers reescritos,
+  //          OR XHR/fetch prototype hooking (traffic surveillance)
   const isCritical =
     perms.has('proxy') ||
     perms.has('webRequestBlocking') ||
-    (dynamicRules && headerRewrite);
+    (dynamicRules && headerRewrite) ||
+    hasApiHooking;
 
   return makeItem(
     context,
@@ -138,11 +180,14 @@ export const evaluateManipulacionTrafico: UserRiskCategoryEvaluator = (
       : perms.has('webRequest') ||
           perms.has('declarativeNetRequest') ||
           headerRewrite ||
-          downloadIntercept
+          downloadIntercept ||
+          hasGeoSpoof
         ? 'capacidad'
         : 'no_detectado',
     isCritical
-      ? 'La extensión puede interceptar, bloquear o redirigir todo el tráfico del navegador. Es una capacidad de altísimo impacto.'
+      ? hasApiHooking
+        ? 'La extensión reemplaza APIs nativas del navegador (XHR, fetch) para interceptar todo el tráfico de red. Esto es una técnica de vigilancia de tráfico.'
+        : 'La extensión puede interceptar, bloquear o redirigir todo el tráfico del navegador. Es una capacidad de altísimo impacto.'
       : hasTrafficPermission
         ? 'La extensión puede observar, bloquear, redirigir o modificar solicitudes según sus permisos.'
         : 'No vimos permisos fuertes de manipulación de tráfico.',
@@ -160,12 +205,17 @@ export const evaluateManipulacionTrafico: UserRiskCategoryEvaluator = (
       redirect && 'Redirige la navegación a otras URLs.',
       downloadIntercept &&
         'Intercepta o renombra descargas en curso (chrome.downloads.onDeterminingFilename).',
+      hasApiHooking &&
+        'Reemplaza XMLHttpRequest.prototype o window.fetch para interceptar todo el tráfico de la página.',
+      hasGeoSpoof &&
+        'Reemplaza navigator.geolocation para falsificar la ubicación del usuario.',
     ],
     [
       '¿Puede interceptar solicitudes web?',
       '¿Puede modificar respuestas HTTP?',
       '¿Puede redirigirme a otras páginas?',
       '¿Puede alterar descargas o recursos cargados?',
+      '¿Puede vigilar mi tráfico de red en todas las páginas?',
     ],
   );
 };

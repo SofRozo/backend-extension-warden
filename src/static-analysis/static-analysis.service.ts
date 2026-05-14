@@ -410,6 +410,16 @@ export class StaticAnalysisService {
       return 'funcion_javascript_riesgosa';
     }
     if (pattern === 'data_flow') return 'flujo_datos_a_red';
+    if (
+      pattern === 'xhr_prototype_hook' ||
+      pattern === 'fetch_hook' ||
+      pattern === 'history_api_hook'
+    ) {
+      return 'interceptacion_api';
+    }
+    if (pattern === 'geolocation_api_spoof') {
+      return 'suplantacion_api_navegador';
+    }
     return 'funcion_javascript_riesgosa';
   }
 
@@ -514,11 +524,13 @@ export class StaticAnalysisService {
     finding: PreprocessingFinding,
   ): 'low' | 'medium' | 'high' | 'critical' {
     if (finding.discoveryType === 'flujo_datos_a_red') return 'critical';
+    if (finding.discoveryType === 'interceptacion_api') return 'critical';
     if (
       finding.discoveryType === 'codigo_ofuscado' ||
       finding.discoveryType === 'script_remoto_mv3'
     )
       return 'high';
+    if (finding.discoveryType === 'suplantacion_api_navegador') return 'high';
     if (finding.discoveryType === 'permiso_chrome_manifest_riesgoso') {
       if (finding.detail.includes('critical')) return 'critical';
       if (finding.detail.includes('high')) return 'high';
@@ -579,6 +591,10 @@ export class StaticAnalysisService {
       lectura_cookies: 'Cookie access can expose session identifiers.',
       lectura_storage_navegador:
         'Browser storage often contains auth tokens, preferences, and application state.',
+      interceptacion_api:
+        'Code replaces native browser APIs (XHR, fetch) to intercept all network traffic on the page — a traffic surveillance technique.',
+      suplantacion_api_navegador:
+        'Code replaces native browser APIs (geolocation, history) to fake or suppress real functionality — a capability spoofing technique.',
       correlacion_riesgo:
         'Multiple suspicious signals co-occur in a way that materially increases malware likelihood.',
     };
@@ -588,6 +604,8 @@ export class StaticAnalysisService {
   private defaultConfidence(finding: PreprocessingFinding): number {
     if (finding.discoveryType === 'flujo_datos_a_red') return 0.9;
     if (finding.discoveryType === 'script_remoto_mv3') return 0.95;
+    if (finding.discoveryType === 'interceptacion_api') return 0.93;
+    if (finding.discoveryType === 'suplantacion_api_navegador') return 0.9;
     if (finding.discoveryType === 'correlacion_riesgo') return 0.88;
     if (finding.discoveryType === 'archivo_huerfano') return 0.35;
     if (finding.discoveryType === 'archivo_minificado') return 0.45;
@@ -600,6 +618,8 @@ export class StaticAnalysisService {
     severity: string,
   ): number {
     if (finding.discoveryType === 'flujo_datos_a_red') return 10;
+    if (finding.discoveryType === 'interceptacion_api') return 9;
+    if (finding.discoveryType === 'suplantacion_api_navegador') return 5;
     if (finding.detail.includes('<all_urls>')) return 2;
     if (finding.detail.includes('cookies')) return 4;
     if (finding.detail.includes('history')) return 3;
@@ -772,6 +792,19 @@ export class StaticAnalysisService {
         break;
       case 'correlacion_riesgo':
         // Correlation findings already carry their own confidence — leave alone.
+        break;
+      case 'interceptacion_api':
+        // XHR/fetch hooking in content_scripts or injected executors is a
+        // near-certain traffic surveillance pattern. There is no legitimate
+        // reason for an extension to replace XMLHttpRequest.prototype.open.
+        if (role === 'content_script') confidence = 0.97;
+        else if (role === 'unknown') confidence = 0.95;
+        else confidence = 0.9;
+        break;
+      case 'suplantacion_api_navegador':
+        // Geolocation/history API replacement is suspicious regardless of
+        // where it lives — VPN extensions use it to fake location.
+        confidence = 0.92;
         break;
       case 'funcion_javascript_riesgosa':
         if (/eval|new Function/.test(finding.detail)) {
@@ -1434,6 +1467,70 @@ export class StaticAnalysisService {
           confidence: 0.8,
         });
       }
+    }
+
+    // ── Tier D — API interception patterns (confidence 0.88-0.96) ───────
+
+    const apiHookFindings = findingsMatching(
+      (f) => f.discoveryType === 'interceptacion_api',
+    );
+    const geoSpoofFindings = findingsMatching(
+      (f) => f.discoveryType === 'suplantacion_api_navegador',
+    );
+
+    // D1: XHR/Fetch prototype hooking + proxy/webRequest permission =
+    // systematic traffic surveillance pipeline
+    if (
+      apiHookFindings.length > 0 &&
+      (perms.has('proxy') ||
+        perms.has('webRequest') ||
+        perms.has('webRequestBlocking'))
+    ) {
+      add({
+        detail: `API interception (${apiHookFindings.map((f) => f.detail.split(' — ')[0]).join(', ')}) + proxy/webRequest permission — systematic traffic surveillance pipeline`,
+        filePath: apiHookFindings[0].filePath,
+        line: apiHookFindings[0].line,
+        confidence: 0.96,
+      });
+    }
+
+    // D2: Mass script injection — 3+ separate DOM injection points
+    // indicate a systematic page-context code injection strategy, not a
+    // one-off library load.
+    const scriptInjections = findingsMatching(
+      (f) =>
+        f.discoveryType === 'inyeccion_dom' &&
+        /script\.src|createElement.*script/.test(f.detail),
+    );
+    if (scriptInjections.length >= 3) {
+      add({
+        detail: `${scriptInjections.length} separate script injection points across extension code — systematic page-context code injection strategy`,
+        filePath: scriptInjections[0].filePath,
+        line: scriptInjections[0].line,
+        severity: 'critical',
+        confidence: 0.94,
+      });
+    }
+
+    // D3: Geolocation API spoofing + proxy = location masking infrastructure
+    if (geoSpoofFindings.length > 0 && perms.has('proxy')) {
+      add({
+        detail: `geolocation API replacement (${geoSpoofFindings[0].detail.split(' — ')[0]}) + proxy permission — location masking/spoofing infrastructure`,
+        filePath: geoSpoofFindings[0].filePath,
+        line: geoSpoofFindings[0].line,
+        severity: 'high',
+        confidence: 0.9,
+      });
+    }
+
+    // D4: API hooking + cookie access (anywhere) = traffic + session interception
+    if (apiHookFindings.length > 0 && anyCookieFinding) {
+      add({
+        detail: `API interception (XHR/fetch hooking) + cookie access — extension can intercept traffic AND harvest session tokens`,
+        filePath: apiHookFindings[0].filePath,
+        line: apiHookFindings[0].line,
+        confidence: 0.95,
+      });
     }
 
     // Keep the legacy umbrella rule in case some combination escaped the

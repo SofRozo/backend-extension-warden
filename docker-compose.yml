@@ -175,7 +175,7 @@ services:
       - type: tmpfs
         target: /tmp/ext-sandbox
         tmpfs:
-          size: 512m
+          size: 1g
           mode: 0777
       - sandbox_screenshots:/tmp/ext-sandbox/screenshots
       - honeypot_states:/data/honeypot/states:ro

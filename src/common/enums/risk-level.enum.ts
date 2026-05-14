@@ -40,4 +40,5 @@ export enum FindingCategory {
   EXFILTRATION = 'exfiltration',
   DOMAIN_TARGETING = 'domain_targeting',
   PERSISTENCE = 'persistence',
+  INTERCEPTION = 'interception',
 }

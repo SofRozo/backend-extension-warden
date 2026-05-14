@@ -808,6 +808,99 @@ export class AstParserService {
         confidence: 0.82,
       });
     }
+
+    // ── API hooking / monkey-patching detection ────────────────────────────
+    // Extensions that replace native browser APIs to intercept traffic or
+    // spoof capabilities are highly suspicious. The patterns below catch
+    // prototype-level hooks and global replacements.
+    if (t.isMemberExpression(node.left)) {
+      const fullName = this.getCalleeName(node.left);
+      if (fullName) {
+        // XHR prototype hooking: XMLHttpRequest.prototype.open/send/setRequestHeader = ...
+        if (
+          /XMLHttpRequest\.prototype\.(open|send|setRequestHeader)$/.test(
+            fullName,
+          )
+        ) {
+          findings.push({
+            category: FindingCategory.INTERCEPTION,
+            pattern: 'xhr_prototype_hook',
+            description: `Monkey-patches ${fullName} — intercepts all XHR traffic on the page`,
+            severity: RiskLevel.CRITICAL,
+            location: {
+              file: filename,
+              line: node.loc?.start.line || 0,
+              column: node.loc?.start.column || 0,
+            },
+            codeSnippet: this.snippetForNode(code, node),
+            confidence: 0.95,
+          });
+        }
+
+        // Fetch replacement: window.fetch / self.fetch / globalThis.fetch = ...
+        if (
+          /\.(fetch)$/.test(fullName) &&
+          (t.isFunctionExpression(node.right) ||
+            t.isArrowFunctionExpression(node.right))
+        ) {
+          findings.push({
+            category: FindingCategory.INTERCEPTION,
+            pattern: 'fetch_hook',
+            description: `Replaces ${fullName} — intercepts all fetch() traffic on the page`,
+            severity: RiskLevel.CRITICAL,
+            location: {
+              file: filename,
+              line: node.loc?.start.line || 0,
+              column: node.loc?.start.column || 0,
+            },
+            codeSnippet: this.snippetForNode(code, node),
+            confidence: 0.94,
+          });
+        }
+
+        // History API hooking: history.pushState / history.replaceState = ...
+        if (
+          /history\.(pushState|replaceState)$/.test(fullName) &&
+          (t.isFunctionExpression(node.right) ||
+            t.isArrowFunctionExpression(node.right))
+        ) {
+          findings.push({
+            category: FindingCategory.INTERCEPTION,
+            pattern: 'history_api_hook',
+            description: `Replaces ${fullName} — monitors or intercepts navigation state changes`,
+            severity: RiskLevel.HIGH,
+            location: {
+              file: filename,
+              line: node.loc?.start.line || 0,
+              column: node.loc?.start.column || 0,
+            },
+            codeSnippet: this.snippetForNode(code, node),
+            confidence: 0.85,
+          });
+        }
+
+        // Geolocation API replacement: navigator.geolocation.getCurrentPosition/watchPosition = ...
+        if (
+          /navigator\.geolocation\.(getCurrentPosition|watchPosition|clearWatch)$/.test(
+            fullName,
+          )
+        ) {
+          findings.push({
+            category: FindingCategory.INTERCEPTION,
+            pattern: 'geolocation_api_spoof',
+            description: `Replaces ${fullName} — can fake or suppress user geolocation`,
+            severity: RiskLevel.HIGH,
+            location: {
+              file: filename,
+              line: node.loc?.start.line || 0,
+              column: node.loc?.start.column || 0,
+            },
+            codeSnippet: this.snippetForNode(code, node),
+            confidence: 0.92,
+          });
+        }
+      }
+    }
   }
 
   private extractDomSelectors(
@@ -949,6 +1042,7 @@ export class AstParserService {
       ? this.getCalleeName(expr.callee)
       : null;
     if (callee) {
+      if (callee.startsWith('document.cookie.')) return 'document.cookie';
       if (
         /querySelector|querySelectorAll|getElementById|getElementsBy/.test(
           callee,
@@ -956,7 +1050,7 @@ export class AstParserService {
       )
         return `DOM selection via ${callee}`;
       if (
-        /localStorage|getItem|sessionStorage|navigator\.clipboard|chrome\.storage|chrome\.cookies|chrome\.history|chrome\.tabs\.query|chrome\.tabs\.captureVisibleTab|chrome\.identity|chrome\.bookmarks|chrome\.downloads\.search|chrome\.management|chrome\.topSites|chrome\.sessions/.test(
+        /localStorage|getItem|sessionStorage|navigator\.clipboard|chrome\.storage|chrome\.cookies|chrome\.history|chrome\.tabs\.query|chrome\.tabs\.captureVisibleTab|chrome\.identity|chrome\.bookmarks|chrome\.downloads\.search|chrome\.management|chrome\.topSites|chrome\.sessions|GetCookie|GetAllCookies|getCookie|getAllCookies/.test(
           callee,
         )
       )
@@ -988,7 +1082,7 @@ export class AstParserService {
       }
     }
     if (member) {
-      if (member === 'document.cookie') return 'document.cookie';
+      if (member === 'document.cookie' || member.startsWith('document.cookie.')) return 'document.cookie';
       if (
         /localStorage|sessionStorage|indexedDB|window\.location|navigator\.clipboard|document\.forms|document\.documentElement|document\.body/.test(
           member,
