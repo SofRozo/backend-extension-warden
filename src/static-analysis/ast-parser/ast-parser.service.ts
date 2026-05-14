@@ -26,6 +26,12 @@ export interface AstSelector {
   line: number;
 }
 
+type RemoteResourceContact = {
+  domain: string;
+  line: number;
+  kind: 'script' | 'iframe';
+};
+
 type StaticFinding = AstFinding;
 type DomSelector = AstSelector;
 
@@ -46,6 +52,7 @@ export class AstParserService {
     const selectors: DomSelector[] = [];
     const ast = this.parse(code, filename);
     if (!ast) return { findings, selectors };
+    const remoteResources = this.extractRemoteResourceContacts(code, filename);
 
     try {
       traverse(ast, {
@@ -89,6 +96,22 @@ export class AstParserService {
           this.checkCredentialTemplate(nodePath.node, filename, findings, code);
         },
       });
+
+      for (const resource of remoteResources) {
+        findings.push({
+          category: FindingCategory.INJECTION,
+          pattern: `${resource.kind}.src remote`,
+          description: `Dynamically loads a remote ${resource.kind} resource from ${resource.domain}`,
+          severity:
+            resource.kind === 'script' ? RiskLevel.CRITICAL : RiskLevel.HIGH,
+          location: {
+            file: filename,
+            line: resource.line,
+            column: 0,
+          },
+          confidence: resource.kind === 'script' ? 0.92 : 0.84,
+        });
+      }
     } catch (err) {
       this.logger.warn(
         `AST traversal error for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
@@ -116,6 +139,8 @@ export class AstParserService {
     const seen = new Set<string>();
     const ast = this.parse(code, filename);
     if (!ast) return out;
+    const stringConstants = this.collectStringConstants(ast);
+    const xhrVars = new Set<string>();
 
     const pushDomain = (raw: string, line: number) => {
       const host = this.extractHostFromString(raw);
@@ -127,30 +152,42 @@ export class AstParserService {
     };
 
     const extractFromArg = (arg: t.Node, line: number): void => {
-      if (t.isStringLiteral(arg)) {
-        pushDomain(arg.value, line);
-        return;
-      }
-      if (t.isTemplateLiteral(arg)) {
-        // Use the first quasi (literal prefix); it usually contains the host.
-        const text = arg.quasis
-          .map((q) => q.value.cooked ?? q.value.raw)
-          .join('');
-        if (text) pushDomain(text, line);
-        return;
-      }
-      if (t.isBinaryExpression(arg) && arg.operator === '+') {
-        if (t.isExpression(arg.left)) extractFromArg(arg.left, line);
-        if (t.isExpression(arg.right)) extractFromArg(arg.right, line);
-      }
+      const resolved = this.resolveStringExpression(arg, stringConstants);
+      if (resolved) pushDomain(resolved, line);
     };
 
     try {
       traverse(ast, {
+        VariableDeclarator: (nodePath) => {
+          if (
+            t.isIdentifier(nodePath.node.id) &&
+            t.isNewExpression(nodePath.node.init) &&
+            this.getCalleeName(nodePath.node.init.callee) === 'XMLHttpRequest'
+          ) {
+            xhrVars.add(nodePath.node.id.name);
+          }
+        },
+        AssignmentExpression: (nodePath) => {
+          if (
+            t.isIdentifier(nodePath.node.left) &&
+            t.isNewExpression(nodePath.node.right) &&
+            this.getCalleeName(nodePath.node.right.callee) === 'XMLHttpRequest'
+          ) {
+            xhrVars.add(nodePath.node.left.name);
+          }
+        },
         CallExpression: (nodePath) => {
           const callee = this.getCalleeName(nodePath.node.callee);
-          if (!callee || !this.isNetworkSink(callee)) return;
           const line = nodePath.node.loc?.start.line ?? 0;
+
+          if (this.isXhrOpenCall(nodePath.node, xhrVars)) {
+            const urlArg =
+              nodePath.node.arguments[1] ?? nodePath.node.arguments[0];
+            if (urlArg && t.isExpression(urlArg)) extractFromArg(urlArg, line);
+            return;
+          }
+
+          if (!callee || !this.isNetworkSink(callee)) return;
           for (const arg of nodePath.node.arguments) {
             if (t.isExpression(arg)) extractFromArg(arg, line);
           }
@@ -164,6 +201,13 @@ export class AstParserService {
           }
         },
       });
+
+      for (const resource of this.extractRemoteResourceContacts(
+        code,
+        filename,
+      )) {
+        pushDomain(`https://${resource.domain}`, resource.line);
+      }
     } catch (err) {
       this.logger.warn(
         `AST extractContactedDomains error for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
@@ -225,6 +269,7 @@ export class AstParserService {
     if (!ast) return findings;
 
     const taintedVars = new Map<string, { line: number; source: string }>();
+    const xhrVars = new Set<string>();
     const reported = new Set<string>();
 
     const markIdent = (name: string, source: string, line: number) => {
@@ -263,6 +308,13 @@ export class AstParserService {
         const init = nodePath.node.init;
         if (!init) return;
         const idNode = nodePath.node.id;
+        if (
+          t.isIdentifier(idNode) &&
+          t.isNewExpression(init) &&
+          this.getCalleeName(init.callee) === 'XMLHttpRequest'
+        ) {
+          xhrVars.add(idNode.name);
+        }
         // Simple: const x = source
         if (t.isIdentifier(idNode)) {
           markIfTainted(idNode.name, init);
@@ -283,6 +335,12 @@ export class AstParserService {
         const right = nodePath.node.right;
         // x = source
         if (t.isIdentifier(left)) {
+          if (
+            t.isNewExpression(right) &&
+            this.getCalleeName(right.callee) === 'XMLHttpRequest'
+          ) {
+            xhrVars.add(left.name);
+          }
           markIfTainted(left.name, right);
           return;
         }
@@ -305,7 +363,7 @@ export class AstParserService {
         if (!callee) return;
 
         // Sink check (network/messaging)
-        if (this.isNetworkSink(callee)) {
+        if (this.isNetworkSink(callee) || this.isInternalMessageSink(callee)) {
           for (const arg of nodePath.node.arguments) {
             if (!t.isExpression(arg) && !t.isSpreadElement(arg)) continue;
             const source = this.sourceDescription(arg, taintedVars);
@@ -314,8 +372,25 @@ export class AstParserService {
               callee,
               source,
               nodePath.node,
-              `network sink ${callee}`,
-              0.9,
+              this.isInternalMessageSink(callee)
+                ? `extension message sink ${callee}`
+                : `network sink ${callee}`,
+              this.isInternalMessageSink(callee) ? 0.78 : 0.9,
+            );
+          }
+        }
+
+        if (this.isXhrOpenCall(nodePath.node, xhrVars)) {
+          for (const arg of nodePath.node.arguments) {
+            if (!t.isExpression(arg) && !t.isSpreadElement(arg)) continue;
+            const source = this.sourceDescription(arg, taintedVars);
+            if (!source) continue;
+            emitFlow(
+              'XMLHttpRequest.open',
+              source,
+              nodePath.node,
+              'XMLHttpRequest URL construction',
+              0.84,
             );
           }
         }
@@ -574,6 +649,22 @@ export class AstParserService {
       });
     }
 
+    if (this.isInternalMessageSink(calleeName)) {
+      findings.push({
+        category: FindingCategory.EXFILTRATION,
+        pattern: calleeName,
+        description: `Extension messaging sink ${calleeName} can move page data into privileged contexts`,
+        severity: RiskLevel.MEDIUM,
+        location: {
+          file: filename,
+          line: node.loc?.start.line || 0,
+          column: node.loc?.start.column || 0,
+        },
+        codeSnippet: this.snippetForNode(code, node),
+        confidence: 0.62,
+      });
+    }
+
     if (
       (calleeName === 'setTimeout' || calleeName === 'setInterval') &&
       t.isStringLiteral(node.arguments[0])
@@ -754,7 +845,7 @@ export class AstParserService {
     findings: StaticFinding[],
     code: string,
   ): void {
-    const matched = this.credentialKeyword(node.value);
+    const matched = this.credentialLiteralKeyword(node.value);
     if (!matched) return;
     findings.push({
       category: FindingCategory.DATA_THEFT,
@@ -780,7 +871,7 @@ export class AstParserService {
     const text = node.quasis
       .map((q) => q.value.cooked ?? q.value.raw)
       .join('${}');
-    const matched = this.credentialKeyword(text);
+    const matched = this.credentialLiteralKeyword(text);
     if (!matched) return;
     findings.push({
       category: FindingCategory.DATA_THEFT,
@@ -813,13 +904,15 @@ export class AstParserService {
       return;
     const firstArg = node.arguments[0];
     if (!t.isStringLiteral(firstArg)) return;
-    const matched = this.credentialKeyword(firstArg.value);
+    const matched = this.credentialSelectorKeyword(firstArg.value);
     if (!matched) return;
     findings.push({
       category: FindingCategory.DATA_THEFT,
       pattern: `credential selector:${matched}`,
       description: `DOM selector targets credential-related field "${matched}"`,
-      severity: ['password', 'privatekey', 'seed'].includes(matched)
+      severity: ['password', 'privatekey', 'seed phrase', 'mnemonic'].includes(
+        matched,
+      )
         ? RiskLevel.CRITICAL
         : RiskLevel.HIGH,
       location: {
@@ -863,7 +956,7 @@ export class AstParserService {
       )
         return `DOM selection via ${callee}`;
       if (
-        /localStorage|getItem|sessionStorage|chrome\.storage|chrome\.cookies|chrome\.history|chrome\.tabs\.query|chrome\.tabs\.captureVisibleTab|chrome\.identity|chrome\.bookmarks|chrome\.downloads\.search|chrome\.management|chrome\.topSites|chrome\.sessions/.test(
+        /localStorage|getItem|sessionStorage|navigator\.clipboard|chrome\.storage|chrome\.cookies|chrome\.history|chrome\.tabs\.query|chrome\.tabs\.captureVisibleTab|chrome\.identity|chrome\.bookmarks|chrome\.downloads\.search|chrome\.management|chrome\.topSites|chrome\.sessions/.test(
           callee,
         )
       )
@@ -880,10 +973,24 @@ export class AstParserService {
     }
 
     const member = t.isMemberExpression(expr) ? this.getCalleeName(expr) : null;
+    if (t.isMemberExpression(expr)) {
+      const prop = t.isIdentifier(expr.property)
+        ? expr.property.name
+        : t.isStringLiteral(expr.property)
+          ? expr.property.value
+          : null;
+      if (
+        prop &&
+        ['value', 'innerText', 'textContent', 'innerHTML'].includes(prop)
+      ) {
+        const objectSource = this.sourceDescription(expr.object, taintedVars);
+        if (objectSource) return `${objectSource}.${prop}`;
+      }
+    }
     if (member) {
       if (member === 'document.cookie') return 'document.cookie';
       if (
-        /localStorage|sessionStorage|indexedDB|window\.location|navigator\.clipboard|document\.forms/.test(
+        /localStorage|sessionStorage|indexedDB|window\.location|navigator\.clipboard|document\.forms|document\.documentElement|document\.body/.test(
           member,
         )
       )
@@ -985,7 +1092,6 @@ export class AstParserService {
       'axios.request',
       'navigator.sendBeacon',
       'XMLHttpRequest.send',
-      'send',
       'postMessage',
       // 'chrome.runtime.sendMessage',  // Internal IPC
       // 'chrome.tabs.sendMessage',     // Internal IPC
@@ -997,16 +1103,114 @@ export class AstParserService {
     ].some((sink) => calleeName === sink || calleeName.endsWith(`.${sink}`));
   }
 
-  private credentialKeyword(text: string): string | null {
+  private isInternalMessageSink(calleeName: string): boolean {
+    return [
+      // Only channels that can move data out of a content-script/page context
+      // are treated as taint sinks. background -> tab messaging is ordinary
+      // extension IPC and should not be elevated by itself.
+      'chrome.runtime.sendMessage',
+      'window.postMessage',
+    ].some((sink) => calleeName === sink || calleeName.endsWith(`.${sink}`));
+  }
+
+  private isXhrOpenCall(node: t.CallExpression, xhrVars: Set<string>): boolean {
+    if (!t.isMemberExpression(node.callee)) return false;
+    const prop = t.isIdentifier(node.callee.property)
+      ? node.callee.property.name
+      : t.isStringLiteral(node.callee.property)
+        ? node.callee.property.value
+        : null;
+    if (prop !== 'open') return false;
+    return (
+      t.isIdentifier(node.callee.object) && xhrVars.has(node.callee.object.name)
+    );
+  }
+
+  private collectStringConstants(
+    ast: ReturnType<typeof parser.parse>,
+  ): Map<string, string> {
+    const constants = new Map<string, string>();
+    traverse(ast, {
+      VariableDeclarator: (nodePath) => {
+        if (!t.isIdentifier(nodePath.node.id)) return;
+        const init = nodePath.node.init;
+        if (!init) return;
+        const resolved = this.resolveStringExpression(init, constants);
+        if (resolved) constants.set(nodePath.node.id.name, resolved);
+      },
+    });
+    return constants;
+  }
+
+  private resolveStringExpression(
+    node: t.Node,
+    constants: Map<string, string>,
+  ): string | null {
+    if (t.isStringLiteral(node)) return node.value;
+    if (t.isIdentifier(node)) return constants.get(node.name) ?? null;
+    if (t.isTemplateLiteral(node)) {
+      let text = '';
+      for (let i = 0; i < node.quasis.length; i++) {
+        text += node.quasis[i].value.cooked ?? node.quasis[i].value.raw;
+        const expr = node.expressions[i];
+        if (expr) text += this.resolveStringExpression(expr, constants) ?? '';
+      }
+      return text || null;
+    }
+    if (t.isBinaryExpression(node) && node.operator === '+') {
+      const left = this.resolveStringExpression(node.left, constants);
+      const right = this.resolveStringExpression(node.right, constants);
+      if (left === null && right === null) return null;
+      return `${left ?? ''}${right ?? ''}`;
+    }
+    if (t.isCallExpression(node)) {
+      const callee = this.getCalleeName(node.callee);
+      const first = node.arguments[0];
+      if (
+        callee === 'atob' &&
+        first &&
+        t.isStringLiteral(first) &&
+        /^[A-Za-z0-9+/]+={0,2}$/.test(first.value)
+      ) {
+        try {
+          return Buffer.from(first.value, 'base64').toString('utf-8');
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  private credentialLiteralKeyword(text: string): string | null {
+    const lowered = text.toLowerCase();
+    const keywords = [
+      'password',
+      'bearer',
+      'access_token',
+      'refresh_token',
+      'api_key',
+      'wallet',
+      'seed phrase',
+      'mnemonic',
+      'privatekey',
+      'metamask',
+    ];
+    return keywords.find((k) => lowered.includes(k)) ?? null;
+  }
+
+  private credentialSelectorKeyword(text: string): string | null {
     const lowered = text.toLowerCase();
     const keywords = [
       'password',
       'token',
       'auth',
       'bearer',
-      'cookie',
+      'access_token',
+      'refresh_token',
       'wallet',
-      'seed',
+      'seed phrase',
+      'mnemonic',
       'privatekey',
       'metamask',
     ];
@@ -1029,6 +1233,80 @@ export class AstParserService {
       );
     }
     return false;
+  }
+
+  private extractRemoteResourceContacts(
+    code: string,
+    filename: string,
+  ): RemoteResourceContact[] {
+    const out: RemoteResourceContact[] = [];
+    const seen = new Set<string>();
+    const ast = this.parse(code, filename);
+    if (!ast) return out;
+
+    const elementVars = new Map<string, 'script' | 'iframe'>();
+    const stringConstants = this.collectStringConstants(ast);
+
+    const add = (
+      raw: string | null,
+      line: number,
+      kind: 'script' | 'iframe',
+    ) => {
+      if (!raw) return;
+      const domain = this.extractHostFromString(raw);
+      if (!domain) return;
+      const key = `${kind}:${domain}:${line}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ domain, line, kind });
+    };
+
+    traverse(ast, {
+      VariableDeclarator: (nodePath) => {
+        if (!t.isIdentifier(nodePath.node.id)) return;
+        const tag = this.createdElementTag(nodePath.node.init);
+        if (tag === 'script' || tag === 'iframe') {
+          elementVars.set(nodePath.node.id.name, tag);
+        }
+      },
+      AssignmentExpression: (nodePath) => {
+        if (t.isIdentifier(nodePath.node.left)) {
+          const tag = this.createdElementTag(nodePath.node.right);
+          if (tag === 'script' || tag === 'iframe') {
+            elementVars.set(nodePath.node.left.name, tag);
+          }
+          return;
+        }
+
+        if (!t.isMemberExpression(nodePath.node.left)) return;
+        const prop = t.isIdentifier(nodePath.node.left.property)
+          ? nodePath.node.left.property.name
+          : t.isStringLiteral(nodePath.node.left.property)
+            ? nodePath.node.left.property.value
+            : null;
+        if (prop !== 'src') return;
+
+        const obj = nodePath.node.left.object;
+        const tag = t.isIdentifier(obj) ? elementVars.get(obj.name) : null;
+        if (tag !== 'script' && tag !== 'iframe') return;
+
+        add(
+          this.resolveStringExpression(nodePath.node.right, stringConstants),
+          nodePath.node.loc?.start.line ?? 0,
+          tag,
+        );
+      },
+    });
+
+    return out;
+  }
+
+  private createdElementTag(node: t.Node | null | undefined): string | null {
+    if (!node || !t.isCallExpression(node)) return null;
+    const callee = this.getCalleeName(node.callee);
+    if (callee !== 'document.createElement') return null;
+    const first = node.arguments[0];
+    return t.isStringLiteral(first) ? first.value.toLowerCase() : null;
   }
 
   private createFinding(

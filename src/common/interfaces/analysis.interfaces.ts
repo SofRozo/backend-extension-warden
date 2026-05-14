@@ -448,6 +448,12 @@ export interface AnalysisReport {
   /** Dominios contactados (categoría priority) en formato URL */
   dominios_contactados_prioritarios: string[];
 
+  /** Resumen orientado a usuario final: capacidades y riesgos importantes. */
+  resumen_usuario: UserRiskSummaryItem[];
+
+  /** Veredicto final legible derivado del resumen de usuario. */
+  veredicto_usuario: UserFacingVerdict;
+
   /**
    * Resultados narrativos de análisis estático para hallazgos con veredicto positivo.
    * Forma: "En el <fileType> de la extensión, en la ruta <filePath>, línea <line>,
@@ -482,6 +488,42 @@ export interface AnalysisReport {
     level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     reasons: string[];
   };
+}
+
+export type UserRiskSummaryId =
+  | 'acceso_general_navegador'
+  | 'modificacion_paginas'
+  | 'lectura_informacion'
+  | 'captura_credenciales'
+  | 'keylogging'
+  | 'seguimiento_privacidad'
+  | 'manipulacion_trafico'
+  | 'acceso_historial'
+  | 'descargas_archivos'
+  | 'ofuscacion_transparencia';
+
+export type UserRiskStatus =
+  | 'no_detectado'
+  | 'capacidad'
+  | 'sospechoso'
+  | 'critico';
+
+export interface UserRiskSummaryItem {
+  id: UserRiskSummaryId;
+  titulo: string;
+  estado: UserRiskStatus;
+  resumen: string;
+  evidencias: string[];
+  /** IDs de reglas internas que explican por qué se marcó la categoría. */
+  reglas_activadas?: string[];
+  preguntas_responde: string[];
+}
+
+export interface UserFacingVerdict {
+  nivel: 'bajo' | 'medio' | 'alto' | 'critico';
+  veredicto: 'benigna' | 'sospechosa' | 'maliciosa';
+  resumen: string;
+  razones: string[];
 }
 
 export interface DomainNavigationLog {

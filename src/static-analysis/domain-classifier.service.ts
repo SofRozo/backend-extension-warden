@@ -47,7 +47,11 @@ const TECH_INFRASTRUCTURE = new Set([
   'jquery.com',
   'run.app', // Google Cloud Run
   'a.run.app',
+  'cloudfunctions.net', // Google Cloud Functions / Firebase Functions
   'appspot.com', // Google App Engine
+  'firebaseapp.com',
+  'firebaseio.com',
+  'web.app',
   'herokuapp.com',
   'netlify.app',
   'vercel.app',
@@ -237,7 +241,11 @@ export class DomainClassifierService {
       TECH_INFRASTRUCTURE.has(d) ||
       TECH_INFRASTRUCTURE.has(dNoWww) ||
       d.endsWith('.run.app') ||
+      d.endsWith('.cloudfunctions.net') ||
       d.endsWith('.appspot.com') ||
+      d.endsWith('.firebaseapp.com') ||
+      d.endsWith('.firebaseio.com') ||
+      d.endsWith('.web.app') ||
       d.endsWith('.netlify.app') ||
       d.endsWith('.vercel.app')
     ) {

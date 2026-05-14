@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReportService } from '../report.service.js';
+import { UserRiskSummaryService } from '../user-risk/user-risk-summary.service.js';
 import { StructuredLogger } from '../../common/logger/logger.service.js';
 import type {
   AgentAnalysisResult,
@@ -16,6 +17,7 @@ describe('ReportService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReportService,
+        UserRiskSummaryService,
         { provide: StructuredLogger, useValue: { logWithJob: jest.fn() } },
       ],
     }).compile();
@@ -138,6 +140,26 @@ describe('ReportService', () => {
     expect(report.hallazgos_estaticos_positivos[0]).toContain('línea 42');
     expect(report.hallazgos_dinamicos_positivos.length).toBe(1);
     expect(report.hallazgos_dinamicos_positivos[0]).toContain('por tanto');
+    expect(report.resumen_usuario).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'keylogging',
+          titulo: 'Keylogging y captura de teclado',
+        }),
+        expect.objectContaining({
+          id: 'captura_credenciales',
+          titulo: 'Contraseñas, tokens y sesiones',
+        }),
+      ]),
+    );
+    expect(report.veredicto_usuario).toEqual(
+      expect.objectContaining({
+        nivel: expect.any(String),
+        veredicto: expect.any(String),
+        resumen: expect.any(String),
+      }),
+    );
+    expect(report.veredicto_usuario.razones.length).toBeGreaterThan(0);
     expect(report.estructura.resultado1[0].veredicto).toBe('positivo');
     expect(report.estructura.resultado2_priority[0].veredicto).toBe('positivo');
     expect(report.estructura.resultado_dinamico).toEqual([baseDynamic]);
@@ -181,6 +203,96 @@ describe('ReportService', () => {
     expect(report.estructura.resultado1[0].veredicto).toBe('falso_positivo');
     expect(report.hallazgos_estaticos_positivos).toHaveLength(0);
     expect(report.hallazgos_dinamicos_positivos).toHaveLength(0);
+  });
+
+  it('explains obfuscation in user-friendly terms', () => {
+    const obfuscated: PreprocessingFinding = {
+      fileType: 'content_script',
+      filePath: 'dist/main.js',
+      discoveryType: 'codigo_ofuscado',
+      detail: 'archivo ofuscado o agresivamente minificado',
+      line: 1,
+      severity: 'high',
+      confidence: 0.82,
+      why: 'The code contains obfuscation or aggressive minification signals that reduce auditability.',
+    };
+
+    const report = service.generateReport(
+      'job-4',
+      'ext-4',
+      0,
+      { crxHash: 'h' },
+      buildPreprocessed({ resultado1: [obfuscated], resultado2_priority: [] }),
+      buildAgents({ agent2: [] }),
+    );
+
+    expect(report.hallazgos_estaticos_positivos[0]).toContain(
+      'no prueba malware por sí solo',
+    );
+    expect(report.hallazgos_estaticos_positivos[0]).toContain(
+      'Minificar nombres para reducir tamaño es normal',
+    );
+    expect(report.hallazgos_estaticos_positivos[0]).toContain(
+      'reduce la transparencia',
+    );
+  });
+
+  it('groups repetitive static findings in the user-facing narrative', () => {
+    const repeatedCookies: PreprocessingFinding[] = Array.from(
+      { length: 30 },
+      (_, index) => ({
+        fileType: 'content_script',
+        filePath: `ruleset-${index}.js`,
+        discoveryType: 'lectura_cookies',
+        detail: 'document.cookie',
+        line: index + 1,
+        severity: 'high',
+        confidence: 0.85,
+        why: 'Cookie access can expose session identifiers.',
+      }),
+    );
+
+    const report = service.generateReport(
+      'job-group',
+      'ext-group',
+      0,
+      { crxHash: 'h' },
+      buildPreprocessed({
+        resultado1: repeatedCookies,
+        resultado2_priority: [],
+      }),
+      buildAgents({ agent2: [] }),
+    );
+
+    expect(report.hallazgos_estaticos_positivos).toHaveLength(1);
+    expect(report.hallazgos_estaticos_positivos[0]).toContain(
+      '29 ocurrencia(s) similar(es)',
+    );
+  });
+
+  it('does not report manifest host permissions as contacted domains', () => {
+    const hostOnly: DomainFinding = {
+      ...basePriority,
+      fileType: 'manifest',
+      filePath: 'manifest.json',
+      discoveryType: 'host_permission_manifest',
+      domain: 'instagram.com',
+      line: 4,
+    };
+
+    const report = service.generateReport(
+      'job-host',
+      'ext-host',
+      0,
+      { crxHash: 'h' },
+      buildPreprocessed({ resultado2_priority: [hostOnly] }),
+      buildAgents({ agent2: [] }),
+    );
+
+    expect(report.dominios_contactados_prioritarios).toEqual([]);
+    expect(report.hallazgos_estaticos_positivos[1]).toContain(
+      'declarado como permiso de host',
+    );
   });
 
   it('handles missing agents gracefully', () => {

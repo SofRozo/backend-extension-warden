@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { AstParserService } from './ast-parser/ast-parser.service.js';
 import { DomainClassifierService } from './domain-classifier.service.js';
 import { StructuredLogger } from '../common/logger/logger.service.js';
@@ -17,7 +19,7 @@ export class StaticAnalysisService {
     private readonly astParser: AstParserService,
     private readonly domainClassifier: DomainClassifierService,
     private readonly logger: StructuredLogger,
-  ) { }
+  ) {}
 
   /**
    * Mutates `preprocessed` to fill resultado1 / resultado2_priority /
@@ -120,7 +122,10 @@ export class StaticAnalysisService {
     for (const file of preprocessed.files) {
       if (file.role === 'library') continue;
 
-      // Obfuscated files: surface the obfuscation as a finding and skip semantic analysis.
+      // Obfuscated files are surfaced as auditability findings, but still go
+      // through semantic analysis with the preprocessed/deobfuscated code.
+      // Otherwise a successful deobfuscation would paradoxically hide the file
+      // from the AST and taint passes.
       if (file.isObfuscated) {
         result1.push(
           this.enrichFinding({
@@ -131,7 +136,6 @@ export class StaticAnalysisService {
             line: 1,
           }),
         );
-        continue;
       }
 
       if (file.isMinified) {
@@ -290,6 +294,11 @@ export class StaticAnalysisService {
       }
     }
 
+    // ── 3b. Static manifest structures with abuse potential ─────────────────
+    result1.push(...this.analyzeDeclarativeNetRequestRules(preprocessed));
+    result1.push(...this.analyzeExternallyConnectable(preprocessed));
+    result1.push(...this.analyzeWebAccessibleResources(preprocessed));
+
     // ── 4. Manifest permissions declared but never used → resultado1 ──────────
     for (const perm of declaredPermissions) {
       if (usedManifestPermissions.has(perm)) continue;
@@ -346,8 +355,8 @@ export class StaticAnalysisService {
       jobId,
       'info',
       `Static analysis complete: ${preprocessed.resultado1.length} resultado1, ` +
-      `${preprocessed.resultado2_priority.length} priority domains, ` +
-      `${preprocessed.resultado2_unknown.length} unknown domains`,
+        `${preprocessed.resultado2_priority.length} priority domains, ` +
+        `${preprocessed.resultado2_unknown.length} unknown domains`,
       'StaticAnalysisService',
     );
   }
@@ -359,10 +368,7 @@ export class StaticAnalysisService {
    * Multiple legacy patterns collapse to fewer human-readable categories.
    */
   private mapAstDiscoveryType(pattern: string): StaticDiscoveryType {
-    if (
-      pattern === 'document.cookie' ||
-      pattern.startsWith('chrome.cookies')
-    ) {
+    if (pattern === 'document.cookie' || pattern.startsWith('chrome.cookies')) {
       return 'lectura_cookies';
     }
     if (
@@ -388,6 +394,8 @@ export class StaticAnalysisService {
       pattern.includes('document.write') ||
       pattern.includes('createElement') ||
       pattern.includes('script.src') ||
+      pattern.includes('iframe.src') ||
+      pattern.includes('.src remote') ||
       pattern.includes('executeScript')
     ) {
       return 'inyeccion_dom';
@@ -445,6 +453,28 @@ export class StaticAnalysisService {
     return 1;
   }
 
+  private findJsonValueLine(filePath: string, needle: string): number {
+    if (!needle) return 1;
+    try {
+      const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
+      const idx = lines.findIndex((line) => line.includes(needle));
+      return idx >= 0 ? idx + 1 : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  private extractHostFromLoosePattern(pattern: string): string | null {
+    if (!pattern) return null;
+    const urlHost = this.extractHostFromPattern(pattern);
+    if (urlHost) return urlHost;
+    const dnrMatch = /\|\|([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/.exec(pattern);
+    if (dnrMatch) return dnrMatch[1].replace(/^\*\./, '').toLowerCase();
+    const bareMatch = /([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)/.exec(pattern);
+    if (bareMatch) return bareMatch[1].replace(/^\*\./, '').toLowerCase();
+    return null;
+  }
+
   private dedupeStaticFindings(
     list: PreprocessingFinding[],
   ): PreprocessingFinding[] {
@@ -460,7 +490,7 @@ export class StaticAnalysisService {
   private dedupeDomainFindings(list: DomainFinding[]): DomainFinding[] {
     const seen = new Set<string>();
     return list.filter((f) => {
-      const key = `${f.filePath}:${f.line}:${f.domain}:${f.discoveryType}`;
+      const key = `${f.domain}:${f.discoveryType}:${f.category}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -559,6 +589,9 @@ export class StaticAnalysisService {
     if (finding.discoveryType === 'flujo_datos_a_red') return 0.9;
     if (finding.discoveryType === 'script_remoto_mv3') return 0.95;
     if (finding.discoveryType === 'correlacion_riesgo') return 0.88;
+    if (finding.discoveryType === 'archivo_huerfano') return 0.35;
+    if (finding.discoveryType === 'archivo_minificado') return 0.45;
+    if (finding.discoveryType === 'dependencia_no_resuelta') return 0.35;
     return 0.75;
   }
 
@@ -716,8 +749,10 @@ export class StaticAnalysisService {
         // Cookie read in content_script that also exfiltrates is the textbook
         // session-stealer pattern.
         if (role === 'content_script' && hasSinkInFile) confidence = 0.95;
-        else if (hasSinkInFile) confidence = 0.85;
-        else confidence = 0.6;
+        else if (role === 'background' && hasSinkInFile) confidence = 0.85;
+        else if (role === 'popup' && hasSinkInFile) confidence = 0.55;
+        else if (role === 'unknown') confidence = 0.4;
+        else confidence = 0.5;
         break;
       case 'lectura_storage_navegador':
         if (hasSinkInFile) confidence = 0.8;
@@ -765,6 +800,194 @@ export class StaticAnalysisService {
     }
 
     return { ...finding, confidence: Math.min(1, Math.max(0, confidence)) };
+  }
+
+  private analyzeDeclarativeNetRequestRules(
+    preprocessed: PreprocessorOutput,
+  ): PreprocessingFinding[] {
+    const findings: PreprocessingFinding[] = [];
+    const sensitiveDomains = new Set(
+      preprocessed.resultado2_priority.map((d) => d.domain),
+    );
+
+    for (const rulePath of preprocessed.manifest.declarativeNetRequestRules) {
+      const fullPath = path.join(preprocessed.extractPath, rulePath);
+      let rules: unknown;
+      try {
+        rules = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+      } catch {
+        findings.push(
+          this.enrichFinding({
+            fileType: 'manifest',
+            filePath: rulePath,
+            discoveryType: 'dependencia_no_resuelta',
+            detail: `declarativeNetRequest rule file could not be parsed: ${rulePath}`,
+            line: 1,
+            severity: 'medium',
+            confidence: 0.72,
+          }),
+        );
+        continue;
+      }
+
+      const list = Array.isArray(rules) ? rules : [];
+      for (const rule of list) {
+        if (!rule || typeof rule !== 'object') continue;
+        const r = rule as Record<string, unknown>;
+        const action = r.action as Record<string, unknown> | undefined;
+        const condition = r.condition as Record<string, unknown> | undefined;
+        const actionType = String(action?.type ?? '');
+        const redirect = action?.redirect as
+          | Record<string, unknown>
+          | undefined;
+        const redirectUrl = String(
+          redirect?.url ?? redirect?.extensionPath ?? '',
+        );
+        const urlFilter = String(
+          condition?.urlFilter ?? condition?.regexFilter ?? '',
+        );
+        const resourceTypes = Array.isArray(condition?.resourceTypes)
+          ? condition?.resourceTypes.join(',')
+          : '';
+        const line = this.findJsonValueLine(fullPath, redirectUrl || urlFilter);
+
+        const redirectHost = this.extractHostFromPattern(redirectUrl);
+        const sourceHost = this.extractHostFromLoosePattern(urlFilter);
+        const redirectClass = redirectHost
+          ? (this.domainClassifier.classify(
+              redirectHost,
+              preprocessed.manifest.name,
+              preprocessed.manifest.author,
+            ).category ?? 'desconocido')
+          : null;
+        const sourceClass = sourceHost
+          ? (this.domainClassifier.classify(
+              sourceHost,
+              preprocessed.manifest.name,
+              preprocessed.manifest.author,
+            ).category ?? 'desconocido')
+          : null;
+
+        if (
+          actionType === 'redirect' &&
+          redirectHost &&
+          (redirectClass === 'desconocido' ||
+            redirectClass?.startsWith('sensible_') ||
+            sourceClass?.startsWith('sensible_') ||
+            (sourceHost && sensitiveDomains.has(sourceHost)))
+        ) {
+          findings.push(
+            this.enrichFinding({
+              fileType: 'manifest',
+              filePath: rulePath,
+              discoveryType: 'correlacion_riesgo',
+              detail: `declarativeNetRequest redirects ${urlFilter || 'matched traffic'} to ${redirectHost} (${redirectClass})`,
+              line,
+              severity: sourceClass?.startsWith('sensible_')
+                ? 'critical'
+                : 'high',
+              confidence: sourceClass?.startsWith('sensible_') ? 0.93 : 0.84,
+            }),
+          );
+        }
+
+        if (
+          (actionType === 'modifyHeaders' || actionType === 'redirect') &&
+          /main_frame|sub_frame|xmlhttprequest|script/.test(resourceTypes) &&
+          /\*:\/\/\*\/\*|<all_urls>|\|\|/.test(urlFilter)
+        ) {
+          findings.push(
+            this.enrichFinding({
+              fileType: 'manifest',
+              filePath: rulePath,
+              discoveryType: 'correlacion_riesgo',
+              detail: `broad declarativeNetRequest ${actionType} rule applies to ${resourceTypes || 'multiple resources'}`,
+              line,
+              severity: 'high',
+              confidence: 0.78,
+            }),
+          );
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  private analyzeExternallyConnectable(
+    preprocessed: PreprocessorOutput,
+  ): PreprocessingFinding[] {
+    const ext = preprocessed.manifest.externallyConnectable;
+    if (!ext) return [];
+
+    const matches = Array.isArray(ext.matches) ? ext.matches.map(String) : [];
+    const acceptsBroadOrigin = matches.some((m) =>
+      /<all_urls>|\*:\/\/\*|\*\.|https?:\/\/\*/.test(m),
+    );
+    const hasExternalMessageHandler = preprocessed.files.some((f) =>
+      /chrome\.runtime\.onMessageExternal\.addListener/.test(f.cleanCode ?? ''),
+    );
+
+    if (!acceptsBroadOrigin && !hasExternalMessageHandler) return [];
+
+    return [
+      this.enrichFinding({
+        fileType: 'manifest',
+        filePath: 'manifest.json',
+        discoveryType: 'correlacion_riesgo',
+        detail: `externally_connectable accepts ${matches.length ? matches.join(', ') : 'external origins'}${hasExternalMessageHandler ? ' and code registers onMessageExternal' : ''}`,
+        line: this.findManifestLine(
+          preprocessed.manifest.rawManifest,
+          ['externally_connectable'],
+          'externally_connectable',
+        ),
+        severity: acceptsBroadOrigin ? 'high' : 'medium',
+        confidence:
+          acceptsBroadOrigin && hasExternalMessageHandler ? 0.86 : 0.7,
+      }),
+    ];
+  }
+
+  private analyzeWebAccessibleResources(
+    preprocessed: PreprocessorOutput,
+  ): PreprocessingFinding[] {
+    const findings: PreprocessingFinding[] = [];
+    const resources = preprocessed.manifest.webAccessibleResources;
+    if (!Array.isArray(resources)) return findings;
+
+    for (const entry of resources) {
+      if (!entry || typeof entry !== 'object') continue;
+      const record = entry as Record<string, unknown>;
+      const exposedResources = Array.isArray(record.resources)
+        ? record.resources.map(String)
+        : [];
+      const matches = Array.isArray(record.matches)
+        ? record.matches.map(String)
+        : [];
+      const exposesExecutable = exposedResources.some((r) =>
+        /\.(js|mjs|html?)$/i.test(r),
+      );
+      const broad = matches.some((m) => /<all_urls>|\*:\/\/\*/.test(m));
+      if (!exposesExecutable || !broad) continue;
+
+      findings.push(
+        this.enrichFinding({
+          fileType: 'manifest',
+          filePath: 'manifest.json',
+          discoveryType: 'correlacion_riesgo',
+          detail: `web_accessible_resources exposes executable resources (${exposedResources.join(', ')}) to broad page matches (${matches.join(', ')})`,
+          line: this.findManifestLine(
+            preprocessed.manifest.rawManifest,
+            ['web_accessible_resources'],
+            exposedResources[0] ?? 'web_accessible_resources',
+          ),
+          severity: 'high',
+          confidence: 0.78,
+        }),
+      );
+    }
+
+    return findings;
   }
 
   /**
@@ -825,7 +1048,7 @@ export class StaticAnalysisService {
     const EVAL_RE =
       /eval|new Function|setTimeout\(string\)|setInterval\(string\)/;
     const PASSWORD_RE =
-      /password|credential selector|credential string|credential template|\.value/;
+      /password|credential selector|credential string|credential template/;
 
     const isFetch = (f: PreprocessingFinding) => FETCH_RE.test(f.detail);
     const isEval = (f: PreprocessingFinding) => EVAL_RE.test(f.detail);
@@ -849,6 +1072,16 @@ export class StaticAnalysisService {
     const domInjectionFinding = findFinding(isDomInjection);
     const dataFlowFinding = findFinding(
       (f) => f.discoveryType === 'flujo_datos_a_red',
+    );
+    const messageFlowFinding = findFinding(
+      (f) =>
+        f.discoveryType === 'flujo_datos_a_red' &&
+        /extension message sink|chrome\.runtime\.sendMessage|window\.postMessage/.test(
+          f.detail,
+        ),
+    );
+    const backgroundFetchFinding = findFinding(
+      (f) => f.fileType === 'background' && isFetch(f),
     );
 
     const hasExternalDomain = preprocessed.files.some((f) =>
@@ -878,6 +1111,10 @@ export class StaticAnalysisService {
       Object.keys(preprocessed.manifest.chromeUrlOverrides).length === 0 &&
       preprocessed.manifest.contentScripts.length > 0;
 
+    const roleByPath = new Map(
+      preprocessed.files.map((file) => [file.path, file.role] as const),
+    );
+
     const add = (params: {
       detail: string;
       filePath?: string;
@@ -885,10 +1122,11 @@ export class StaticAnalysisService {
       severity?: 'low' | 'medium' | 'high' | 'critical';
       confidence: number;
     }) => {
+      const filePath = params.filePath ?? 'manifest.json';
       correlated.push(
         this.enrichFinding({
-          fileType: 'manifest',
-          filePath: params.filePath ?? 'manifest.json',
+          fileType: roleByPath.get(filePath) ?? 'manifest',
+          filePath,
           discoveryType: 'correlacion_riesgo',
           detail: params.detail,
           line: params.line ?? 1,
@@ -933,12 +1171,22 @@ export class StaticAnalysisService {
     // A3: password-field selector + network sink in SAME FILE = credential theft
     const passwordFetchSameFile = findFindingWithSamefile(isPassword, isFetch);
     if (passwordFetchSameFile) {
-      add({
-        detail: `credential field access (${passwordFetchSameFile.detail}) + network sink in same file — credential theft pattern`,
-        filePath: passwordFetchSameFile.filePath,
-        line: passwordFetchSameFile.line,
-        confidence: 0.96,
-      });
+      if (passwordFetchSameFile.fileType === 'popup') {
+        add({
+          detail: `credential-looking value (${passwordFetchSameFile.detail}) and network call appear in the popup — review whether this is login/account handling, not automatic credential theft`,
+          filePath: passwordFetchSameFile.filePath,
+          line: passwordFetchSameFile.line,
+          severity: 'medium',
+          confidence: 0.62,
+        });
+      } else {
+        add({
+          detail: `credential field access (${passwordFetchSameFile.detail}) + network sink in same file — credential theft pattern`,
+          filePath: passwordFetchSameFile.filePath,
+          line: passwordFetchSameFile.line,
+          confidence: 0.96,
+        });
+      }
     }
 
     // A4: MV3 remote-script violation already gets a dedicated finding;
@@ -1082,6 +1330,18 @@ export class StaticAnalysisService {
       });
     }
 
+    // B11: content script sends sensitive data to privileged background, while
+    // background has an external network sink. This catches the common two-hop
+    // exfiltration design without requiring dynamic execution.
+    if (messageFlowFinding && backgroundFetchFinding) {
+      add({
+        detail: `sensitive data flows into extension messaging (${messageFlowFinding.filePath}) and background contains a network sink (${backgroundFetchFinding.filePath}) — likely inter-file exfiltration path`,
+        filePath: messageFlowFinding.filePath,
+        line: messageFlowFinding.line,
+        confidence: 0.9,
+      });
+    }
+
     // ── Tier C — patterns warranting attention (confidence 0.7-0.82) ────────
 
     // C1: history/tabs permission + dynamic code execution
@@ -1146,7 +1406,7 @@ export class StaticAnalysisService {
 
     // C7: multiple credential-related findings co-occurring
     const credentialFindings = findingsMatching((f) =>
-      /password|credential|wallet|seed|privatekey|metamask|bearer|token/i.test(
+      /password|credential selector|credential string|credential template|wallet|seed phrase|mnemonic|privatekey|metamask|bearer|access_token|refresh_token/i.test(
         f.detail,
       ),
     );
@@ -1202,8 +1462,12 @@ export class StaticAnalysisService {
     const reasons: string[] = [];
     let score = 0;
     for (const finding of findings) {
-      score += finding.scoreImpact ?? 0;
-      if ((finding.scoreImpact ?? 0) >= 5)
+      const impact = finding.scoreImpact ?? 0;
+      const confidence = finding.confidence ?? 0.5;
+      const confidenceWeight =
+        confidence >= 0.85 ? confidence : confidence >= 0.7 ? 0.5 : 0.2;
+      score += impact * confidenceWeight;
+      if (impact >= 5 && confidence >= 0.7)
         reasons.push(`${finding.discoveryType}: ${finding.detail}`);
     }
     for (const file of preprocessed.files) {
@@ -1215,7 +1479,8 @@ export class StaticAnalysisService {
       }
     }
     // Cap domain contributions to avoid inflation from many unknown subdomains
-    score += Math.min(20, priority.length * 2 + unknown.length);
+    score += Math.min(12, priority.length * 2 + unknown.length);
+    score = Math.round(score * 10) / 10;
     const level =
       score >= 45
         ? 'CRITICAL'

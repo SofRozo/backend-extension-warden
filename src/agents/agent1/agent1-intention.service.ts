@@ -47,6 +47,19 @@ determinista, devuelve hallazgos_propios = [].
 REGLAS DE INTERPRETACIÓN:
 - Los hallazgos estáticos vienen con un campo "confianza" (0-1). Hallazgos
   con confianza >= 0.7 son CONFIRMADOS; los demás son señales débiles.
+- NO marques "critico" solo por permisos amplios, archivos no resueltos,
+  minificación, lecturas aisladas de cookies, o muchas ocurrencias repetidas.
+  "critico" exige evidencia clara: keylogger, robo de cookies de sesión,
+  lectura de contraseñas/frases semilla con envío a red, script remoto MV3,
+  exfiltración confirmada por flujo de datos, o comportamiento dinámico
+  malicioso.
+- Un hallazgo en popup/interfaz de extensión es menos grave que el mismo patrón
+  dentro de un content script. Un valor llamado "seed" en juegos/mascotas puede
+  ser una semilla aleatoria de gameplay, no una frase semilla de wallet.
+- En extensiones de seguridad/adblockers, reglas o scriptlets que leen/escriben
+  cookies pueden ser parte esperada del bloqueo de banners o filtros. Solo
+  trátalo como robo si hay envío a red, almacenamiento abusivo o contradicción
+  clara con el propósito.
 - Un dominio en categoría "sensible_financiero|identidad|llm|correo|redes|
   gob|data_broker" contactado por una extensión que no declara esa función
   es una señal fuerte.
@@ -100,6 +113,7 @@ const MAX_TOTAL_SOURCE_CHARS = 120_000;
 /** Per-finding snippet cap in the deterministic-findings summary, just to
  *  prevent runaway lines. */
 const MAX_DET_FINDING_SNIPPET = 240;
+const MAX_AGENT_STATIC_FINDINGS = 120;
 
 @Injectable()
 export class Agent1IntentionService {
@@ -199,23 +213,52 @@ export class Agent1IntentionService {
   private summariseStatic(
     findings: PreprocessingFinding[],
   ): Array<Record<string, unknown>> {
-    // All deterministic findings are passed to the agent, sorted by confidence
-    // so the strongest signals come first if context budget runs out. The full
-    // list is also preserved in `report.estructura.resultado1` for inspection.
-    return findings
+    // The full list is preserved in `report.estructura.resultado1`, but the
+    // holistic agent gets a compact, signal-first view. Thousands of repeated
+    // ruleset/scriptlet findings otherwise cause the model to overreact.
+    const grouped = new Map<string, PreprocessingFinding & { count?: number }>();
+    for (const f of findings) {
+      if ((f.confidence ?? 0) < 0.5) continue;
+      const key =
+        f.discoveryType === 'lectura_cookies'
+          ? `${f.discoveryType}:${f.fileType}:document.cookie`
+          : `${f.discoveryType}:${f.fileType}:${f.detail}`;
+      const current = grouped.get(key);
+      if (!current) {
+        grouped.set(key, { ...f, count: 1 });
+        continue;
+      }
+      current.count = (current.count ?? 1) + 1;
+      if ((f.confidence ?? 0) > (current.confidence ?? 0)) {
+        grouped.set(key, { ...f, count: current.count });
+      }
+    }
+
+    const ordered: Array<Record<string, unknown>> = [...grouped.values()]
       .slice()
       .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+      .slice(0, MAX_AGENT_STATIC_FINDINGS)
       .map((f) => ({
         archivo: f.filePath,
         rol: f.fileType,
         linea: f.line,
         tipo: f.discoveryType,
         detalle: f.detail,
+        ocurrencias_similares: f.count ?? 1,
         severidad: f.severity,
         confianza: f.confidence,
         por_que: f.why,
         snippet: f.codeSnippet?.slice(0, MAX_DET_FINDING_SNIPPET),
       }));
+
+    const omitted = grouped.size - ordered.length;
+    if (omitted > 0) {
+      ordered.push({
+        tipo: 'resumen_omitidos',
+        detalle: `${omitted} grupo(s) de hallazgos estáticos de menor prioridad fueron omitidos del prompt del agente; siguen en la estructura técnica.`,
+      });
+    }
+    return ordered;
   }
 
   private summariseDomains(

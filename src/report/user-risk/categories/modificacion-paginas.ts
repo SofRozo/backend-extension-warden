@@ -1,0 +1,195 @@
+import {
+  hasDetail,
+  hasFinding,
+  makeItem,
+  type UserRiskStaticRule,
+  type UserRiskCategoryEvaluator,
+} from '../types.js';
+
+// Patrones de detección
+const OVERLAY_RE =
+  /position\s*[:=]\s*['"]?(fixed|absolute)|z-?index\s*[:=]\s*['"]?(9{3,}|2147483647|99999|999999)|inset\s*[:=]\s*['"]?0|width\s*[:=]\s*['"]?100(vw|%)|height\s*[:=]\s*['"]?100(vh|%)/i;
+const INVISIBLE_STYLE_RE =
+  /display\s*[:=]\s*['"]?none|visibility\s*[:=]\s*['"]?hidden|opacity\s*[:=]\s*['"]?0|pointer-events\s*[:=]\s*['"]?none/i;
+const FORM_LINK_BUTTON_RE =
+  /createElement\(\s*['"](?:form|input|button|a|label)['"]|getElementsByTagName\(\s*['"](?:form|input|button|a)['"]|querySelectorAll?\(\s*['"][^'"]*(?:form|input|button|a\b|\.btn|\.button)/i;
+const AD_OR_SEARCH_RE =
+  /\.ad[s]?[-_ ]|advertisement|adsbygoogle|search[-_ ]?result|sponsor|tracker|recommendation/i;
+
+export const modificacionPaginasStaticRules: UserRiskStaticRule[] = [
+  {
+    ruleId: 'page_mod.dom_injection',
+    label: 'Inyección o modificación de DOM',
+    id: 'modificacion_paginas',
+    matches: (finding) => finding.discoveryType === 'inyeccion_dom',
+    evidence: (finding) =>
+      `Modificación/inyección de DOM o script en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.remote_script_mv3',
+    label: 'Carga de script remoto',
+    id: 'modificacion_paginas',
+    matches: (finding) => finding.discoveryType === 'script_remoto_mv3',
+    evidence: (finding) =>
+      `Carga de código remoto en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.correlation_dom_script',
+    label: 'Correlación de modificación de página',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      finding.discoveryType === 'correlacion_riesgo' &&
+      /dom|script|injection|remote/i.test(finding.detail),
+    evidence: (finding) =>
+      `Combinación relacionada con modificación de páginas en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.programmatic_script_execution',
+    label: 'Ejecución programática en páginas',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      /chrome\.scripting\.executeScript|chrome\.tabs\.executeScript|insertCSS|removeCSS/i.test(
+        finding.detail,
+      ),
+    evidence: (finding) =>
+      `Puede inyectar scripts o estilos en páginas desde ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.html_or_frame_injection',
+    label: 'Inserción de HTML, scripts o iframes',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      /innerHTML|outerHTML|insertAdjacentHTML|appendChild|prepend|createElement\((script|iframe)|\.src remote/i.test(
+        finding.detail,
+      ),
+    evidence: (finding) =>
+      `Señal de inserción/modificación visual en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.form_or_link_replacement',
+    label: 'Reemplazo de botones, formularios o enlaces',
+    id: 'modificacion_paginas',
+    matches: (finding) => FORM_LINK_BUTTON_RE.test(finding.detail),
+    evidence: (finding) =>
+      `Crea o manipula botones/formularios/enlaces en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.ad_or_search_replacement',
+    label: 'Posible reemplazo de anuncios o resultados',
+    id: 'modificacion_paginas',
+    matches: (finding) => AD_OR_SEARCH_RE.test(finding.detail),
+    evidence: (finding) =>
+      `Referencias a anuncios/resultados que podrían sustituirse en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.invisible_element',
+    label: 'Elementos invisibles inyectados',
+    id: 'modificacion_paginas',
+    matches: (finding) => INVISIBLE_STYLE_RE.test(finding.detail),
+    evidence: (finding) =>
+      `Manipulación de estilos para ocultar elementos en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.fake_overlay',
+    label: 'Superposición tipo phishing/UI falsa',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      OVERLAY_RE.test(finding.detail) ||
+      /createElement\(\s*['"](?:div|iframe)['"][\s\S]{0,200}(?:position|z-?index)|modal|overlay|popup|backdrop/i.test(
+        finding.detail,
+      ),
+    evidence: (finding) =>
+      `Posible overlay/UI superpuesta (position fixed/absolute o z-index alto) en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.mutation_observer',
+    label: 'Vigilancia silenciosa del DOM',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      /MutationObserver|IntersectionObserver|ResizeObserver|attachShadow|shadowRoot/i.test(
+        finding.detail,
+      ),
+    evidence: (finding) =>
+      `Observadores del DOM o uso de shadowRoot en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.history_pushstate',
+    label: 'Reescritura de URL en barra de navegación',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      /history\.pushState|history\.replaceState/i.test(finding.detail),
+    evidence: (finding) =>
+      `Reescribe la URL visible al usuario en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'page_mod.redirect_or_rewrite',
+    label: 'Redirección o reemplazo de contenido',
+    id: 'modificacion_paginas',
+    matches: (finding) =>
+      /redirect|modifyHeaders|declarativeNetRequest|webRequestBlocking|replace|overlay/i.test(
+        finding.detail,
+      ),
+    evidence: (finding) =>
+      `Puede alterar navegación, recursos o contenido en ${finding.filePath}:${finding.line}.`,
+  },
+];
+
+export const evaluateModificacionPaginas: UserRiskCategoryEvaluator = (
+  context,
+) => {
+  const { perms } = context;
+  const domInjection = hasFinding(context, 'inyeccion_dom');
+  const remoteScript = hasFinding(context, 'script_remoto_mv3');
+  const overlaySignal = hasDetail(context, OVERLAY_RE);
+  const invisibleSignal = hasDetail(context, INVISIBLE_STYLE_RE);
+  const observerSignal = hasDetail(
+    context,
+    /MutationObserver|IntersectionObserver|attachShadow|shadowRoot/i,
+  );
+  const formReplacement = hasDetail(context, FORM_LINK_BUTTON_RE);
+
+  // Crítico: code remoto o overlay+inyección DOM (phishing pattern).
+  const isCritical = remoteScript || (overlaySignal && domInjection);
+  // Sospechoso: cualquier inyección DOM o scripting, o overlay/invisible/observer
+  const isSuspicious =
+    domInjection ||
+    perms.has('scripting') ||
+    overlaySignal ||
+    invisibleSignal ||
+    observerSignal;
+
+  return makeItem(
+    context,
+    'modificacion_paginas',
+    'Modificación de páginas',
+    isCritical ? 'critico' : isSuspicious ? 'sospechoso' : 'no_detectado',
+    isCritical
+      ? 'La extensión combina señales fuertes de modificación de páginas (inyección de DOM más overlay o script remoto). Es un patrón típico de phishing o suplantación visual.'
+      : isSuspicious
+        ? 'La extensión puede modificar páginas, insertar elementos o vigilar el DOM. El riesgo sube si lo hace en sitios sensibles o con código remoto.'
+        : 'No vimos señales fuertes de modificación de páginas.',
+    [
+      domInjection && 'Detectamos inyección o modificación de DOM/script.',
+      perms.has('scripting') && 'Permiso scripting declarado.',
+      remoteScript && 'Carga de script remoto en MV3.',
+      overlaySignal &&
+        'Señales de overlay (position fixed/absolute con z-index alto): puede pintar UI sobre la página real.',
+      invisibleSignal &&
+        'Manipula estilos para ocultar elementos (display:none / visibility:hidden / opacity:0).',
+      observerSignal &&
+        'Usa MutationObserver o shadowRoot: puede observar/modificar la página sin que se note.',
+      formReplacement &&
+        'Crea o reemplaza botones, formularios o enlaces.',
+      hasDetail(context, /history\.(push|replace)State/i) &&
+        'Reescribe la URL visible al usuario con la History API.',
+    ],
+    [
+      '¿Puede modificar el contenido de una página web?',
+      '¿Puede insertar elementos invisibles dentro de sitios?',
+      '¿Puede cambiar botones, formularios o enlaces?',
+      '¿Puede reemplazar anuncios o resultados de búsqueda?',
+      '¿Puede alterar lo que veo en redes sociales o bancos?',
+      '¿Puede superponer interfaces falsas sobre páginas reales?',
+    ],
+  );
+};
