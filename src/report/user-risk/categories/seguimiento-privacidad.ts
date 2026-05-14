@@ -31,8 +31,7 @@ export const seguimientoPrivacidadStaticRules: UserRiskStaticRule[] = [
     ruleId: 'privacy.storage_access',
     label: 'Acceso a datos persistidos',
     id: 'seguimiento_privacidad',
-    matches: (finding) =>
-      finding.discoveryType === 'lectura_storage_navegador',
+    matches: (finding) => finding.discoveryType === 'lectura_storage_navegador',
     evidence: (finding) =>
       `Acceso a datos persistidos del usuario en ${finding.filePath}:${finding.line}.`,
   },
@@ -177,7 +176,8 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
         'Permiso tabs USADO en código (observa pestañas activamente).',
       context.perms.has('webNavigation') &&
         'Permiso webNavigation: observa transiciones entre páginas.',
-      crossSite && 'Acceso amplio a sitios: puede correlacionar entre dominios.',
+      crossSite &&
+        'Acceso amplio a sitios: puede correlacionar entre dominios.',
       hasFinding(context, 'lectura_storage_navegador') &&
         'Lectura de almacenamiento para persistir información.',
     ],

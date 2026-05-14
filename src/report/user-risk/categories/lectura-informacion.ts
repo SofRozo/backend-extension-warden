@@ -37,8 +37,7 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
     ruleId: 'read_info.browser_storage_access',
     label: 'Lectura de almacenamiento',
     id: 'lectura_informacion',
-    matches: (finding) =>
-      finding.discoveryType === 'lectura_storage_navegador',
+    matches: (finding) => finding.discoveryType === 'lectura_storage_navegador',
     evidence: (finding) =>
       `Lectura de almacenamiento del navegador en ${finding.filePath}:${finding.line}.`,
   },
@@ -152,9 +151,7 @@ export const evaluateLecturaInformacion: UserRiskCategoryEvaluator = (
 
   // Critico: flujo a red, captura de pantalla, o inyección + broadHost.
   const isCritical =
-    networkFlow ||
-    screenshot ||
-    (usesScriptingExecute && context.broadHost);
+    networkFlow || screenshot || (usesScriptingExecute && context.broadHost);
   // Sospechoso: lectura/captura observada en código (sea via APIs sensibles o
   // matches a sitios sensibles).
   const isSuspicious =

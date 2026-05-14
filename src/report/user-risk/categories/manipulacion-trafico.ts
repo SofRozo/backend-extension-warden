@@ -11,8 +11,10 @@ const DNR_API_RE =
   /chrome\.declarativeNetRequest|updateDynamicRules|updateSessionRules|updateEnabledRulesets|getDynamicRules/i;
 const HEADER_REWRITE_RE =
   /modifyHeaders|setRequestHeader|removeHeader|setResponseHeader|Authorization|Cookie|Referer|Origin/i;
-const REDIRECT_RE = /redirect|upgradeScheme|window\.location|location\.replace|location\.assign/i;
-const PROXY_RE = /chrome\.proxy|vpnProvider|ProxyConfig|PacScript|FixedServers/i;
+const REDIRECT_RE =
+  /redirect|upgradeScheme|window\.location|location\.replace|location\.assign/i;
+const PROXY_RE =
+  /chrome\.proxy|vpnProvider|ProxyConfig|PacScript|FixedServers/i;
 const DOWNLOAD_INTERCEPT_RE =
   /chrome\.downloads\.onDeterminingFilename|chrome\.downloads\.onCreated|chrome\.downloads\.onChanged/i;
 

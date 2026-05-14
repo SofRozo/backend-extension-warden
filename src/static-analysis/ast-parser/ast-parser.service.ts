@@ -295,7 +295,7 @@ export class AstParserService {
       findings.push({
         category: FindingCategory.EXFILTRATION,
         pattern: 'data_flow',
-        description: `${source} flows into ${sinkLabel}`,
+        description: `${source} viaja hacia ${sinkLabel}`,
         severity: RiskLevel.CRITICAL,
         location: { file: filename, line, column: node.loc?.start.column ?? 0 },
         codeSnippet: this.snippetForNode(code, node),
@@ -373,8 +373,8 @@ export class AstParserService {
               source,
               nodePath.node,
               this.isInternalMessageSink(callee)
-                ? `extension message sink ${callee}`
-                : `network sink ${callee}`,
+                ? `la memoria oculta de la extensión (${callee})`
+                : `un servidor en Internet (${callee})`,
               this.isInternalMessageSink(callee) ? 0.78 : 0.9,
             );
           }
@@ -389,7 +389,7 @@ export class AstParserService {
               'XMLHttpRequest.open',
               source,
               nodePath.node,
-              'XMLHttpRequest URL construction',
+              'construcción de URL en XMLHttpRequest',
               0.84,
             );
           }
@@ -406,7 +406,7 @@ export class AstParserService {
             callee,
             source,
             nodePath.node,
-            `${callee} constructor`,
+            `constructor de ${callee}`,
             0.88,
           );
         }
@@ -1082,7 +1082,8 @@ export class AstParserService {
       }
     }
     if (member) {
-      if (member === 'document.cookie' || member.startsWith('document.cookie.')) return 'document.cookie';
+      if (member === 'document.cookie' || member.startsWith('document.cookie.'))
+        return 'document.cookie';
       if (
         /localStorage|sessionStorage|indexedDB|window\.location|navigator\.clipboard|document\.forms|document\.documentElement|document\.body/.test(
           member,

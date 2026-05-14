@@ -33,7 +33,8 @@ export const descargasArchivosStaticRules: UserRiskStaticRule[] = [
     label: 'Uso de API de descargas',
     id: 'descargas_archivos',
     matches: (finding) =>
-      DOWNLOAD_API_RE.test(finding.detail) || /download\s*\(/i.test(finding.detail),
+      DOWNLOAD_API_RE.test(finding.detail) ||
+      /download\s*\(/i.test(finding.detail),
     evidence: (finding) =>
       `Usa APIs de descarga/archivo en ${finding.filePath}:${finding.line}.`,
   },

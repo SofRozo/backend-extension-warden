@@ -226,7 +226,9 @@ export class UserRiskSummaryService {
       (cs) => cs.matches,
     );
 
-    if ([...hostPerms, ...contentMatches].some((p) => this.isBroadHostPattern(p))) {
+    if (
+      [...hostPerms, ...contentMatches].some((p) => this.isBroadHostPattern(p))
+    ) {
       add(
         'acceso_general_navegador',
         'Puede operar en muchos o todos los sitios web por permisos de host.',
@@ -268,7 +270,10 @@ export class UserRiskSummaryService {
       );
     }
     if (perms.has('downloads')) {
-      add('descargas_archivos', 'Permiso downloads permite gestionar descargas.');
+      add(
+        'descargas_archivos',
+        'Permiso downloads permite gestionar descargas.',
+      );
     }
     if (perms.has('webRequest') || perms.has('declarativeNetRequest')) {
       add(
@@ -339,7 +344,9 @@ export class UserRiskSummaryService {
     for (const dynamic of dynamicFindings) {
       const text = `Análisis dinámico: ${dynamic.razon}`;
       add('seguimiento_privacidad', text);
-      if (/cookie|session|sesión|password|contraseña|token|credential/i.test(text)) {
+      if (
+        /cookie|session|sesión|password|contraseña|token|credential/i.test(text)
+      ) {
         add('captura_credenciales', text);
       }
       if (/tecla|keyboard|keylog|input/i.test(text)) {
@@ -356,7 +363,8 @@ export class UserRiskSummaryService {
     limit: number,
   ): string[] {
     const ordered = [...items].sort(
-      (a, b) => this.userStatusWeight(b.estado) - this.userStatusWeight(a.estado),
+      (a, b) =>
+        this.userStatusWeight(b.estado) - this.userStatusWeight(a.estado),
     );
     return ordered
       .flatMap((item) => {

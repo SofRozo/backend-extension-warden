@@ -270,7 +270,9 @@ describe('AstParserService', () => {
       const flows = service.detectDataFlow(code, 'background.js');
       expect(
         flows.some((f) =>
-          f.description.includes('extension message sink chrome.tabs.sendMessage'),
+          f.description.includes(
+            'extension message sink chrome.tabs.sendMessage',
+          ),
         ),
       ).toBe(false);
     });

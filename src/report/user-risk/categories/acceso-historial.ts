@@ -13,7 +13,8 @@ const TABS_NAV_RE =
 const WEBNAV_RE =
   /chrome\.webNavigation|onBeforeNavigate|onCommitted|onCompleted|onHistoryStateUpdated|onReferenceFragmentUpdated/i;
 const BOOKMARKS_RE = /chrome\.bookmarks|chrome\.topSites|chrome\.sessions/i;
-const URL_FLOW_RE = /tab\.url|tab\.title|url|history|webNavigation|title|location\.href/i;
+const URL_FLOW_RE =
+  /tab\.url|tab\.title|url|history|webNavigation|title|location\.href/i;
 
 export const accesoHistorialStaticRules: UserRiskStaticRule[] = [
   {
@@ -86,8 +87,7 @@ export const evaluateAccesoHistorial: UserRiskCategoryEvaluator = (context) => {
     );
 
   // Critico: leer historial Y enviarlo, o webNavigation listener + flow
-  const isCritical =
-    (historyApi && urlFlow) || (webNavListener && urlFlow);
+  const isCritical = (historyApi && urlFlow) || (webNavListener && urlFlow);
   // Sospechoso: permiso history activo o uso real de la API
   const isSuspicious =
     perms.has('history') ||

@@ -10,7 +10,8 @@ const KEY_EVENT_RE =
   /addEventListener\(\s*['"](keydown|keyup|keypress|input|beforeinput|paste|copy|cut|compositionstart|compositionupdate|compositionend)['"]|onkeydown|onkeyup|oninput|onpaste|oncopy|oncut|KeyboardEvent|InputEvent|CompositionEvent|ClipboardEvent/i;
 const HOTKEY_RE =
   /ctrlKey|altKey|metaKey|shiftKey|event\.key|event\.code|keyCode|which|chrome\.commands/i;
-const PASTE_COPY_RE = /addEventListener\(\s*['"](paste|copy|cut)['"]|clipboardData|onpaste|oncopy|oncut/i;
+const PASTE_COPY_RE =
+  /addEventListener\(\s*['"](paste|copy|cut)['"]|clipboardData|onpaste|oncopy|oncut/i;
 const IME_RE =
   /compositionstart|compositionupdate|compositionend|CompositionEvent/i;
 const FORM_SUBMIT_RE =

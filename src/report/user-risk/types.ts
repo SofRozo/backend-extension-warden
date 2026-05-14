@@ -129,7 +129,9 @@ export function hasDetail(
   context: UserRiskContext,
   detailPattern: RegExp,
 ): boolean {
-  return context.positives.some((finding) => detailPattern.test(finding.detail));
+  return context.positives.some((finding) =>
+    detailPattern.test(finding.detail),
+  );
 }
 
 export function uniqueStrings(values: string[]): string[] {

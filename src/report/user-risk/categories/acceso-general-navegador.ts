@@ -1,7 +1,6 @@
 import {
   findApiCall,
   hasApiCall,
-  hasDetail,
   makeItem,
   type UserRiskCategoryEvaluator,
   type UserRiskStaticRule,
@@ -119,8 +118,7 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
     usesTabObservation ||
     (broadHost && (perms.has('scripting') || autoRunScripts));
   // Capacidad: solo el permiso/manifesto declarado, sin uso real
-  const hasOnlyDeclaration =
-    broadHost || perms.has('tabs') || hasContentScript;
+  const hasOnlyDeclaration = broadHost || perms.has('tabs') || hasContentScript;
 
   const estado = isCritical
     ? 'critico'

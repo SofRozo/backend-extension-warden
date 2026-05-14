@@ -30,17 +30,17 @@ const FILE_TYPE_LABEL: Record<string, string> = {
 
 const ROLE_CONTEXT: Record<string, string> = {
   content_script:
-    'Un content script corre dentro de las páginas que visitas, por eso puede leer o modificar el DOM de esos sitios si tiene permisos de host.',
+    'Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla.',
   background:
-    'Un background/service worker corre de forma persistente o por eventos; suele coordinar permisos privilegiados, red y mensajería.',
+    'Este es el "cerebro invisible" de la extensión. Corre en segundo plano todo el tiempo en tu navegador sin que te des cuenta, comunicándose con servidores en Internet y procesando datos.',
   popup:
-    'Un popup solo corre cuando abres la interfaz de la extensión; una lectura o evento aquí suele ser menos grave que el mismo patrón dentro de una página visitada.',
+    'Este archivo pertenece a la ventanita visual que se abre únicamente cuando haces clic en el ícono de la extensión en la barra de Chrome.',
   options_ui:
-    'La página de opciones normalmente maneja configuración; aun así, no debería exfiltrar datos sensibles ni ejecutar código dinámico.',
+    'Este archivo corresponde a la página de configuración de la extensión.',
   manifest:
-    'El manifest define capacidades y superficie de ataque, aunque por sí solo no prueba abuso.',
+    'Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome.',
   unknown:
-    'Este archivo no tiene un rol claro en el manifest; eso reduce la certeza y exige revisar si es alcanzable.',
+    'Este archivo está suelto dentro de la extensión y no sabemos en qué momento exacto se ejecuta.',
 };
 
 /**
@@ -204,7 +204,6 @@ export class ReportService {
   private formatStatic(f: VerdictedStaticFinding): string {
     const fileType = FILE_TYPE_LABEL[f.fileType] ?? f.fileType;
     const roleContext = ROLE_CONTEXT[f.fileType] ?? '';
-    const snippet = f.codeSnippet ? ` Fragmento: ${f.codeSnippet}` : '';
     const confidence =
       typeof f.confidence === 'number'
         ? ` Confianza: ${Math.round(f.confidence * 100)}%.`
@@ -212,7 +211,7 @@ export class ReportService {
     const explanation = this.humanizeReason(f.why || f.razon);
     return (
       `En el ${fileType} (${f.filePath}, línea ${f.line}) detectamos ${this.describeStaticFinding(f)} ` +
-      `Motivo: ${explanation}${roleContext ? ` Contexto: ${roleContext}` : ''}${snippet}${confidence}`
+      `Motivo: ${explanation}${roleContext ? ` Contexto: ${roleContext}` : ''}${confidence}`
     );
   }
 
@@ -362,10 +361,10 @@ export class ReportService {
 
   private describeStaticFinding(f: VerdictedStaticFinding): string {
     if (f.discoveryType === 'flujo_datos_a_red') {
-      if (f.detail.includes('extension message sink')) {
-        return `un flujo de datos sensible hacia mensajería interna de la extensión: ${f.detail}.`;
+      if (f.detail.includes('memoria oculta') || f.detail.includes('extension message')) {
+        return `que la extensión está extrayendo tu información personal de esta página y pasándola a su código invisible en segundo plano (${f.detail}).`;
       }
-      return `un flujo de datos sensible hacia una salida externa: ${f.detail}.`;
+      return `que la extensión está enviando tu información directamente a servidores en Internet (${f.detail}).`;
     }
     if (f.discoveryType === 'lectura_cookies') {
       return `acceso a cookies mediante ${f.detail}; esto puede exponer identificadores de sesión.`;

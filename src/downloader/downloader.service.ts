@@ -233,8 +233,6 @@ export class DownloaderService {
     // If the file is already a valid ZIP (offset 0), we can use the CRX
     // file directly. Otherwise write the stripped zip to a temp file.
     let zipFilePath: string;
-    let createdTempZip = false;
-
     if (zipStartOffset === 0) {
       // File is already a ZIP — use it directly
       zipFilePath = crxPath;
@@ -243,9 +241,12 @@ export class DownloaderService {
       // immediately delete the original CRX to free tmpfs space.
       zipFilePath = crxPath + '.zip';
       fs.writeFileSync(zipFilePath, zipBuffer);
-      createdTempZip = true;
       // Free the CRX — we no longer need it and it can be 80MB+
-      try { fs.unlinkSync(crxPath); } catch { /* best effort */ }
+      try {
+        fs.unlinkSync(crxPath);
+      } catch {
+        /* best effort */
+      }
     }
 
     try {
@@ -260,10 +261,18 @@ export class DownloaderService {
       zip.extractAllTo(extractPath, true);
     } finally {
       // Always clean up the zip file (temp or original) to reclaim space
-      try { fs.unlinkSync(zipFilePath); } catch { /* best effort */ }
+      try {
+        fs.unlinkSync(zipFilePath);
+      } catch {
+        /* best effort */
+      }
       // Also clean the CRX if it still exists (plain ZIP case)
       if (zipStartOffset === 0) {
-        try { fs.unlinkSync(crxPath); } catch { /* best effort */ }
+        try {
+          fs.unlinkSync(crxPath);
+        } catch {
+          /* best effort */
+        }
       }
     }
   }

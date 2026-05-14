@@ -216,7 +216,10 @@ export class Agent1IntentionService {
     // The full list is preserved in `report.estructura.resultado1`, but the
     // holistic agent gets a compact, signal-first view. Thousands of repeated
     // ruleset/scriptlet findings otherwise cause the model to overreact.
-    const grouped = new Map<string, PreprocessingFinding & { count?: number }>();
+    const grouped = new Map<
+      string,
+      PreprocessingFinding & { count?: number }
+    >();
     for (const f of findings) {
       if ((f.confidence ?? 0) < 0.5) continue;
       const key =

@@ -147,10 +147,8 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
       remoteScript && 'Script remoto detectado.',
       packer &&
         'Firma de packer u ofuscador conocido (Dean Edwards, jsfuck, aaencode, obfuscator.io).',
-      hexIdents &&
-        'Identificadores _0x... (patrón típico de obfuscator.io).',
-      encoders &&
-        'Uso de decodificadores (atob/String.fromCharCode/unescape).',
+      hexIdents && 'Identificadores _0x... (patrón típico de obfuscator.io).',
+      encoders && 'Uso de decodificadores (atob/String.fromCharCode/unescape).',
       dynamicExec &&
         'Ejecuta código construido dinámicamente (eval/new Function/setTimeout-string).',
       antiDebug &&
