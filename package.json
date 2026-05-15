@@ -21,11 +21,11 @@
     "demo:setup": "ts-node --project tsconfig.scripts.json scripts/setup-demo-account.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "*",
     "@babel/generator": "^7.29.1",
     "@babel/parser": "^7.29.2",
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^7.29.0",
-    "@ai-sdk/openai-compatible": "*",
     "@browserbasehq/stagehand": "^3.3.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
@@ -63,6 +63,7 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
+    "exceljs": "^4.4.0",
     "globals": "^17.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
