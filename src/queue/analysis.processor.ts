@@ -170,7 +170,7 @@ export class AnalysisProcessor extends WorkerHost {
       let agentAnalysis: AgentAnalysisResult;
       try {
         const agentTimeoutMs =
-          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 3_600_000;
+          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 300_000;
         agentAnalysis = await this.withTimeout(
           this.agentsOrchestrator.run(preprocessed, jobId, {
             dynamicObservations: dynamicResult?.domainObservations ?? [],
