@@ -176,45 +176,6 @@ export class DeobfuscatorService {
     code: string;
     changed: boolean;
   } {
-    let changed = false;
-
-    // Pattern 1: Webpack 4 — array of modules passed to IIFE
-    // Matches: [function(module, exports, __webpack_require__) { <body> }]
-    const wp4Pattern =
-      /\[\s*(?:\/\*.*?\*\/\s*)?function\s*\(\s*(?:module|__unused_webpack_module)\s*,\s*(?:exports|__webpack_exports__)\s*,\s*(?:__webpack_require__|__unused_webpack_exports)\s*\)\s*\{/g;
-    if (wp4Pattern.test(code)) {
-      changed = true;
-      // The code itself is analyzable — mark as webpack but keep content
-    }
-
-    // Pattern 2: Webpack 5 — object hash of modules
-    // Extract module bodies from __webpack_modules__ = { "id": (m,e,r) => { ... } }
-    const wp5ModuleRegex =
-      /["']?\d+["']?\s*:\s*\(\s*(?:module|__unused)?\s*,\s*(?:exports|__webpack_exports__)?\s*,?\s*(?:__webpack_require__)?\s*\)\s*=>\s*\{/g;
-    if (wp5ModuleRegex.test(code)) {
-      changed = true;
-    }
-
-    // Pattern 3: Extract string arrays used as lookup tables (_0x pattern)
-    // var _0xABCD = ["string1", "string2", ...];
-    const stringArrayRegex =
-      /(?:var|let|const)\s+_0x[a-f0-9]+\s*=\s*\[((?:\s*['"][^'"]*['"]\s*,?\s*)+)\]/g;
-    let arrayMatch;
-    while ((arrayMatch = stringArrayRegex.exec(code)) !== null) {
-      try {
-        const strings = arrayMatch[1]
-          .split(',')
-          .map((s) => s.trim().replace(/^['"]|['"]$/g, ''));
-        // Inline string lookups: _0xABCD[0] → "string1"
-        // This is a simplification — full resolution would require control flow analysis
-        if (strings.length > 0) {
-          changed = true;
-        }
-      } catch {
-        // Best effort
-      }
-    }
-
     return { code, changed: false };
   }
 
