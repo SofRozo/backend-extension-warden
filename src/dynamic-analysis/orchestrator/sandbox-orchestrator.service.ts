@@ -299,6 +299,28 @@ export class SandboxOrchestratorService {
           return super.open(method, url);
         }
       };
+
+      // WebSocket monkey-patch — catches Stratum miners and C2 channels that
+      // never touch fetch or XHR. The CDP listener above (page.on('websocket'))
+      // is the primary capture; this is a defense-in-depth fallback for frames
+      // sent before the CDP handshake resolves.
+      const OrigWS = (window as any).WebSocket;
+      if (typeof OrigWS !== 'undefined') {
+        (window as any).WebSocket = class extends OrigWS {
+          constructor(url: string | URL, protocols?: string | string[]) {
+            record('WebSocket.connect', [String(url)]);
+            super(url, protocols);
+            const origSend = this.send.bind(this);
+            this.send = (data: any) => {
+              record('WebSocket.send', [
+                String(url),
+                String(data).substring(0, 500),
+              ]);
+              return origSend(data);
+            };
+          }
+        };
+      }
     });
   }
 
@@ -311,6 +333,34 @@ export class SandboxOrchestratorService {
         const body: string | undefined = request.postData();
         const initiator: string | undefined = request.frame()?.url();
         collector.onNetworkRequest(url, method, headers, body, initiator);
+      } catch {
+        /* best effort */
+      }
+    });
+
+    // Playwright-native WebSocket events — covers C2 channels and Stratum miners
+    // that bypass fetch/XHR entirely. This runs at the CDP layer so extensions
+    // cannot suppress it with their own overrides.
+    page.on('websocket', (ws: any) => {
+      try {
+        const url: string = ws.url();
+        collector.onNetworkRequest(url, 'WS_CONNECT', {}, undefined, undefined);
+        ws.on('framesent', (frame: any) => {
+          try {
+            const body = String(frame.payload ?? '').substring(0, 500);
+            collector.onNetworkRequest(url, 'WS_SEND', {}, body, undefined);
+          } catch {
+            /* best effort */
+          }
+        });
+        ws.on('framereceived', (frame: any) => {
+          try {
+            const body = String(frame.payload ?? '').substring(0, 500);
+            collector.onNetworkRequest(url, 'WS_RECV', {}, body, undefined);
+          } catch {
+            /* best effort */
+          }
+        });
       } catch {
         /* best effort */
       }
@@ -456,6 +506,21 @@ export class SandboxOrchestratorService {
       } catch (e) {}
       emit({ kind: 'fetch', url: url, method: method, body: body });
       return origFetch(input, init);
+    };
+  }
+  if (typeof self.WebSocket === 'function') {
+    const OrigWS = self.WebSocket;
+    self.WebSocket = class extends OrigWS {
+      constructor(url, protocols) {
+        const urlStr = String(url);
+        emit({ kind: 'fetch', url: urlStr, method: 'WS_CONNECT', body: undefined });
+        super(url, protocols);
+        const origSend = this.send.bind(this);
+        this.send = function(data) {
+          emit({ kind: 'fetch', url: urlStr, method: 'WS_SEND', body: String(data).substring(0, 500) });
+          return origSend(data);
+        };
+      }
     };
   }
 })();`;

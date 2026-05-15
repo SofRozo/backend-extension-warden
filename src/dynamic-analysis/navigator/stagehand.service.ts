@@ -14,21 +14,19 @@ import type {
 
 @Injectable()
 export class StagehandService {
-  private readonly usarOllama: boolean;
   private readonly modeloOllama: string;
   private readonly ollamaHost: string;
-  private readonly googleApiKey: string | undefined;
+  private readonly storageStatePath: string | undefined;
 
   constructor(
-    private readonly config: ConfigService,
+    config: ConfigService,
     private readonly logger: StructuredLogger,
   ) {
-    this.usarOllama = (config.get<string>('USAR_OLLAMA') ?? 'true') !== 'false';
-    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3.5:9b';
+    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:4b';
     this.ollamaHost = (
       config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
-    this.googleApiKey = config.get<string>('GOOGLE_API_KEY');
+    this.storageStatePath = config.get<string>('demo.storageStatePath');
   }
 
   async navigateDomain(
@@ -462,9 +460,8 @@ export class StagehandService {
   }
 
   private findStateFile(domain: string): string | undefined {
-    const configured = this.config.get<string>('demo.storageStatePath');
     const candidates = [
-      configured,
+      this.storageStatePath,
       './data/honeypot/states',
       '/data/honeypot/states',
     ].filter((p): p is string => !!p);
@@ -498,30 +495,19 @@ export class StagehandService {
       disablePino: true,
     };
 
-    if (this.usarOllama) {
-      // Use @ai-sdk/openai-compatible to talk to Ollama's OpenAI-compatible endpoint.
-      // AISdkClient bridges the AI SDK model interface into Stagehand's LLMClient contract.
-      const ollamaProvider = createOpenAICompatible({
-        name: 'ollama',
-        baseURL: `${this.ollamaHost}/v1`,
-        fetch: (url, options) => {
-          return fetch(url, {
-            ...options,
-            signal: AbortSignal.timeout(600_000),
-          });
-        },
-      });
-      const llmClient = new AISdkClient({
-        model: ollamaProvider.chatModel(this.modeloOllama),
-      });
-      return { ...base, llmClient };
-    }
-
-    // Gemini: "gemini-2.0-flash" is a known model string, Stagehand resolves provider via AI SDK.
-    return {
-      ...base,
-      model: 'gemini-2.0-flash',
-      apiKey: this.googleApiKey,
-    };
+    const ollamaProvider = createOpenAICompatible({
+      name: 'ollama',
+      baseURL: `${this.ollamaHost}/v1`,
+      fetch: (url: string, options: RequestInit) => {
+        return fetch(url, {
+          ...options,
+          signal: AbortSignal.timeout(600_000),
+        });
+      },
+    });
+    const llmClient = new AISdkClient({
+      model: ollamaProvider.chatModel(this.modeloOllama),
+    });
+    return { ...base, llmClient };
   }
 }

@@ -8,6 +8,10 @@ import {
   evaluateAccesoHistorial,
 } from './acceso-historial.js';
 import {
+  abusoManagementStaticRules,
+  evaluateAbusoManagement,
+} from './abuso-management.js';
+import {
   capturaCredencialesStaticRules,
   evaluateCapturaCredenciales,
 } from './captura-credenciales.js';
@@ -15,6 +19,10 @@ import {
   descargasArchivosStaticRules,
   evaluateDescargasArchivos,
 } from './descargas-archivos.js';
+import {
+  evaluateFingerprintingSevero,
+  fingerprintingSeveroStaticRules,
+} from './fingerprinting-severo.js';
 import { evaluateKeylogging, keyloggingStaticRules } from './keylogging.js';
 import {
   evaluateLecturaInformacion,
@@ -24,6 +32,10 @@ import {
   evaluateManipulacionTrafico,
   manipulacionTraficoStaticRules,
 } from './manipulacion-trafico.js';
+import {
+  evaluateMineriaRecursos,
+  mineriaRecursosStaticRules,
+} from './mineria-recursos.js';
 import {
   evaluateModificacionPaginas,
   modificacionPaginasStaticRules,
@@ -48,6 +60,9 @@ export const USER_RISK_CATEGORY_EVALUATORS: UserRiskCategoryEvaluator[] = [
   evaluateAccesoHistorial,
   evaluateDescargasArchivos,
   evaluateOfuscacionTransparencia,
+  evaluateAbusoManagement,
+  evaluateMineriaRecursos,
+  evaluateFingerprintingSevero,
 ];
 
 export const USER_RISK_STATIC_RULES = [
@@ -61,4 +76,7 @@ export const USER_RISK_STATIC_RULES = [
   ...accesoHistorialStaticRules,
   ...descargasArchivosStaticRules,
   ...ofuscacionTransparenciaStaticRules,
+  ...abusoManagementStaticRules,
+  ...mineriaRecursosStaticRules,
+  ...fingerprintingSeveroStaticRules,
 ];

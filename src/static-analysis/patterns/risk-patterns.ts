@@ -172,6 +172,88 @@ export const RISK_PATTERNS: RiskPattern[] = [
     ],
   },
 
+  // Evasion / Dynamic code execution
+  // NOTE: new Function() and setTimeout/setInterval(string) are already detected
+  // directly in ast-parser.service.ts to avoid duplicate findings.
+  {
+    category: FindingCategory.EVASION,
+    severity: RiskLevel.CRITICAL,
+    description: 'Executes code from a string at runtime (eval)',
+    astPatterns: [{ type: 'call', callee: 'eval' }],
+  },
+  {
+    category: FindingCategory.EVASION,
+    severity: RiskLevel.MEDIUM,
+    description: 'Clears console output (anti-debugging signal)',
+    astPatterns: [{ type: 'call', callee: 'console.clear' }],
+  },
+  {
+    category: FindingCategory.EVASION,
+    severity: RiskLevel.HIGH,
+    description: 'Reads or modifies installed extensions (anti-AV / spying)',
+    astPatterns: [
+      { type: 'call', callee: 'chrome.management.getAll' },
+      { type: 'call', callee: 'chrome.management.setEnabled' },
+      { type: 'call', callee: 'chrome.management.uninstallSelf' },
+    ],
+  },
+
+  // Clipboard theft
+  {
+    category: FindingCategory.CLIPBOARD,
+    severity: RiskLevel.CRITICAL,
+    description: 'Reads data from the system clipboard',
+    astPatterns: [
+      { type: 'call', callee: 'navigator.clipboard.readText' },
+      { type: 'call', callee: 'navigator.clipboard.read' },
+    ],
+  },
+  {
+    category: FindingCategory.CLIPBOARD,
+    severity: RiskLevel.HIGH,
+    description: 'Reads clipboard via legacy execCommand paste',
+    astPatterns: [
+      { type: 'call', callee: 'document.execCommand', arguments: ['paste'] },
+    ],
+  },
+
+  // Fingerprinting
+  // Confidence is intentionally low (~0.5) — canvas is common in image editors,
+  // games, and chart libs. Only actionable when combined with a network sink.
+  {
+    category: FindingCategory.FINGERPRINTING,
+    severity: RiskLevel.MEDIUM,
+    description: 'Canvas pixel read — potential fingerprinting or screen capture',
+    astPatterns: [
+      { type: 'member', property: 'toDataURL' },
+      { type: 'member', property: 'getImageData' },
+    ],
+  },
+
+  // Privacy risks
+  {
+    category: FindingCategory.PRIVACY_RISK,
+    severity: RiskLevel.HIGH,
+    description: 'WebRTC peer connection — can expose real IP bypassing proxies/VPNs',
+    astPatterns: [{ type: 'call', callee: 'RTCPeerConnection' }],
+  },
+
+  // Navigation hijacking / affiliate redirect
+  {
+    category: FindingCategory.INJECTION,
+    severity: RiskLevel.MEDIUM,
+    description: 'Modifies current tab URL — potential forced redirect or affiliate hijacking',
+    astPatterns: [{ type: 'call', callee: 'chrome.tabs.update' }],
+  },
+
+  // Dropper — initiates file downloads to the local filesystem
+  {
+    category: FindingCategory.DROPPER,
+    severity: RiskLevel.CRITICAL,
+    description: 'Initiates a file download to the local filesystem',
+    astPatterns: [{ type: 'call', callee: 'chrome.downloads.download' }],
+  },
+
   // Exfiltration
   {
     category: FindingCategory.EXFILTRATION,

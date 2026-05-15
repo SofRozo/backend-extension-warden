@@ -626,9 +626,16 @@ export class AstParserService {
             );
           }
         } else {
-          findings.push(
-            this.createFinding(pattern, calleeName, filename, node, code),
+          const finding = this.createFinding(
+            pattern,
+            calleeName,
+            filename,
+            node,
+            code,
           );
+          // console.clear is a weak anti-debugging hint, not a confirmed attack.
+          if (calleeName === 'console.clear') finding.confidence = 0.45;
+          findings.push(finding);
         }
       }
     }
@@ -722,6 +729,22 @@ export class AstParserService {
         confidence: 0.82,
       });
     }
+    if (callee === 'RTCPeerConnection') {
+      findings.push({
+        category: FindingCategory.PRIVACY_RISK,
+        pattern: 'new RTCPeerConnection',
+        description:
+          'WebRTC peer connection — can expose the real IP address bypassing proxies or VPNs',
+        severity: RiskLevel.HIGH,
+        location: {
+          file: filename,
+          line: node.loc?.start.line || 0,
+          column: node.loc?.start.column || 0,
+        },
+        codeSnippet: this.snippetForNode(code, node),
+        confidence: 0.78,
+      });
+    }
   }
 
   private checkMemberExpression(
@@ -751,15 +774,19 @@ export class AstParserService {
         ) {
           continue;
         }
-        findings.push(
-          this.createFinding(
-            pattern,
-            `${objectName || '?'}.${propertyName}`,
-            filename,
-            node,
-            code,
-          ),
+        const finding = this.createFinding(
+          pattern,
+          `${objectName || '?'}.${propertyName}`,
+          filename,
+          node,
+          code,
         );
+        // Canvas properties have high false-positive rate — lower confidence
+        // so they don't inflate risk scores unless confirmed by taint analysis.
+        if (propertyName === 'toDataURL' || propertyName === 'getImageData') {
+          finding.confidence = 0.5;
+        }
+        findings.push(finding);
       }
     }
   }

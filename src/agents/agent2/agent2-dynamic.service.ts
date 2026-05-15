@@ -22,7 +22,7 @@ interface DomainVerdict {
   razon: string;
 }
 
-const PROMPT = `Eres un experto en comportamiento dinámico de extensiones de navegador.
+const SYSTEM_PROMPT = `Eres un experto en comportamiento dinámico de extensiones de navegador.
 
 Recibiste las observaciones del agente Stagehand/Playwright que navegó cada dominio prioritario.
 Para CADA dominio decide:
@@ -33,11 +33,6 @@ Para CADA dominio decide:
 - "accion_hecha": resumen breve (1 línea) de QUÉ hizo el navegador (clicks, escribió credenciales,
   detectó inyecciones de la extensión).
 - "razon": 1-2 oraciones explicando el veredicto.
-
-PROPÓSITO DECLARADO: {proposito}
-
-OBSERVACIONES POR DOMINIO:
-{observaciones}
 
 Responde EXACTAMENTE con JSON (sin texto adicional):
 {
@@ -141,14 +136,12 @@ export class Agent2DynamicService {
       )
       .join('\n\n');
 
-    const prompt = PROMPT.replace('{proposito}', proposito).replace(
-      '{observaciones}',
-      obsText,
-    );
+    const userMessage =
+      `PROPÓSITO DECLARADO: ${proposito}\n\nOBSERVACIONES POR DOMINIO:\n${obsText}`;
 
     let raw: unknown;
     try {
-      raw = await this.llm.callLLM(prompt, jobId);
+      raw = await this.llm.callLLM({ system: SYSTEM_PROMPT, user: userMessage }, jobId);
     } catch (err) {
       this.logger.logWithJob(
         jobId,

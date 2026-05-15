@@ -10,8 +10,8 @@ COPY . .
 RUN npm run build
 
 # ─── Stage 2: Worker Sandbox con Playwright + Chromium ────────────────────────
-# Imagen oficial de Microsoft que incluye Playwright y los browsers preinstalados
-FROM mcr.microsoft.com/playwright:v1.59.1-noble AS production
+# node:24-slim + solo Chromium (~800MB menos que la imagen oficial que incluye Firefox+WebKit)
+FROM node:24-slim AS production
 
 WORKDIR /app
 
@@ -22,6 +22,11 @@ RUN groupadd -r sandbox && useradd -r -g sandbox -s /bin/false sandboxuser
 COPY package*.json ./
 RUN npm install --omit=dev && npm cache clean --force
 
+# Instalar solo Chromium y sus dependencias de sistema (omite Firefox y WebKit)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/* /tmp/*
+
 # Copiar build compilado desde stage 1
 COPY --from=builder /app/dist ./dist
 
@@ -31,7 +36,6 @@ RUN mkdir -p /tmp/ext-sandbox/crx /tmp/ext-sandbox/extracted \
 
 # USER sandboxuser
 
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV NODE_ENV=production
 
 HEALTHCHECK NONE

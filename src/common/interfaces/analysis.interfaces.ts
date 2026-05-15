@@ -23,6 +23,7 @@ export type DomainCategory =
 export type FileRole =
   | 'content_script'
   | 'background'
+  | 'service_worker'
   | 'popup'
   | 'options_ui'
   | 'devtools'
@@ -502,7 +503,10 @@ export type UserRiskSummaryId =
   | 'manipulacion_trafico'
   | 'acceso_historial'
   | 'descargas_archivos'
-  | 'ofuscacion_transparencia';
+  | 'ofuscacion_transparencia'
+  | 'abuso_management'
+  | 'mineria_recursos'
+  | 'fingerprinting_severo';
 
 export type UserRiskStatus =
   | 'no_detectado'

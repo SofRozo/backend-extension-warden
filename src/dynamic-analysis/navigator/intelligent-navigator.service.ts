@@ -31,36 +31,36 @@ interface NavigatorAction {
 
 // ─── Prompt ───────────────────────────────────────────────────────────────────
 
+const NAVIGATOR_SYSTEM_PROMPT =
+  `Eres un auditor de seguridad de extensiones de navegador.\n` +
+  `Controlas un navegador Playwright para provocar comportamiento malicioso en extensiones instaladas.\n\n` +
+  `Decide el siguiente paso para revelar el comportamiento de la extensión.\n` +
+  `Prioriza: interactuar con formularios de login, buscar elementos inyectados, navegar a secciones sensibles.\n` +
+  `Si ya has interactuado suficientemente o no hay más acciones útiles, usa "done".\n\n` +
+  `Responde SOLO con JSON válido:\n` +
+  `{\n` +
+  `  "action": "click|type|navigate|wait|done",\n` +
+  `  "element_text": "texto visible del elemento a interactuar (para click/type)",\n` +
+  `  "selector": "selector CSS opcional si lo puedes inferir",\n` +
+  `  "value": "texto a escribir (solo para action=type)",\n` +
+  `  "url": "URL completa (solo para action=navigate)",\n` +
+  `  "observation": "qué observas sobre el comportamiento de la extensión en esta página",\n` +
+  `  "reasoning": "por qué esta acción ayuda a detectar comportamiento malicioso"\n` +
+  `}`;
+
 const buildPrompt = (
   snapshot: string,
   task: string,
   step: number,
   previousObservations: string[],
-): string => `Eres un auditor de seguridad de extensiones de navegador.
-Controlas un navegador Playwright para provocar comportamiento malicioso en extensiones instaladas.
-
-TAREA: ${task}
-
-PASO ACTUAL: ${step + 1} de ${MAX_STEPS_PER_DOMAIN}
-OBSERVACIONES PREVIAS: ${previousObservations.length ? previousObservations.join(' | ') : 'ninguna'}
-
-ESTADO ACTUAL DE LA PÁGINA:
-${snapshot}
-
-Decide el siguiente paso para revelar el comportamiento de la extensión.
-Prioriza: interactuar con formularios de login, buscar elementos inyectados, navegar a secciones sensibles.
-Si ya has interactuado suficientemente o no hay más acciones útiles, usa "done".
-
-Responde SOLO con JSON válido:
-{
-  "action": "click|type|navigate|wait|done",
-  "element_text": "texto visible del elemento a interactuar (para click/type)",
-  "selector": "selector CSS opcional si lo puedes inferir",
-  "value": "texto a escribir (solo para action=type)",
-  "url": "URL completa (solo para action=navigate)",
-  "observation": "qué observas sobre el comportamiento de la extensión en esta página",
-  "reasoning": "por qué esta acción ayuda a detectar comportamiento malicioso"
-}`;
+): { system: string; user: string } => ({
+  system: NAVIGATOR_SYSTEM_PROMPT,
+  user:
+    `TAREA: ${task}\n\n` +
+    `PASO ACTUAL: ${step + 1} de ${MAX_STEPS_PER_DOMAIN}\n` +
+    `OBSERVACIONES PREVIAS: ${previousObservations.length ? previousObservations.join(' | ') : 'ninguna'}\n\n` +
+    `ESTADO ACTUAL DE LA PÁGINA:\n${snapshot}`,
+});
 
 const categoryTask = (
   domain: string,
@@ -507,8 +507,8 @@ export class IntelligentNavigatorService {
       };
     }
     try {
-      const prompt = buildPrompt(snapshot, task, step, previousObservations);
-      const raw = (await this.llm.callLLM(prompt, jobId)) as Record<
+      const messages = buildPrompt(snapshot, task, step, previousObservations);
+      const raw = (await this.llm.callLLM(messages, jobId)) as Record<
         string,
         unknown
       >;

@@ -37,6 +37,13 @@ export interface Agent1Output {
   razon_nivel_riesgo: string;
   veredicto_global: 'maliciosa' | 'sospechosa' | 'benigna';
   explicacion: string;
+  /** Whether the extension violates the Principle of Least Privilege (PoLP).
+   *  detectada = true means at least one mismatch was found between declared
+   *  permissions and what the extension actually needs for its purpose. */
+  violacion_minimo_privilegio?: {
+    detectada: boolean;
+    razones: string[];
+  };
   hallazgos_propios?: AgentFinding[];
 }
 

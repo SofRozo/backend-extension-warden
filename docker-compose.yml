@@ -48,6 +48,12 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-extsandbox}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-extsandbox_secret}
       POSTGRES_DB: ${DB_NAME:-extsandbox}
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c effective_cache_size=128MB
+      -c work_mem=4MB
+      -c max_connections=20
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-extsandbox} -d ${DB_NAME:-extsandbox}"]
       interval: 10s
@@ -56,6 +62,10 @@ services:
     # No port exposed to host — internal only
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ─── Container 2b: Redis ─────────────────────────────────────────────────────
   redis:
@@ -94,6 +104,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      NODE_OPTIONS: --max-old-space-size=384
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-extsandbox}
@@ -110,9 +121,9 @@ services:
       MAX_CONCURRENT_WORKERS: ${MAX_CONCURRENT_WORKERS:-10}
       HONEYPOT_ENCRYPTION_KEY: ${HONEYPOT_ENCRYPTION_KEY:-}
       STORAGE_STATE_PATH: /data/honeypot/states
-      USAR_OLLAMA: ${USAR_OLLAMA:-false}
+      USAR_OLLAMA: ${USAR_OLLAMA:-true}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:8b}
+      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:4b}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       - honeypot_states:/data/honeypot/states
@@ -130,6 +141,12 @@ services:
       retries: 3
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
     # No bind mounts to host (RNF01)
 
   # ─── Container 3: Worker Sandbox ─────────────────────────────────────────────
@@ -145,6 +162,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      NODE_OPTIONS: --max-old-space-size=768
       # Worker reads jobs from Redis only
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -165,9 +183,9 @@ services:
       STORAGE_STATE_PATH: /data/honeypot/states
       DEMO_STORAGE_STATE_PATH: /data/honeypot/states
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
-      USAR_OLLAMA: ${USAR_OLLAMA:-false}
+      USAR_OLLAMA: ${USAR_OLLAMA:-true}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:8b}
+      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:4b}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       # No bind mounts to host (RNF01)
@@ -175,7 +193,7 @@ services:
       - type: tmpfs
         target: /tmp/ext-sandbox
         tmpfs:
-          size: 1g
+          size: 536870912   # 512MB
           mode: 0777
       - sandbox_screenshots:/tmp/ext-sandbox/screenshots
       - honeypot_states:/data/honeypot/states:ro
@@ -192,8 +210,8 @@ services:
       resources:
         limits:
           cpus: "2.0"
-          memory: 2048M
+          memory: 1536M
         reservations:
-          memory: 512M
-    # SHM size needed by Chromium
-    shm_size: 1gb
+          memory: 256M
+    # SHM size needed by Chromium (512MB is enough for headless)
+    shm_size: 512m

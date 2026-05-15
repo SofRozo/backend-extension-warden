@@ -41,4 +41,9 @@ export enum FindingCategory {
   DOMAIN_TARGETING = 'domain_targeting',
   PERSISTENCE = 'persistence',
   INTERCEPTION = 'interception',
+  EVASION = 'evasion',
+  CLIPBOARD = 'clipboard',
+  FINGERPRINTING = 'fingerprinting',
+  PRIVACY_RISK = 'privacy_risk',
+  DROPPER = 'dropper',
 }

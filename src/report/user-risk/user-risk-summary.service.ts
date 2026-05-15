@@ -104,6 +104,9 @@ export class UserRiskSummaryService {
       criticalIds.has('keylogging') ||
       criticalIds.has('modificacion_paginas') ||
       criticalIds.has('manipulacion_trafico') ||
+      criticalIds.has('abuso_management') ||
+      criticalIds.has('mineria_recursos') ||
+      criticalIds.has('fingerprinting_severo') ||
       critical.some((item) =>
         /dinámico|observó|malicioso|exfiltr/i.test(item.resumen),
       );
@@ -397,7 +400,10 @@ export class UserRiskSummaryService {
       manipulacion_trafico: 85,
       modificacion_paginas: 80,
       seguimiento_privacidad: 75,
+      abuso_management: 72,
+      fingerprinting_severo: 70,
       acceso_general_navegador: 65,
+      mineria_recursos: 60,
       acceso_historial: 55,
       descargas_archivos: 45,
       ofuscacion_transparencia: 35,
