@@ -30,6 +30,8 @@ volumes:
       device: ${PWD}/data/honeypot/states
   sandbox_screenshots:
     driver: local
+  ext_uploads:
+    driver: local
 
 services:
 
@@ -128,6 +130,7 @@ services:
     volumes:
       - honeypot_states:/data/honeypot/states
       - sandbox_screenshots:/tmp/ext-sandbox/screenshots:ro
+      - ext_uploads:/tmp/ext-sandbox/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -198,6 +201,7 @@ services:
           size: 536870912   # 512MB
           mode: 0777
       - sandbox_screenshots:/tmp/ext-sandbox/screenshots
+      - ext_uploads:/tmp/ext-sandbox/uploads:ro
       - honeypot_states:/data/honeypot/states:ro
     depends_on:
       redis:
