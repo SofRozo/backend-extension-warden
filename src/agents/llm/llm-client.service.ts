@@ -17,7 +17,7 @@ export class LlmClientService {
     this.ollamaHost = (
       config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
-    this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 600_000;
+    this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 1_200_000;
   }
 
   isConfigured(): boolean {
@@ -64,7 +64,7 @@ export class LlmClientService {
         stream: false,
         format: 'json',
         options: {
-          num_ctx: 8192,
+          num_ctx: 16384,
         },
       },
       { timeout: this.timeoutMs },

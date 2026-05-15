@@ -501,7 +501,7 @@ export class StagehandService {
       fetch: (url: string, options: RequestInit) => {
         return fetch(url, {
           ...options,
-          signal: AbortSignal.timeout(600_000),
+          signal: AbortSignal.timeout(1_200_000),
         });
       },
     });

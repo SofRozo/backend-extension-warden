@@ -188,6 +188,7 @@ services:
       MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:4b}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       ANALYSIS_USE_STAGEHAND: ${ANALYSIS_USE_STAGEHAND:-true}
+      AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-1200000}
     volumes:
       # No bind mounts to host (RNF01)
       # Ephemeral temp space only
