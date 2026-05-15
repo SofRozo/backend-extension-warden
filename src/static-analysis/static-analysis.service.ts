@@ -320,6 +320,30 @@ export class StaticAnalysisService {
     // ── 5. Correlate risks (multi-signal patterns) ──────────────────────────
     result1.push(...this.correlateRisks(preprocessed, result1));
 
+    // ── 5b. Grep signals de archivos grandes → findings normales ────────────
+    for (const file of preprocessed.files.filter(
+      (f) => f.skippedAst && (f.grepSignals?.length ?? 0) > 0,
+    )) {
+      for (const signal of file.grepSignals ?? []) {
+        result1.push(
+          this.enrichFinding({
+            fileType: roleByPath.get(file.path) ?? file.role,
+            filePath: file.path,
+            discoveryType: 'grep_signal_large_file',
+            detail: signal,
+            line: 1,
+            confidence: 0.85,
+            severity: signal.startsWith('[CRITICAL]')
+              ? 'critical'
+              : signal.startsWith('[HIGH]')
+                ? 'high'
+                : 'medium',
+            why: `Señal detectada por análisis regex en archivo grande (AST omitido): ${signal}`,
+          }),
+        );
+      }
+    }
+
     // ── 6. Contextual filter: drop role-incompatible noise ──────────────────
     const filesWithNetworkSink = this.computeFilesWithNetworkSink(
       preprocessed,
@@ -597,6 +621,8 @@ export class StaticAnalysisService {
         'Code replaces native browser APIs (geolocation, history) to fake or suppress real functionality — a capability spoofing technique.',
       correlacion_riesgo:
         'Multiple suspicious signals co-occur in a way that materially increases malware likelihood.',
+      grep_signal_large_file:
+        'Regex analysis on an oversized file (AST skipped) detected a high-risk pattern.',
     };
     return reasons[finding.discoveryType];
   }

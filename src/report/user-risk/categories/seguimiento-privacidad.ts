@@ -18,6 +18,14 @@ const PERSISTENT_ID_RE =
   /crypto\.randomUUID|generateUUID|uuid\(|v4\(\)|deviceId|clientId|installId|machineId|fingerprintjs|FingerprintJS|client_id\b|device_id\b|install_id\b/i;
 const REFERRER_RE = /document\.referrer|navigator\.sendBeacon|Beacon API/i;
 
+const ECOMMERCE_TRACKING_RE =
+  /ecommerceEnabled|clickstreamEnabled|advertisementEnabled|ECOMMERCE_TRACK|ECOMMERCE_HEART_BEAT|panalyticsId|DataSharingTypes/i;
+
+const BIS_ADWARE_RE = /bis_data|PANELOS_MESSAGE|posdMessageId|BIS_SEPARATOR/i;
+
+const SHOPIFY_TRACKING_RE =
+  /SHOPIFY_DETECTED|ECOMMERCE_INIT_SHOPIFY|globalThis\.Shopify/i;
+
 export const seguimientoPrivacidadStaticRules: UserRiskStaticRule[] = [
   {
     ruleId: 'privacy.data_flow',
@@ -98,6 +106,30 @@ export const seguimientoPrivacidadStaticRules: UserRiskStaticRule[] = [
     evidence: (finding) =>
       `Usa APIs que pueden revelar navegación o actividad en ${finding.filePath}:${finding.line}.`,
   },
+  {
+    ruleId: 'privacy.ecommerce_tracking',
+    label: 'E-commerce tracking / monetización de navegación',
+    id: 'seguimiento_privacidad',
+    matches: (finding) => ECOMMERCE_TRACKING_RE.test(finding.detail),
+    evidence: (finding) =>
+      `Señales de monetización de datos de navegación en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'privacy.adware_framework',
+    label: 'Framework BIS/PANELOS de inyección de anuncios',
+    id: 'seguimiento_privacidad',
+    matches: (finding) => BIS_ADWARE_RE.test(finding.detail),
+    evidence: (finding) =>
+      `Framework de adware BIS/PANELOS detectado en ${finding.filePath}:${finding.line}.`,
+  },
+  {
+    ruleId: 'privacy.shopify_tracking',
+    label: 'Detección de tiendas Shopify',
+    id: 'seguimiento_privacidad',
+    matches: (finding) => SHOPIFY_TRACKING_RE.test(finding.detail),
+    evidence: (finding) =>
+      `La extensión detecta tiendas Shopify — módulo de tracking de compras en ${finding.filePath}:${finding.line}.`,
+  },
 ];
 
 export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
@@ -114,6 +146,9 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
   const fingerprintSignal = hasDetail(context, FINGERPRINT_RE);
   const persistentId = hasDetail(context, PERSISTENT_ID_RE);
   const beacon = hasDetail(context, REFERRER_RE);
+  const ecommerceTracking = hasDetail(context, ECOMMERCE_TRACKING_RE);
+  const bisAdware = hasDetail(context, BIS_ADWARE_RE);
+  const shopifyTracking = hasDetail(context, SHOPIFY_TRACKING_RE);
   const networkFlow = hasFinding(context, 'flujo_datos_a_red');
   const crossSite = context.broadHost;
 
@@ -128,6 +163,9 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
     fingerprintSignal ||
     persistentId ||
     beacon ||
+    ecommerceTracking ||
+    bisAdware ||
+    shopifyTracking ||
     sensitiveDomains.length > 0 ||
     usesNavigationApi;
   // Capacidad: solo permiso declarado, sin uso real.

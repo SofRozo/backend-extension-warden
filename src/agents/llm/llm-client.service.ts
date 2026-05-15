@@ -58,13 +58,14 @@ export class LlmClientService {
       {
         model: this.modeloOllama,
         messages: [
-          { role: 'system', content: messages.system },
+          { role: 'system', content: messages.system + '\n\n/no_think' },
           { role: 'user', content: messages.user },
         ],
         stream: false,
         format: 'json',
         options: {
-          num_ctx: 16384,
+          num_ctx: 32768,
+          temperature: 0,
         },
       },
       { timeout: this.timeoutMs },

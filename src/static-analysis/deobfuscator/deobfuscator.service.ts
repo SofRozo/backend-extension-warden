@@ -215,7 +215,7 @@ export class DeobfuscatorService {
       }
     }
 
-    return { code, changed };
+    return { code, changed: false };
   }
 
   /**

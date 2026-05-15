@@ -142,6 +142,8 @@ export interface ProcessedFile {
   usesXHR: boolean;
   usesEval: boolean;
   usesDomManipulation: boolean;
+  grepSignals?: string[];
+  skippedAst?: boolean;
 }
 
 // ─── Manifest ────────────────────────────────────────────────────────────────
@@ -216,7 +218,8 @@ export type StaticDiscoveryType =
   | 'lectura_storage_navegador'
   | 'interceptacion_api'
   | 'suplantacion_api_navegador'
-  | 'correlacion_riesgo';
+  | 'correlacion_riesgo'
+  | 'grep_signal_large_file';
 
 export interface PreprocessingFinding {
   fileType: FileRole;

@@ -316,4 +316,22 @@ export const RISK_PATTERNS: RiskPattern[] = [
     description: 'Uses setInterval with potential long periods',
     astPatterns: [{ type: 'call', callee: 'setInterval' }],
   },
+  {
+    category: FindingCategory.PRIVACY_RISK,
+    severity: RiskLevel.HIGH,
+    description: 'E-commerce or clickstream data sharing — extension monetizes browsing behavior',
+    astPatterns: [
+      { type: 'member', property: 'ecommerceEnabled' },
+      { type: 'member', property: 'clickstreamEnabled' },
+      { type: 'member', property: 'advertisementEnabled' },
+    ],
+  },
+  {
+    category: FindingCategory.PRIVACY_RISK,
+    severity: RiskLevel.HIGH,
+    description: 'Reads active tab URL to build browsing history profile',
+    astPatterns: [
+      { type: 'member', object: 'tab', property: 'url' },
+    ],
+  },
 ];

@@ -166,16 +166,16 @@ const VALID_SEVERIDADES = new Set(['bajo', 'medio', 'alto', 'critico']);
 /** Per-file truncation when including source in the prompt. Most extension
  *  scripts are short; very large files get truncated with a marker so the LLM
  *  knows there is more code. */
-const MAX_LINES_PER_FILE = 600;
+const MAX_LINES_PER_FILE = 200;
 
-/** Total character budget for the source-code block. 16 KB ≈ ~4K tokens —
- *  sized for qwen3:4b (8K num_ctx) leaving room for the evidence JSON. */
-const MAX_TOTAL_SOURCE_CHARS = 16_000;
+/** Total character budget for the source-code block. ~10K tokens —
+ *  cabe en qwen3:8b con num_ctx=32768 dejando espacio para la evidencia JSON. */
+const MAX_TOTAL_SOURCE_CHARS = 40_000;
 
 /** Per-finding snippet cap in the deterministic-findings summary, just to
  *  prevent runaway lines. */
 const MAX_DET_FINDING_SNIPPET = 240;
-const MAX_AGENT_STATIC_FINDINGS = 120;
+const MAX_AGENT_STATIC_FINDINGS = 30;
 
 @Injectable()
 export class Agent1IntentionService {
@@ -425,6 +425,9 @@ export class Agent1IntentionService {
         if (SENSITIVE_ROLES.includes(f.role)) score += 5;
         if (f.isObfuscated) score += 8; // worth a manual look even if just header
         if (f.role === 'unknown') score += 1;
+        const lineCount = f.originalLineCount ?? 0;
+        if (lineCount > 1000) score -= 5; // bundles enormes son ilegibles para el LLM
+        else if (lineCount < 100) score += 3; // archivos pequeños son más reveladores
         return { file: f, score };
       })
       .sort((a, b) => b.score - a.score);
@@ -477,6 +480,19 @@ export class Agent1IntentionService {
       parts.push(
         `\n// (${truncatedFiles} archivo(s) adicionales no incluido(s) por presupuesto de contexto.)`,
       );
+    }
+
+    // Incluir grep signals de archivos que superaron el límite AST
+    const largeSkipped = files.filter(
+      (f) => f.skippedAst && (f.grepSignals?.length ?? 0) > 0,
+    );
+    for (const file of largeSkipped) {
+      const kb = (((file.originalLineCount ?? 0) * 80) / 1024).toFixed(0);
+      const header = `\n// ─── ${file.path} [${file.role}, ~${kb}KB — SIN AST] ───`;
+      const lines = (file.grepSignals ?? []).map((s) => `//   ⚠ ${s}`).join('\n');
+      const block = `${header}\n${lines}`;
+      parts.push(block);
+      totalChars += block.length;
     }
 
     return {

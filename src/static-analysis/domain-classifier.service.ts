@@ -57,6 +57,23 @@ const TECH_INFRASTRUCTURE = new Set([
   'vercel.app',
   'pages.dev',
   'github.io',
+  'github.com',
+  'api.github.com',
+  'raw.githubusercontent.com',
+  'objects.githubusercontent.com',
+  'vuejs.org',
+  'v3-migration.vuejs.org',
+  'cli.vuejs.org',
+  'reactjs.org',
+  'svelte.dev',
+  'angular.io',
+  'w3.org',
+  'www.w3.org',
+  'meyerweb.com',
+  'schema.org',
+  'tc39.es',
+  'ecma-international.org',
+  'developer.mozilla.org',
 ]);
 
 const SOCIAL_MEDIA: Record<string, string> = {
@@ -96,8 +113,6 @@ const IDENTITY_PROVIDERS: Record<string, string> = {
   'login.microsoftonline.com': 'Microsoft Auth',
   'login.live.com': 'Microsoft Live Auth',
   'appleid.apple.com': 'Apple Auth',
-  'github.com': 'GitHub',
-  'api.github.com': 'GitHub API',
   'auth0.com': 'Auth0',
   'okta.com': 'Okta',
   'onelogin.com': 'OneLogin',
@@ -225,6 +240,17 @@ export interface DeterministicResult {
   platform?: string;
 }
 
+const RESIDENTIAL_PROXY_NETWORKS = new Set([
+  'geosurf.io',
+  'luminati.io',
+  'brightdata.com',
+  'oxylabs.io',
+  'smartproxy.com',
+  'iproyal.com',
+  'packetstream.io',
+  'peer2profit.com',
+]);
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -282,6 +308,14 @@ export class DomainClassifierService {
 
     if (/\.gov(\.[a-z]{2})?$/i.test(dNoWww)) {
       return { category: 'sensible_gubernamental' };
+    }
+
+    const hostOnly = dNoWww.split('.').slice(-2).join('.');
+    if (
+      RESIDENTIAL_PROXY_NETWORKS.has(dNoWww) ||
+      RESIDENTIAL_PROXY_NETWORKS.has(hostOnly)
+    ) {
+      return { category: 'sensible_data_broker' };
     }
 
     return { category: null };

@@ -63,7 +63,7 @@ const PERMISSION_RISK_WEIGHTS: Record<
   geolocation: { category: 'medium', weight: 2, hostSensitive: false },
   identity: { category: 'medium', weight: 2, hostSensitive: false },
   'identity.email': { category: 'medium', weight: 2, hostSensitive: false },
-  management: { category: 'medium', weight: 2, hostSensitive: false },
+  management: { category: 'high', weight: 5, hostSensitive: false },
   sessions: { category: 'medium', weight: 2, hostSensitive: false },
   topSites: { category: 'medium', weight: 2, hostSensitive: false },
   contextMenus: { category: 'medium', weight: 2, hostSensitive: false },
@@ -236,15 +236,30 @@ export class PreprocessorService {
         continue;
       }
 
-      // Safety limit: skip extremely large files to prevent worker OOM
       if (rawCode.length > 2 * 1024 * 1024) {
         this.logger.logWithJob(
           jobId,
           'warn',
-          `Skipping ${relativePath}: file too large (${(rawCode.length / 1024 / 1024).toFixed(2)} MB)`,
+          `Large file ${relativePath} (${(rawCode.length / 1024 / 1024).toFixed(2)} MB): skipping AST, running regex scan`,
           'PreprocessorService',
         );
-        files.push(this.emptyFile(relativePath, role, false));
+        const grepSignals = this.extractGrepSignals(rawCode);
+        const extractedUrls = this.extractUrls(rawCode);
+        files.push({
+          ...this.emptyFile(relativePath, role, false),
+          isMinified: true,
+          originalLineCount: rawCode.split('\n').length,
+          urls: extractedUrls.map((u) => u.url),
+          extractedUrls,
+          domains: this.extractDomains(rawCode),
+          chromeApis: this.extractChromeApis(rawCode),
+          usesFetch: this.usesFetch(rawCode),
+          usesXHR: this.usesXHR(rawCode),
+          usesEval: this.usesEval(rawCode),
+          usesDomManipulation: this.usesDomManipulation(rawCode),
+          grepSignals,
+          skippedAst: true,
+        });
         continue;
       }
 
@@ -1295,5 +1310,57 @@ export class PreprocessorService {
       usesEval: false,
       usesDomManipulation: false,
     };
+  }
+
+  private extractGrepSignals(code: string): string[] {
+    const signals: string[] = [];
+    const checks: Array<{ re: RegExp; label: string }> = [
+      { re: /XMLHttpRequest\.prototype\.(open|send|setRequestHeader)\s*=/g,
+        label: '[CRITICAL] XHR prototype hook — intercepta todo el tráfico XHR' },
+      { re: /\bfetch\s*=\s*(?:async\s+)?function/g,
+        label: '[CRITICAL] window.fetch replacement — intercepta todo fetch()' },
+      { re: /chrome\.management\.getAll\s*\(/g,
+        label: '[HIGH] chrome.management.getAll() — lista extensiones instaladas' },
+      { re: /chrome\.management\.setEnabled\s*\(/g,
+        label: '[HIGH] chrome.management.setEnabled() — puede deshabilitar extensiones' },
+      { re: /navigator\.geolocation\.(getCurrentPosition|watchPosition)\s*=/g,
+        label: '[HIGH] Geolocation API hook — puede falsificar ubicación GPS' },
+      { re: /history\.(pushState|replaceState)\s*=/g,
+        label: '[HIGH] History API hook — monitorea navegación SPA' },
+      { re: /apiSecret\s*:\s*["'][A-Za-z0-9_\-]{8,}["']/g,
+        label: '[HIGH] Hardcoded apiSecret en código fuente' },
+      { re: /api_secret\s*[:=]\s*["'][A-Za-z0-9_\-]{8,}["']/g,
+        label: '[HIGH] Hardcoded api_secret en código fuente' },
+      { re: /["']G-[A-Z0-9]{8,}["']/g,
+        label: '[MEDIUM] Google Analytics 4 measurement ID hardcodeado' },
+      { re: /ecommerceEnabled|clickstreamEnabled|advertisementEnabled/g,
+        label: '[HIGH] Data sharing flags — monetización de datos de navegación' },
+      { re: /ECOMMERCE_TRACK|ECOMMERCE_HEART_BEAT|ECOMMERCE_SYNC_UP/g,
+        label: '[HIGH] E-commerce tracking events — telemetría periódica' },
+      { re: /DataSharingTypes\.(ecommerce|clickstream|advertisement)/g,
+        label: '[HIGH] DataSharingTypes explícitos en código' },
+      { re: /panalyticsId|panelist_?id/gi,
+        label: '[HIGH] Panelist persistent ID — seguimiento cross-session' },
+      { re: /bis_data|PANELOS_MESSAGE|posdMessageId/g,
+        label: '[HIGH] BIS/PANELOS framework — sistema de inyección de anuncios' },
+      { re: /SHOPIFY_DETECTED|ECOMMERCE_INIT_SHOPIFY|globalThis\.Shopify/g,
+        label: '[HIGH] Shopify detection — módulo de tracking de compras' },
+      { re: /geosurf\.io|luminati\.io|brightdata\.com|oxylabs\.io/g,
+        label: '[HIGH] Red de proxies residenciales — tráfico por dispositivos de terceros' },
+      { re: /tab\??\.url\b/g,
+        label: '[MEDIUM] Lectura de tab.url — acceso al historial de navegación' },
+      { re: /response\.clone\s*\(\)/g,
+        label: '[MEDIUM] response.clone() — lee body de respuestas HTTP' },
+      { re: /document\.createElement\s*\(\s*["']script["']\s*\)/g,
+        label: '[HIGH] Creación dinámica de elementos script' },
+      { re: /\bnew\s+Function\s*\(/g,
+        label: '[CRITICAL] new Function() — ejecución dinámica de código' },
+    ];
+    for (const { re, label } of checks) {
+      re.lastIndex = 0;
+      const m = code.match(re);
+      if (m) signals.push(`${label} (${m.length}x)`);
+    }
+    return signals;
   }
 }

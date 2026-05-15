@@ -132,16 +132,37 @@ export class SandboxOrchestratorService {
             break;
           }
 
-          const obs = await this.visitDomain(
-            browser,
-            target,
-            proposito,
-            useStagehand,
-            collector,
-            extensionId,
-            extensionPath,
-            jobId,
-          );
+          const PER_DOMAIN_MS = 45_000;
+          const obs = await Promise.race([
+            this.visitDomain(
+              browser,
+              target,
+              proposito,
+              useStagehand,
+              collector,
+              extensionId,
+              extensionPath,
+              jobId,
+            ),
+            new Promise<SandboxDomainObservation>((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`Timeout ${target.domain}`)),
+                PER_DOMAIN_MS,
+              ),
+            ),
+          ]).catch((err): SandboxDomainObservation => ({
+            domain: target.domain,
+            url: `https://${target.domain}`,
+            navigatorUsed: useStagehand ? 'stagehand' : 'intelligent_navigator',
+            observations: [`Timeout: ${err.message}`],
+            actionsPerformed: [],
+            agentSteps: [],
+            requestsToThisDomain: 0,
+            domModificationsDetected: false,
+            credentialsSubmitted: false,
+            honeypotSessionUsed: false,
+            error: err.message,
+          }));
           domainObservations.push(obs);
         }
       } finally {
