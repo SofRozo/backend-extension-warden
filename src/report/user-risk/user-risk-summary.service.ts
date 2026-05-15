@@ -13,7 +13,7 @@ import {
   USER_RISK_CATEGORY_EVALUATORS,
   USER_RISK_STATIC_RULES,
 } from './categories/index.js';
-import type { UserRiskContext } from './types.js';
+import type { ChromeApiCallSite, UserRiskContext } from './types.js';
 import { uniqueStrings } from './types.js';
 
 @Injectable()
@@ -37,6 +37,17 @@ export class UserRiskSummaryService {
       (cs) => cs.matches,
     );
 
+    const apiCalls = this.collectApiCalls(preprocessed);
+    const usedPermissions = new Set<string>();
+    for (const call of apiCalls) usedPermissions.add(call.permission);
+    // unusedPermissions = declared but never invoked. This is the signal that
+    // surfaces overprivileged extensions ("pide X pero no lo usa") which the
+    // user-risk evaluators previously couldn't see.
+    const unusedPermissions = new Set<string>();
+    for (const p of perms) {
+      if (!usedPermissions.has(p)) unusedPermissions.add(p);
+    }
+
     const context: UserRiskContext = {
       preprocessed,
       positives,
@@ -47,6 +58,9 @@ export class UserRiskSummaryService {
         this.isBroadHostPattern(p),
       ),
       hasContentScript: preprocessed.manifest.contentScripts.length > 0,
+      apiCalls,
+      usedPermissions,
+      unusedPermissions,
       evidenceByCategory: this.collectCategoryEvidence(
         preprocessed,
         positives,
@@ -142,6 +156,36 @@ export class UserRiskSummaryService {
         'No se detectaron capacidades críticas ni comportamiento sospechoso.',
       ],
     };
+  }
+
+  /**
+   * Extracts every chrome.* call site from the preprocessed files and maps
+   * each one to its declared permission root (e.g. `chrome.tabs.query` →
+   * `tabs`). Used by the evaluators to detect actual usage of declared
+   * permissions, not just their presence in the manifest.
+   *
+   * Library files are skipped — a polyfill or analytics SDK calling
+   * `chrome.runtime.id` isn't the extension's own behavior.
+   */
+  private collectApiCalls(
+    preprocessed: PreprocessorOutput,
+  ): ChromeApiCallSite[] {
+    const out: ChromeApiCallSite[] = [];
+    for (const file of preprocessed.files) {
+      if (file.role === 'library') continue;
+      for (const api of file.chromeApis ?? []) {
+        const root = api.api.replace(/^chrome\./, '').split('.')[0];
+        if (!root) continue;
+        out.push({
+          api: api.api,
+          permission: root,
+          filePath: file.path,
+          fileRole: file.role,
+          line: api.line,
+        });
+      }
+    }
+    return out;
   }
 
   private collectCategoryEvidence(

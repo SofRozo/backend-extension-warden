@@ -1,10 +1,15 @@
 import {
+  findApiCall,
+  hasApiCall,
   hasDetail,
   hasFinding,
   makeItem,
   type UserRiskStaticRule,
   type UserRiskCategoryEvaluator,
 } from '../types.js';
+
+const SCRIPTING_EXECUTE_RE =
+  /^chrome\.(scripting\.executeScript|tabs\.executeScript|scripting\.insertCSS|tabs\.insertCSS)/;
 
 // Patrones de detección
 const OVERLAY_RE =
@@ -147,30 +152,56 @@ export const evaluateModificacionPaginas: UserRiskCategoryEvaluator = (
     /MutationObserver|IntersectionObserver|attachShadow|shadowRoot/i,
   );
   const formReplacement = hasDetail(context, FORM_LINK_BUTTON_RE);
+  // Uso REAL de scripting.executeScript (no solo declarado).
+  const usesScriptingExecute = hasApiCall(context, SCRIPTING_EXECUTE_RE);
+  const scriptingCall = findApiCall(context, SCRIPTING_EXECUTE_RE);
 
-  // Crítico: code remoto o overlay+inyección DOM (phishing pattern).
-  const isCritical = remoteScript || (overlaySignal && domInjection);
-  // Sospechoso: cualquier inyección DOM o scripting, o overlay/invisible/observer
+  // Crítico: code remoto, overlay+inyección DOM (phishing), o inyección
+  // de scripts vía chrome.scripting.executeScript con broadHost.
+  const isCritical =
+    remoteScript ||
+    (overlaySignal && domInjection) ||
+    (usesScriptingExecute && context.broadHost);
+  // Sospechoso: SEÑALES REALES de modificación (no solo permiso declarado).
+  // El permiso `scripting` por sí solo, sin uso, queda como capacidad.
   const isSuspicious =
     domInjection ||
-    perms.has('scripting') ||
+    usesScriptingExecute ||
     overlaySignal ||
     invisibleSignal ||
-    observerSignal;
+    observerSignal ||
+    formReplacement;
+  // Capacidad: solo declaración sin uso observado.
+  const hasOnlyDeclaration = perms.has('scripting') && !usesScriptingExecute;
 
   return makeItem(
     context,
     'modificacion_paginas',
     'Modificación de páginas',
-    isCritical ? 'critico' : isSuspicious ? 'sospechoso' : 'no_detectado',
     isCritical
-      ? 'La extensión combina señales fuertes de modificación de páginas (inyección de DOM más overlay o script remoto). Es un patrón típico de phishing o suplantación visual.'
+      ? 'critico'
+      : isSuspicious
+        ? 'sospechoso'
+        : hasOnlyDeclaration
+          ? 'capacidad'
+          : 'no_detectado',
+    isCritical
+      ? usesScriptingExecute && context.broadHost
+        ? 'La extensión inyecta scripts arbitrarios en TODA página visitada vía chrome.scripting.executeScript. Puede modificar cualquier sitio sin pedir permiso al usuario.'
+        : 'La extensión combina señales fuertes de modificación de páginas (inyección de DOM más overlay o script remoto). Es un patrón típico de phishing o suplantación visual.'
       : isSuspicious
         ? 'La extensión puede modificar páginas, insertar elementos o vigilar el DOM. El riesgo sube si lo hace en sitios sensibles o con código remoto.'
-        : 'No vimos señales fuertes de modificación de páginas.',
+        : hasOnlyDeclaration
+          ? 'La extensión declara permiso scripting pero su código no parece usarlo.'
+          : 'No vimos señales fuertes de modificación de páginas.',
     [
       domInjection && 'Detectamos inyección o modificación de DOM/script.',
-      perms.has('scripting') && 'Permiso scripting declarado.',
+      usesScriptingExecute &&
+        scriptingCall &&
+        `Inyecta scripts/CSS en páginas mediante ${scriptingCall.api} (${scriptingCall.filePath}:${scriptingCall.line}).`,
+      perms.has('scripting') &&
+        !usesScriptingExecute &&
+        'Permiso scripting declarado pero sin llamadas observadas.',
       remoteScript && 'Carga de script remoto en MV3.',
       overlaySignal &&
         'Señales de overlay (position fixed/absolute con z-index alto): puede pintar UI sobre la página real.',
@@ -178,8 +209,7 @@ export const evaluateModificacionPaginas: UserRiskCategoryEvaluator = (
         'Manipula estilos para ocultar elementos (display:none / visibility:hidden / opacity:0).',
       observerSignal &&
         'Usa MutationObserver o shadowRoot: puede observar/modificar la página sin que se note.',
-      formReplacement &&
-        'Crea o reemplaza botones, formularios o enlaces.',
+      formReplacement && 'Crea o reemplaza botones, formularios o enlaces.',
       hasDetail(context, /history\.(push|replace)State/i) &&
         'Reescribe la URL visible al usuario con la History API.',
     ],

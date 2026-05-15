@@ -139,10 +139,24 @@ export const evaluateLecturaInformacion: UserRiskCategoryEvaluator = (
     SENSITIVE_HOST_RE.test(m),
   );
 
-  // Critico cuando hay flujo de datos sensible saliendo, o lectura de pantalla.
-  const isCritical = networkFlow || screenshot;
-  // Sospechoso si hay lectura de cookies/storage/formularios/clipboard/selección
-  // o broadHost (capacidad para leer todo).
+  // Hay uso REAL de DOM/lectura en el código (no solo broadHost declarado)?
+  const usesDom = hasDetail(
+    context,
+    /document\.(body|documentElement|forms|cookie)|querySelector|getElementById|innerText|textContent/i,
+  );
+  // Inyección programática activa (clave: si inyecta código en páginas, lee
+  // todo lo que esas páginas muestran).
+  const usesScriptingExecute = context.apiCalls.some((c) =>
+    /chrome\.(scripting|tabs)\.executeScript/.test(c.api),
+  );
+
+  // Critico: flujo a red, captura de pantalla, o inyección + broadHost.
+  const isCritical =
+    networkFlow ||
+    screenshot ||
+    (usesScriptingExecute && context.broadHost);
+  // Sospechoso: lectura/captura observada en código (sea via APIs sensibles o
+  // matches a sitios sensibles).
   const isSuspicious =
     cookieRead ||
     storageRead ||
@@ -150,23 +164,42 @@ export const evaluateLecturaInformacion: UserRiskCategoryEvaluator = (
     clipboardRead ||
     selectionRead ||
     matchesSensitiveSite ||
-    context.broadHost;
+    usesDom;
+  // Capacidad: solo broadHost declarado, sin uso observado de APIs de lectura.
+  const hasOnlyDeclaration = context.broadHost && !isSuspicious && !isCritical;
 
   return makeItem(
     context,
     'lectura_informacion',
     'Lectura de información en páginas',
-    isCritical ? 'critico' : isSuspicious ? 'sospechoso' : 'no_detectado',
+    isCritical
+      ? 'critico'
+      : isSuspicious
+        ? 'sospechoso'
+        : hasOnlyDeclaration
+          ? 'capacidad'
+          : 'no_detectado',
     networkFlow
       ? 'Vimos datos de página o navegador llegando a una salida de red o mensajería.'
       : screenshot
         ? 'La extensión puede capturar imágenes de la pantalla o la pestaña visible.'
-        : isSuspicious
-          ? 'La extensión puede leer cosas como cookies, almacenamiento, formularios, portapapeles o selección del usuario.'
-          : 'No vimos señales fuertes de lectura de contenido de páginas.',
+        : usesScriptingExecute && context.broadHost
+          ? 'La extensión inyecta scripts en cada página visitada — esos scripts pueden leer todo el DOM del sitio donde se ejecutan.'
+          : isSuspicious
+            ? 'La extensión puede leer cosas como cookies, almacenamiento, formularios, portapapeles o selección del usuario.'
+            : hasOnlyDeclaration
+              ? 'La extensión declara host_permissions amplios pero su código no parece leer DOM ni datos del usuario.'
+              : 'No vimos señales fuertes de lectura de contenido de páginas.',
     [
       networkFlow && 'Flujo de datos sensible detectado.',
-      context.broadHost && 'Permisos amplios de host.',
+      context.broadHost &&
+        !isSuspicious &&
+        !isCritical &&
+        'Permisos amplios de host declarados (sin lectura observada en código).',
+      usesScriptingExecute &&
+        'Inyecta scripts en páginas con chrome.scripting.executeScript: lo inyectado puede leer todo el DOM.',
+      usesDom &&
+        'El código lee elementos del DOM (document.body/forms/cookie, querySelector, innerText).',
       cookieRead && 'Lectura de cookies detectada.',
       storageRead && 'Lectura de localStorage/sessionStorage/chrome.storage.',
       formAccess && 'Lee elementos de formularios (FormData / document.forms).',

@@ -1,10 +1,14 @@
 import {
+  hasApiCall,
   hasDetail,
   hasFinding,
   makeItem,
   type UserRiskStaticRule,
   type UserRiskCategoryEvaluator,
 } from '../types.js';
+
+const NAV_OBSERVE_RE =
+  /^chrome\.(tabs\.(query|get|onActivated|onUpdated|onCreated|onRemoved)|webNavigation\.|history\.)/;
 
 const ANALYTICS_RE =
   /analytics|telemetry|tracking|segment|mixpanel|amplitude|ga\(|gtag|pixel|fingerprint|clientId|userId|deviceId|google-analytics|googletagmanager|hotjar|posthog|fullstory|matomo|piwik|heap\.io|kissmetrics|fbq\(|fbevents|doubleclick/i;
@@ -105,6 +109,8 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
   );
   const hasNavigationPerm =
     context.perms.has('tabs') || context.perms.has('webNavigation');
+  // USO REAL de las APIs de navegación (no solo permiso declarado).
+  const usesNavigationApi = hasApiCall(context, NAV_OBSERVE_RE);
   const analyticsSignal = hasDetail(context, ANALYTICS_RE);
   const fingerprintSignal = hasDetail(context, FINGERPRINT_RE);
   const persistentId = hasDetail(context, PERSISTENT_ID_RE);
@@ -116,29 +122,40 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
   const isCritical =
     (fingerprintSignal && networkFlow) ||
     (crossSite && analyticsSignal && networkFlow);
-  // Sospechoso: cualquier señal individual
+  // Sospechoso: señales REALES en código (fingerprint/analytics/persistent ID/beacon)
+  // o uso ACTIVO de APIs de navegación, o dominios sensibles.
   const isSuspicious =
     analyticsSignal ||
     fingerprintSignal ||
     persistentId ||
     beacon ||
     sensitiveDomains.length > 0 ||
-    hasNavigationPerm;
+    usesNavigationApi;
+  // Capacidad: solo permiso declarado, sin uso real.
+  const hasOnlyDeclaration = hasNavigationPerm && !usesNavigationApi;
 
   return makeItem(
     context,
     'seguimiento_privacidad',
     'Seguimiento y privacidad',
-    isCritical ? 'critico' : isSuspicious ? 'sospechoso' : 'no_detectado',
+    isCritical
+      ? 'critico'
+      : isSuspicious
+        ? 'sospechoso'
+        : hasOnlyDeclaration
+          ? 'capacidad'
+          : 'no_detectado',
     isCritical
       ? 'La extensión combina recolección de identificadores/fingerprint con envío a red. Es el patrón típico de tracking comercial agresivo.'
       : analyticsSignal && networkFlow
         ? 'La extensión contacta servicios de analítica/tracking conocidos.'
         : sensitiveDomains.length > 0
           ? 'La extensión contacta dominios sensibles o de terceros relevantes para privacidad.'
-          : hasNavigationPerm
-            ? 'Tiene capacidad para observar navegación; no vimos necesariamente transmisión abusiva.'
-            : 'No vimos señales fuertes de rastreo.',
+          : usesNavigationApi
+            ? 'La extensión usa activamente APIs de navegación (tabs/webNavigation/history) para observar lo que haces.'
+            : hasOnlyDeclaration
+              ? 'Declara permiso tabs/webNavigation pero su código no parece usarlo.'
+              : 'No vimos señales fuertes de rastreo.',
     [
       sensitiveDomains.length > 0 &&
         `Dominios sensibles contactados: ${sensitiveDomains
@@ -152,7 +169,12 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
       persistentId &&
         'Genera o referencia identificadores persistentes (UUID, clientId, deviceId).',
       beacon && 'Usa navigator.sendBeacon o lee document.referrer.',
-      context.perms.has('tabs') && 'Permiso tabs: observa pestañas abiertas.',
+      context.perms.has('tabs') &&
+        !usesNavigationApi &&
+        'Permiso tabs declarado (sin uso observado).',
+      context.perms.has('tabs') &&
+        usesNavigationApi &&
+        'Permiso tabs USADO en código (observa pestañas activamente).',
       context.perms.has('webNavigation') &&
         'Permiso webNavigation: observa transiciones entre páginas.',
       crossSite && 'Acceso amplio a sitios: puede correlacionar entre dominios.',

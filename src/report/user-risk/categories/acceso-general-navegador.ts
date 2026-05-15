@@ -1,4 +1,6 @@
 import {
+  findApiCall,
+  hasApiCall,
   hasDetail,
   makeItem,
   type UserRiskCategoryEvaluator,
@@ -7,6 +9,14 @@ import {
 
 const SENSITIVE_HOST_RE =
   /bank|paypal|stripe|gmail|outlook|mail|drive|dropbox|onedrive|facebook|instagram|whatsapp|metamask|binance|coinbase|chase|wellsfargo|santander|bbva/i;
+
+const TAB_OBSERVE_RE =
+  /^chrome\.tabs\.(query|get|onActivated|onUpdated|onCreated|onRemoved)/;
+const NAV_OBSERVE_RE = /^chrome\.webNavigation\./;
+const SCRIPTING_EXECUTE_RE =
+  /^chrome\.(scripting\.executeScript|tabs\.executeScript|scripting\.insertCSS|tabs\.insertCSS)/;
+const TAB_OPEN_RE =
+  /^chrome\.tabs\.(create|update|highlight|move)|^window\.open|^location\.(assign|replace)/;
 
 export const accesoGeneralNavegadorStaticRules: UserRiskStaticRule[] = [
   {
@@ -69,27 +79,27 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
     return meta.run_at === 'document_start' || meta.run_at === 'document_end';
   });
 
-  // Background/service worker = ejecución autónoma sin interacción del usuario.
   const hasBackground =
     !!preprocessed.manifest.serviceWorker ||
     (preprocessed.manifest.backgroundScripts?.length ?? 0) > 0;
 
-  // ¿Matchea sitios sensibles? (bancos, mail, redes, billeteras)
+  // Uso real (no solo declarado) — diferencia capacidad vs sospechoso
+  const usesScriptingExecute = hasApiCall(context, SCRIPTING_EXECUTE_RE);
+  const usesTabObservation =
+    hasApiCall(context, TAB_OBSERVE_RE) || hasApiCall(context, NAV_OBSERVE_RE);
+  const usesTabOpen = hasApiCall(context, TAB_OPEN_RE);
+  const scriptingCall = findApiCall(context, SCRIPTING_EXECUTE_RE);
+
+  // Sitios sensibles
   const contentMatches = contentScripts.flatMap((cs) => cs.matches);
   const matchesSensitive = contentMatches.some(
-    (m) =>
-      m === '<all_urls>' ||
-      m === '*://*/*' ||
-      SENSITIVE_HOST_RE.test(m),
+    (m) => m === '<all_urls>' || m === '*://*/*' || SENSITIVE_HOST_RE.test(m),
   );
   const hostPermsSensitive = (preprocessed.manifest.hostPermissions ?? []).some(
     (h) => SENSITIVE_HOST_RE.test(h),
   );
-
   const sensitiveReach = matchesSensitive || hostPermsSensitive;
 
-  // Extensión sin UI visible (sin popup ni options) que sí inyecta en páginas
-  // = corre invisiblemente.
   const noUiSurface =
     !preprocessed.manifest.popupUrl &&
     !preprocessed.manifest.optionsPage &&
@@ -97,13 +107,26 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
   const invisibleBackgroundExecution =
     (hasBackground || hasContentScript) && noUiSurface;
 
-  // Estado: crítico si tiene <all_urls> + scripting o auto-run + invisibilidad,
-  // sospechoso si tiene broadHost o ejecución programática, capacidad si solo tabs.
-  const estado =
-    (broadHost && (perms.has('scripting') || autoRunScripts)) ||
-    invisibleBackgroundExecution
+  // Critico: <all_urls> + scripting.executeScript REAL en background → inyecta
+  // código arbitrario en TODA página visitada. Es lo que hace Happy Dog.
+  const isCritical =
+    broadHost &&
+    usesScriptingExecute &&
+    (scriptingCall?.fileRole === 'background' || invisibleBackgroundExecution);
+  // Sospechoso: uso real de tabs/webNavigation/scripting, o auto-run con broadHost
+  const isSuspicious =
+    usesScriptingExecute ||
+    usesTabObservation ||
+    (broadHost && (perms.has('scripting') || autoRunScripts));
+  // Capacidad: solo el permiso/manifesto declarado, sin uso real
+  const hasOnlyDeclaration =
+    broadHost || perms.has('tabs') || hasContentScript;
+
+  const estado = isCritical
+    ? 'critico'
+    : isSuspicious
       ? 'sospechoso'
-      : broadHost || perms.has('tabs') || hasContentScript
+      : hasOnlyDeclaration
         ? 'capacidad'
         : 'no_detectado';
 
@@ -112,28 +135,39 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
     'acceso_general_navegador',
     'Acceso general al navegador',
     estado,
-    broadHost
-      ? 'La extensión tiene capacidad para actuar o leer información en muchos o todos los sitios. Esto puede ser legítimo, pero debe estar justificado por su propósito.'
-      : sensitiveReach
-        ? 'La extensión declara acceso a sitios sensibles (bancos, correos o redes).'
-        : 'No vimos permisos amplios para todos los sitios.',
+    isCritical
+      ? 'La extensión inyecta código en cada página que visitas usando chrome.scripting.executeScript con permisos amplios. Es la capacidad de mayor impacto que existe en MV3.'
+      : isSuspicious
+        ? 'La extensión usa APIs que le permiten ver o actuar sobre páginas activamente (no solo las pide en el manifest).'
+        : hasOnlyDeclaration
+          ? 'La extensión declara permisos amplios o tiene content scripts, pero su código aparentemente no los ejerce.'
+          : sensitiveReach
+            ? 'La extensión declara acceso a sitios sensibles (bancos, correos o redes).'
+            : 'No vimos permisos amplios para todos los sitios.',
     [
       broadHost && 'Permisos o content scripts sobre <all_urls> / *://*/*.',
-      perms.has('scripting') && 'Permiso scripting: puede inyectar código.',
-      perms.has('activeTab') &&
-        'Permiso activeTab: gana acceso temporal a la pestaña activa.',
-      perms.has('tabs') && 'Permiso tabs: puede ver URLs y títulos.',
+      usesScriptingExecute &&
+        scriptingCall &&
+        `Inyecta scripts en páginas con ${scriptingCall.api} (${scriptingCall.filePath}:${scriptingCall.line}).`,
+      perms.has('scripting') &&
+        !usesScriptingExecute &&
+        'Permiso scripting declarado pero no vimos llamadas reales en el código.',
+      usesTabObservation &&
+        'Observa pestañas/navegación activamente (chrome.tabs.query/onUpdated/webNavigation).',
+      perms.has('tabs') &&
+        !usesTabObservation &&
+        'Permiso tabs declarado pero sin uso observado.',
       hasContentScript && 'Tiene content scripts que se ejecutan en páginas.',
       autoRunScripts &&
         'Content scripts con run_at=document_start/end: arrancan automáticamente al cargar la página.',
       hasBackground &&
-        'Tiene background/service worker: corre en segundo plano sin interacción del usuario.',
+        usesScriptingExecute &&
+        'Background/service worker con permiso scripting USADO: inyección dirigida por servidor o eventos.',
       sensitiveReach &&
         'Sus matches o host_permissions incluyen sitios sensibles (banca, correo, redes, billeteras).',
       invisibleBackgroundExecution &&
         'Corre sin UI visible (sin popup ni options): el usuario no tiene una forma directa de "encenderla" o "apagarla".',
-      hasDetail(context, /chrome\.tabs\.create|chrome\.tabs\.update|window\.open/i) &&
-        'Puede abrir/redirigir pestañas desde código.',
+      usesTabOpen && 'Puede abrir/redirigir pestañas desde código.',
     ],
     [
       '¿Puede ver todas las páginas que visito?',

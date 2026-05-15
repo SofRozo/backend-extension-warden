@@ -292,6 +292,14 @@ export class PreprocessorService {
       remoteCodeViolations,
     );
 
+    // Reclassify files referenced by chrome.scripting.executeScript / tabs.executeScript
+    // as content_script. These files are injected into web pages at runtime,
+    // so their *effective* role IS content_script even though the manifest
+    // doesn't declare them as such. Without this, they stay as `unknown` and
+    // their AST findings get filtered out aggressively (lectura_teclado,
+    // inyeccion_dom, etc. in `unknown` files lose confidence).
+    this.reclassifyInjectedScripts(files, dependencyGraph);
+
     const obfuscatedFileCount = files.filter((f) => f.isObfuscated).length;
 
     this.logger.logWithJob(
@@ -467,6 +475,54 @@ export class PreprocessorService {
     }
 
     return map;
+  }
+
+  /**
+   * After the dependency graph is built, promote files referenced by
+   * `chrome.scripting.executeScript({ files: [...] })`, `chrome.tabs.executeScript`,
+   * or dynamic script injection to `content_script` role.
+   *
+   * These files literally run inside web pages, but the manifest only declares
+   * them indirectly (the API call decides which pages they touch at runtime).
+   * Without this promotion they keep their default `unknown` role, which causes:
+   *   - confidence downgrade in StaticAnalysisService.recomputeConfidence
+   *   - aggressive filtering in StaticAnalysisService.applyContextualFilters
+   *   - the user never sees their findings.
+   *
+   * Library files (jquery.min, lodash, etc.) are left alone — they're still
+   * libraries even if injected, and the lib classifier already detected them.
+   */
+  private reclassifyInjectedScripts(
+    files: ProcessedFile[],
+    dependencyGraph: DependencyGraph,
+  ): void {
+    const injectedPaths = new Set<string>();
+    for (const edge of dependencyGraph.edges) {
+      if (
+        edge.type === 'scripting_executeScript' ||
+        edge.type === 'script_injection'
+      ) {
+        injectedPaths.add(edge.to.replace(/\\/g, '/'));
+      }
+    }
+    if (injectedPaths.size === 0) return;
+
+    for (const file of files) {
+      if (file.role === 'library') continue;
+      // Only promote `unknown` files; don't clobber explicit roles such as
+      // `popup`, `options_ui`, `background` etc. that the manifest already
+      // declared (an injected popup.js is rare but possible — leave it).
+      if (file.role !== 'unknown') continue;
+      const normalised = file.path.replace(/\\/g, '/');
+      const isInjected =
+        injectedPaths.has(normalised) ||
+        [...injectedPaths].some(
+          (p) => normalised === p || normalised.endsWith('/' + p),
+        );
+      if (isInjected) {
+        file.role = 'content_script';
+      }
+    }
   }
 
   private inferRole(
@@ -981,6 +1037,9 @@ export class PreprocessorService {
     const code = file.cleanCode ?? '';
     const lines = code.split('\n');
     const edges: DependencyEdge[] = [];
+    const dir = path.dirname(file.path).replace(/\\/g, '/');
+
+    // ── Single-target patterns (line-by-line) ──
     const patterns: Array<{ re: RegExp; type: DependencyEdge['type'] }> = [
       {
         re: /\bimport\s+(?:[^'"]+\s+from\s+)?['"]([^'"]+)['"]/g,
@@ -990,15 +1049,10 @@ export class PreprocessorService {
       { re: /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g, type: 'require' },
       { re: /\bnew\s+Worker\s*\(\s*['"]([^'"]+)['"]\s*\)/g, type: 'worker' },
       {
-        re: /\bfiles\s*:\s*\[\s*['"]([^'"]+)['"]\s*\]/g,
-        type: 'scripting_executeScript',
-      },
-      {
         re: /\.src\s*=\s*['"]([^'"]+\.js[^'"]*)['"]/g,
         type: 'script_injection',
       },
     ];
-    const dir = path.dirname(file.path).replace(/\\/g, '/');
     for (let i = 0; i < lines.length; i++) {
       for (const pattern of patterns) {
         pattern.re.lastIndex = 0;
@@ -1014,6 +1068,33 @@ export class PreprocessorService {
         }
       }
     }
+
+    // ── Multi-target pattern: chrome.scripting.executeScript({ files: [...] }) ──
+    // The `files` array can contain MANY scripts and span multiple lines:
+    //   files: ["a.js", "b.js"]                         ← multi-file inline
+    //   files: [\n  "a.js",\n  "b.js"\n]                ← multiline
+    // The previous regex required a single quoted string immediately followed
+    // by `]`, so it produced ZERO matches for any real-world case (every MV3
+    // extension that injects helpers + main script). We now grab the whole
+    // array body and extract every quoted string inside.
+    const filesArrayRe = /\bfiles\s*:\s*\[([\s\S]*?)\]/g;
+    let fm: RegExpExecArray | null;
+    while ((fm = filesArrayRe.exec(code)) !== null) {
+      const arrayContent = fm[1];
+      const line = code.slice(0, fm.index).split('\n').length;
+      const stringRe = /['"]([^'"]+)['"]/g;
+      let sm: RegExpExecArray | null;
+      while ((sm = stringRe.exec(arrayContent)) !== null) {
+        if (!this.isLocalDependency(sm[1])) continue;
+        edges.push({
+          from: file.path,
+          to: this.resolveRelative(dir, sm[1].replace(/\?.*$/, '')),
+          type: 'scripting_executeScript',
+          line,
+        });
+      }
+    }
+
     return edges;
   }
 

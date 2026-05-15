@@ -1,5 +1,6 @@
 import type {
   DynamicVerdictedFinding,
+  FileRole,
   PreprocessorOutput,
   UserRiskSummaryId,
   UserRiskSummaryItem,
@@ -7,6 +8,22 @@ import type {
   VerdictedDomainFinding,
   VerdictedStaticFinding,
 } from '../../common/interfaces/analysis.interfaces.js';
+
+/**
+ * One call site of a chrome.* API. The evaluators use this to distinguish
+ * "declared but not used" (capacidad) from "actually invoked from this file"
+ * (sospechoso). Without it the evaluators only saw permissions, not usage,
+ * and inflated capabilities to "sospechoso" purely from the manifest.
+ */
+export interface ChromeApiCallSite {
+  /** e.g. 'chrome.tabs.query', 'chrome.scripting.executeScript' */
+  api: string;
+  /** First segment after `chrome.` — used to match against declared permissions. */
+  permission: string;
+  filePath: string;
+  fileRole: FileRole;
+  line: number;
+}
 
 export interface UserRiskContext {
   preprocessed: PreprocessorOutput;
@@ -16,8 +33,37 @@ export interface UserRiskContext {
   perms: Set<string>;
   broadHost: boolean;
   hasContentScript: boolean;
+  /** All chrome.* call sites in non-library files. */
+  apiCalls: ChromeApiCallSite[];
+  /** Permissions actually invoked in code (root key, e.g. 'tabs', 'scripting'). */
+  usedPermissions: Set<string>;
+  /** Permissions declared in manifest but never invoked anywhere in code. */
+  unusedPermissions: Set<string>;
   evidenceByCategory: Map<UserRiskSummaryId, string[]>;
   triggeredRulesByCategory: Map<UserRiskSummaryId, string[]>;
+}
+
+/**
+ * Convenience: returns true when at least one call site matches the given
+ * api-name regex. Used in evaluators to escalate `capacidad` → `sospechoso`
+ * only when there's real usage of the permission, not just a declaration.
+ */
+export function hasApiCall(
+  context: UserRiskContext,
+  apiPattern: RegExp,
+): boolean {
+  return context.apiCalls.some((c) => apiPattern.test(c.api));
+}
+
+/**
+ * Returns the first call site matching the pattern, or undefined.
+ * Useful when the evaluator wants to point at where the API is used.
+ */
+export function findApiCall(
+  context: UserRiskContext,
+  apiPattern: RegExp,
+): ChromeApiCallSite | undefined {
+  return context.apiCalls.find((c) => apiPattern.test(c.api));
 }
 
 export type UserRiskCategoryEvaluator = (
@@ -41,16 +87,28 @@ export function makeItem(
   evidencias: Array<string | false | undefined>,
   preguntas_responde: string[],
 ): UserRiskSummaryItem {
+  const reglasActivadas = uniqueStrings(
+    context.triggeredRulesByCategory.get(id) ?? [],
+  );
+  // Coherence guard: si hay rules activadas (es decir, los static-rules de la
+  // categoría matchearon algún finding positivo), el estado mínimo es
+  // 'capacidad'. Sin esto un evaluador puede decir 'no_detectado' aunque la
+  // tarjeta muestre 5 evidencias — confunde al usuario. Si el evaluador ya
+  // dijo algo más fuerte (sospechoso/critico), no se toca.
+  const coherentEstado: UserRiskStatus =
+    estado === 'no_detectado' && reglasActivadas.length > 0
+      ? 'capacidad'
+      : estado;
   return {
     id,
     titulo,
-    estado,
+    estado: coherentEstado,
     resumen,
     evidencias: uniqueStrings([
       ...evidencias.filter((x): x is string => Boolean(x)),
       ...(context.evidenceByCategory.get(id) ?? []),
     ]).slice(0, 5),
-    reglas_activadas: uniqueStrings(context.triggeredRulesByCategory.get(id) ?? []),
+    reglas_activadas: reglasActivadas,
     preguntas_responde,
   };
 }
