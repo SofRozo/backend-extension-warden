@@ -484,7 +484,7 @@ export class StagehandService {
       env: 'LOCAL' as const,
       verbose: 0 as const,
       localBrowserLaunchOptions: {
-        headless: false,
+        headless: true,
         args: extensionPath
           ? [
               `--disable-extensions-except=${extensionPath}`,
