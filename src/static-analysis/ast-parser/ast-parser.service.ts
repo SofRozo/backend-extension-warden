@@ -745,6 +745,21 @@ export class AstParserService {
         confidence: 0.78,
       });
     }
+    if (callee === 'Worker' || callee === 'SharedWorker') {
+      findings.push({
+        category: FindingCategory.EVASION,
+        pattern: `new ${callee}`,
+        description: 'Spawns Web Workers (often used for parallel mining)',
+        severity: RiskLevel.MEDIUM,
+        location: {
+          file: filename,
+          line: node.loc?.start.line || 0,
+          column: node.loc?.start.column || 0,
+        },
+        codeSnippet: this.snippetForNode(code, node),
+        confidence: 0.65,
+      });
+    }
   }
 
   private checkMemberExpression(

@@ -17,6 +17,7 @@ import { UserRiskSummaryService } from './user-risk/user-risk-summary.service.js
 const FILE_TYPE_LABEL: Record<string, string> = {
   content_script: 'content script',
   background: 'background',
+  service_worker: 'service worker',
   popup: 'popup',
   options_ui: 'página de opciones',
   devtools: 'devtools page',
@@ -33,6 +34,8 @@ const ROLE_CONTEXT: Record<string, string> = {
     'Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla.',
   background:
     'Este es el "cerebro invisible" de la extensión. Corre en segundo plano todo el tiempo en tu navegador sin que te des cuenta, comunicándose con servidores en Internet y procesando datos.',
+  service_worker:
+    'Este es el "cerebro" moderno de la extensión (Manifest V3). A diferencia del background tradicional, se despierta solo cuando hay eventos y corre en segundo plano procesando datos y comunicaciones web.',
   popup:
     'Este archivo pertenece a la ventanita visual que se abre únicamente cuando haces clic en el ícono de la extensión en la barra de Chrome.',
   options_ui:
@@ -344,6 +347,8 @@ export class ReportService {
     const typePriority: Partial<Record<string, number>> = {
       flujo_datos_a_red: 100,
       correlacion_riesgo: 95,
+      interceptacion_api: 94,
+      suplantacion_api_navegador: 93,
       script_remoto_mv3: 90,
       listener_teclado: 85,
       lectura_cookies: 80,
@@ -422,6 +427,12 @@ export class ReportService {
     }
     if (f.discoveryType === 'correlacion_riesgo') {
       return `una combinación de señales que aumenta el riesgo: ${detail}.`;
+    }
+    if (f.discoveryType === 'interceptacion_api') {
+      return `la interceptación o reemplazo de una API nativa del navegador (${detail}); esto es una técnica común para vigilar tráfico interno o alterar el funcionamiento normal.`;
+    }
+    if (f.discoveryType === 'suplantacion_api_navegador') {
+      return `la falsificación de una API del sistema (${detail}); la extensión está intentando engañar a la página web sobre las capacidades, ubicación o identidad del navegador.`;
     }
     return `${f.discoveryType} (${detail}).`;
   }

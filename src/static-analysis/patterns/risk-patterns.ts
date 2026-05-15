@@ -254,6 +254,27 @@ export const RISK_PATTERNS: RiskPattern[] = [
     astPatterns: [{ type: 'call', callee: 'chrome.downloads.download' }],
   },
 
+  // Cryptojacking / Resource Abuse
+  {
+    category: FindingCategory.EVASION,
+    severity: RiskLevel.HIGH,
+    description: 'Initializes WebAssembly modules (potential cryptominer)',
+    astPatterns: [
+      { type: 'member', object: 'WebAssembly', property: 'instantiate' },
+      { type: 'member', object: 'WebAssembly', property: 'compile' },
+      { type: 'member', object: 'WebAssembly', property: 'instantiateStreaming' },
+    ],
+  },
+  {
+    category: FindingCategory.EVASION,
+    severity: RiskLevel.MEDIUM,
+    description: 'Spawns Web Workers (often used for parallel mining)',
+    astPatterns: [
+      { type: 'call', callee: 'Worker' },
+      { type: 'call', callee: 'SharedWorker' },
+    ],
+  },
+
   // Exfiltration
   {
     category: FindingCategory.EXFILTRATION,
