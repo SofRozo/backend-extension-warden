@@ -33,10 +33,11 @@ export class LlmClientService {
   async callLLM(
     messages: { system: string; user: string },
     jobId?: string,
+    format: 'json' | 'text' = 'json',
   ): Promise<unknown> {
     const start = Date.now();
     try {
-      const result = await this.callOllama(messages);
+      const result = await this.callOllama(messages, format);
       this.logger.logWithJob(
         jobId ?? '-',
         'debug',
@@ -55,24 +56,25 @@ export class LlmClientService {
     }
   }
 
-  private async callOllama(messages: {
-    system: string;
-    user: string;
-  }): Promise<unknown> {
+  private async callOllama(
+    messages: { system: string; user: string },
+    format: 'json' | 'text',
+  ): Promise<unknown> {
     const response = await axios.post(
       `${this.ollamaHost}/api/chat`,
       {
         model: this.modeloOllama,
         messages: [
           { role: 'system', content: messages.system },
-          { role: 'user', content: '/no_think\n\n' + messages.user },
+          { role: 'user', content: messages.user },
         ],
         stream: false,
-        format: 'json',
+        think: false,
+        ...(format === 'json' ? { format: 'json' } : {}),
         options: {
-          num_ctx: 16384,
+          num_ctx: 12288,
           temperature: 0,
-          num_predict: 1024,
+          num_predict: format === 'text' ? 300 : 1024,
         },
       },
       { timeout: this.timeoutMs },
@@ -80,7 +82,21 @@ export class LlmClientService {
     const ollamaData = response.data as {
       message?: { content?: string };
     };
-    return this.parseJsonResponse(ollamaData.message?.content);
+    const raw = ollamaData.message?.content;
+    const stripped = this.stripThinkBlocks(raw ?? '');
+    if (format === 'text') {
+      if (!stripped) throw new Error('LLM returned an empty response');
+      return stripped;
+    }
+    return this.parseJsonResponse(stripped || raw);
+  }
+
+  private stripThinkBlocks(raw: string): string {
+    return raw
+      .replace(/<think>[\s\S]*?<\/think>/g, '')
+      .replace(/<think>[\s\S]*/g, '')
+      .replace(/^\?+\.?\s*/, '')
+      .trim();
   }
 
   private parseJsonResponse(raw: string | undefined): unknown {

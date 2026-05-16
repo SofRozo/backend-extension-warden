@@ -72,8 +72,9 @@ export class StagehandService {
     try {
       const stagehandOpts = this.buildStagehandOptions(extensionPath);
       stagehand = new Stagehand(stagehandOpts);
-      await stagehand.init();
-      const page = (stagehand as any).page;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const initResult = (await (stagehand.init() as unknown as Promise<{ page: any }>));
+      const page: any = initResult?.page ?? (stagehand as any).page;
 
       await page
         .goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 })
