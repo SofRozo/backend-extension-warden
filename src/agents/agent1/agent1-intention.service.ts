@@ -434,6 +434,9 @@ export class Agent1IntentionService {
           )
         )
           score += 7;
+        // Minified files are token-dense and unreadable to the LLM — heavy penalty
+        // so small readable files (executors, config scripts) are preferred first.
+        if (f.isMinified) score -= 8;
         const lineCount = f.originalLineCount ?? 0;
         if (lineCount > 1000) score -= 5; // bundles enormes son ilegibles para el LLM
         else if (lineCount < 100) score += 3; // archivos pequeños son más reveladores

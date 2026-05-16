@@ -80,7 +80,8 @@ export class Agent2DynamicService {
       });
     }
 
-    if (observations.length > 0) {
+    const hasUsefulObservations = observations.some((o) => !o.error);
+    if (observations.length > 0 && hasUsefulObservations) {
       const llmVerdicts = await this.runLlm(proposito, observations, jobId);
       for (const v of llmVerdicts) {
         verdictByDomain.set(v.domain.toLowerCase(), v);
@@ -93,6 +94,12 @@ export class Agent2DynamicService {
         if (cur.veredicto === 'inaccesible') {
           verdictByDomain.set(key, this.heuristicVerdict(obs));
         }
+      }
+    } else {
+      // All observations failed (ECONNREFUSED, timeout, etc.) — skip LLM call,
+      // apply heuristic directly so we don't burn the Ollama queue for inaccesible verdicts.
+      for (const obs of observations) {
+        verdictByDomain.set(obs.domain.toLowerCase(), this.heuristicVerdict(obs));
       }
     }
 

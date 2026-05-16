@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Stagehand, AISdkClient } from '@browserbasehq/stagehand';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { chromium } from 'playwright';
 import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -485,12 +486,18 @@ export class StagehandService {
       verbose: 0 as const,
       localBrowserLaunchOptions: {
         headless: true,
-        args: extensionPath
-          ? [
-              `--disable-extensions-except=${extensionPath}`,
-              `--load-extension=${extensionPath}`,
-            ]
-          : [],
+        executablePath: chromium.executablePath(),
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          ...(extensionPath
+            ? [
+                `--disable-extensions-except=${extensionPath}`,
+                `--load-extension=${extensionPath}`,
+              ]
+            : []),
+        ],
       },
       disablePino: true,
     };
@@ -498,7 +505,7 @@ export class StagehandService {
     const ollamaProvider = createOpenAICompatible({
       name: 'ollama',
       baseURL: `${this.ollamaHost}/v1`,
-      fetch: (url: string, options: RequestInit) => {
+      fetch: (url: RequestInfo | URL, options?: RequestInit) => {
         return fetch(url, {
           ...options,
           signal: AbortSignal.timeout(1_200_000),

@@ -17,7 +17,13 @@ export class LlmClientService {
     this.ollamaHost = (
       config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
-    this.timeoutMs = config.get<number>('AGENT_TIMEOUT_MS') ?? 1_200_000;
+    // Axios timeout is AGENT_TIMEOUT_MS + 90s so the job-level withTimeout()
+    // always fires first and handles the error gracefully (user-visible warn log)
+    // instead of an axios-level cancellation that bypasses the wrapper.
+    // Number() is required: ConfigService returns env vars as strings at runtime
+    // even when typed as <number>, so without it "420000" + 90000 = "42000090000".
+    this.timeoutMs =
+      Number(config.get<number>('AGENT_TIMEOUT_MS') ?? 1_200_000) + 90_000;
   }
 
   isConfigured(): boolean {
@@ -58,14 +64,15 @@ export class LlmClientService {
       {
         model: this.modeloOllama,
         messages: [
-          { role: 'system', content: messages.system + '\n\n/no_think' },
-          { role: 'user', content: messages.user },
+          { role: 'system', content: messages.system },
+          { role: 'user', content: '/no_think\n\n' + messages.user },
         ],
         stream: false,
         format: 'json',
         options: {
-          num_ctx: 32768,
+          num_ctx: 16384,
           temperature: 0,
+          num_predict: 1024,
         },
       },
       { timeout: this.timeoutMs },

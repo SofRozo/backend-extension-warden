@@ -262,6 +262,38 @@ export class StaticAnalysisService {
           'StaticAnalysisService',
         );
       }
+
+      // 2e. Sensitive domains in extractedUrls → resultado2_priority.
+      // extractContactedDomains() only covers network-sink arguments; this
+      // catches high-risk domains (residential proxies, data brokers) that
+      // appear as URL strings anywhere in the code (variables, config objects,
+      // conditionals) and would otherwise be invisible to the domain classifier.
+      const seenContactedHosts = new Set(
+        (file.contactedDomains ?? []).map((d) => d.domain),
+      );
+      for (const eu of file.extractedUrls ?? []) {
+        const host = this.extractHostFromPattern(eu.url);
+        if (!host || seenContactedHosts.has(host)) continue;
+        const det = this.domainClassifier.classify(
+          host,
+          preprocessed.manifest.name,
+          preprocessed.manifest.author,
+        );
+        const category = det.category;
+        if (category && this.domainClassifier.isPriority(category)) {
+          seenContactedHosts.add(host);
+          const finding: DomainFinding = {
+            fileType: file.role,
+            filePath: file.path,
+            discoveryType: 'url_en_codigo',
+            domain: host,
+            category,
+            priority: this.domainClassifier.playwrightPriority(category),
+            line: eu.line,
+          };
+          priority.push(finding);
+        }
+      }
     }
 
     // ── 3. Manifest host_permissions → resultado2 ─────────────────────────────
@@ -1575,15 +1607,63 @@ export class StaticAnalysisService {
 
     // ── Tier E — Social media ad injection framework ─────────────────────────
 
-    // E1: XHR/fetch hooks + social media platform domain filters in same files.
-    // Signature of BIS/PANELOS-style ad injection: executor files hook XHR/fetch
-    // AND filter by specific social-platform domains to intercept and replace ads.
-    // apiHookFindings is already populated above from Tier D.
-    const SOCIAL_AD_DOMAINS = [
-      'facebook.com', 'graph.facebook.com', 'twitter.com', 'x.com',
-      'tiktok.com', 'linkedin.com', 'pinterest.com', 'youtube.com', 'instagram.com',
-      'snapchat.com', 'reddit.com', 'twitch.tv', 'tumblr.com', 'quora.com',
-      'business.whatsapp.com', 'wa.me',
+    // E1: XHR/fetch hooks + social media platform signals in same files.
+    // Uses platform groups so indirect references (API paths, CDN domains, legacy
+    // names) are also detected — not just the main domain string.
+    const SOCIAL_AD_PLATFORM_GROUPS: Array<{
+      platform: string;
+      signals: string[];
+    }> = [
+      {
+        platform: 'Facebook/Instagram',
+        signals: [
+          'facebook.com',
+          'graph.facebook.com',
+          'fbcdn.net',
+          'instagram.com',
+          'cdninstagram.com',
+        ],
+      },
+      {
+        platform: 'Twitter/X',
+        signals: [
+          'twitter.com',
+          'x.com',
+          'api.twitter.com',
+          'twimg.com',
+          '/i/api/',
+        ],
+      },
+      {
+        platform: 'TikTok',
+        signals: [
+          'tiktok.com',
+          'musical.ly',
+          'tiktokcdn.com',
+          'tiktokv.com',
+          '/api/aweme/',
+          'aweme.snssdk.com',
+          'musical_ly',
+        ],
+      },
+      {
+        platform: 'LinkedIn',
+        signals: ['linkedin.com', 'licdn.com', '/voyager/api/'],
+      },
+      {
+        platform: 'Pinterest',
+        signals: ['pinterest.com', 'pinimg.com', '/v3/pidgets/'],
+      },
+      {
+        platform: 'YouTube',
+        signals: ['youtube.com', 'ytimg.com', '/youtubei/v1/'],
+      },
+      {
+        platform: 'Snapchat',
+        signals: ['snapchat.com', 'sc-cdn.net', 'snap.com'],
+      },
+      { platform: 'Reddit', signals: ['reddit.com', 'redd.it', 'redditmedia.com'] },
+      { platform: 'Twitch', signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'] },
     ];
 
     if (apiHookFindings.length > 0) {
@@ -1591,9 +1671,7 @@ export class StaticAnalysisService {
         apiHookFindings.map((f) => f.filePath),
       );
 
-      // Also include large files where the XHR hook was detected via grep signals
-      // (those files skip AST so apiHookFindings won't have them, but their
-      // grepSignals array is populated before analysis runs).
+      // Also include large files where the XHR hook was detected via grep signals.
       for (const file of preprocessed.files) {
         if (!file.skippedAst) continue;
         if (
@@ -1605,7 +1683,7 @@ export class StaticAnalysisService {
         }
       }
 
-      const socialAdTargets: string[] = [];
+      const matchedPlatforms: string[] = [];
 
       for (const file of preprocessed.files) {
         if (!xhrHookFilePaths.has(file.path)) continue;
@@ -1615,16 +1693,20 @@ export class StaticAnalysisService {
           (file.grepSignals ?? []).join(' ') +
           ' ' +
           (file.extractedUrls ?? []).map((u) => u.url).join(' ');
-        for (const domain of SOCIAL_AD_DOMAINS) {
-          if (!socialAdTargets.includes(domain) && textToSearch.includes(domain)) {
-            socialAdTargets.push(domain);
+
+        for (const { platform, signals } of SOCIAL_AD_PLATFORM_GROUPS) {
+          if (
+            !matchedPlatforms.includes(platform) &&
+            signals.some((s) => textToSearch.includes(s))
+          ) {
+            matchedPlatforms.push(platform);
           }
         }
       }
 
-      if (socialAdTargets.length >= 2) {
+      if (matchedPlatforms.length >= 2) {
         add({
-          detail: `Ad injection framework: XHR/fetch hooks co-located with ${socialAdTargets.length} social media platform filters (${socialAdTargets.join(', ')}) — each executor intercepts responses for a specific platform's ad API, signature of BIS/PANELOS-style ad replacement network`,
+          detail: `Ad injection framework: XHR/fetch hooks co-located with ${matchedPlatforms.length} social media platform signals (${matchedPlatforms.join(', ')}) — each executor intercepts responses for a specific platform's ad API, signature of BIS/PANELOS-style ad replacement network`,
           filePath: apiHookFindings[0].filePath,
           line: apiHookFindings[0].line,
           severity: 'critical',
