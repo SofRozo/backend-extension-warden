@@ -1573,6 +1573,66 @@ export class StaticAnalysisService {
       });
     }
 
+    // ── Tier E — Social media ad injection framework ─────────────────────────
+
+    // E1: XHR/fetch hooks + social media platform domain filters in same files.
+    // Signature of BIS/PANELOS-style ad injection: executor files hook XHR/fetch
+    // AND filter by specific social-platform domains to intercept and replace ads.
+    // apiHookFindings is already populated above from Tier D.
+    const SOCIAL_AD_DOMAINS = [
+      'facebook.com', 'graph.facebook.com', 'twitter.com', 'x.com',
+      'tiktok.com', 'linkedin.com', 'pinterest.com', 'youtube.com', 'instagram.com',
+      'snapchat.com', 'reddit.com', 'twitch.tv', 'tumblr.com', 'quora.com',
+      'business.whatsapp.com', 'wa.me',
+    ];
+
+    if (apiHookFindings.length > 0) {
+      const xhrHookFilePaths = new Set<string>(
+        apiHookFindings.map((f) => f.filePath),
+      );
+
+      // Also include large files where the XHR hook was detected via grep signals
+      // (those files skip AST so apiHookFindings won't have them, but their
+      // grepSignals array is populated before analysis runs).
+      for (const file of preprocessed.files) {
+        if (!file.skippedAst) continue;
+        if (
+          (file.grepSignals ?? []).some((s) =>
+            /XHR prototype hook|fetch replacement/i.test(s),
+          )
+        ) {
+          xhrHookFilePaths.add(file.path);
+        }
+      }
+
+      const socialAdTargets: string[] = [];
+
+      for (const file of preprocessed.files) {
+        if (!xhrHookFilePaths.has(file.path)) continue;
+        const textToSearch =
+          (file.cleanCode ?? '') +
+          ' ' +
+          (file.grepSignals ?? []).join(' ') +
+          ' ' +
+          (file.extractedUrls ?? []).map((u) => u.url).join(' ');
+        for (const domain of SOCIAL_AD_DOMAINS) {
+          if (!socialAdTargets.includes(domain) && textToSearch.includes(domain)) {
+            socialAdTargets.push(domain);
+          }
+        }
+      }
+
+      if (socialAdTargets.length >= 2) {
+        add({
+          detail: `Ad injection framework: XHR/fetch hooks co-located with ${socialAdTargets.length} social media platform filters (${socialAdTargets.join(', ')}) — each executor intercepts responses for a specific platform's ad API, signature of BIS/PANELOS-style ad replacement network`,
+          filePath: apiHookFindings[0].filePath,
+          line: apiHookFindings[0].line,
+          severity: 'critical',
+          confidence: 0.93,
+        });
+      }
+    }
+
     return correlated;
   }
 

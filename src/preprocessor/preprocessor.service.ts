@@ -590,6 +590,17 @@ export class PreprocessorService {
     )
       return 'content_script';
 
+    // Files inside injection-framework directories (executors/, injectors/, inject/,
+    // hooks/, patches/, interceptors/) are content-injected scripts regardless of
+    // the specific framework or file naming convention. They run inside web pages
+    // but are never declared in the manifest directly.
+    if (
+      /\/(executors?|injectors?|inject|hooks?|patches?|interceptors?)\/[^/]+\.js$/.test(
+        norm,
+      )
+    )
+      return 'content_script';
+
     return 'unknown';
   }
 
@@ -1355,6 +1366,12 @@ export class PreprocessorService {
         label: '[HIGH] Creación dinámica de elementos script' },
       { re: /\bnew\s+Function\s*\(/g,
         label: '[CRITICAL] new Function() — ejecución dinámica de código' },
+      { re: /\b(?:facebook|tiktok|twitter|x\.com|linkedin|pinterest|youtube|instagram|snapchat|reddit|twitch)\.com\b/gi,
+        label: '[MEDIUM] Social media platform domain — potential ad injection target' },
+      { re: /response\.clone\s*\(\)/g,
+        label: '[HIGH] response.clone() — duplicates HTTP responses to read body while forwarding (ad/data interception pattern)' },
+      { re: /\b(?:sponsored|ad_unit_id|adUnitId|adUnitCode|campaignId|impressionId|adId)\b/g,
+        label: '[HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses' },
     ];
     for (const { re, label } of checks) {
       re.lastIndex = 0;

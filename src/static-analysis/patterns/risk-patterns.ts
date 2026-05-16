@@ -334,4 +334,21 @@ export const RISK_PATTERNS: RiskPattern[] = [
       { type: 'member', object: 'tab', property: 'url' },
     ],
   },
+
+  // Ad injection framework — accesses ad-platform data fields from intercepted
+  // network responses. Present in any ad-replacement framework regardless of
+  // the specific platform or naming convention.
+  {
+    category: FindingCategory.INJECTION,
+    severity: RiskLevel.HIGH,
+    description: 'Reads ad platform data fields (adId/adUnit/campaignId) — parses intercepted ad content',
+    astPatterns: [
+      { type: 'member', property: 'adId' },
+      { type: 'member', property: 'adUnit' },
+      { type: 'member', property: 'adUnitId' },
+      { type: 'member', property: 'adUnitCode' },
+      { type: 'member', property: 'campaignId' },
+      { type: 'member', property: 'impressionId' },
+    ],
+  },
 ];

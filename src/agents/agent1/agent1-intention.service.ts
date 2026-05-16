@@ -425,6 +425,15 @@ export class Agent1IntentionService {
         if (SENSITIVE_ROLES.includes(f.role)) score += 5;
         if (f.isObfuscated) score += 8; // worth a manual look even if just header
         if (f.role === 'unknown') score += 1;
+        // Files inside injection-framework directories (executors/, injectors/,
+        // inject/, hooks/, patches/) are the core ad-injection payloads and must
+        // be visible to the LLM. Matches any naming convention, not just BIS/PANELOS.
+        if (
+          /\/(executors?|injectors?|inject|hooks?|patches?|interceptors?)\//i.test(
+            f.path,
+          )
+        )
+          score += 7;
         const lineCount = f.originalLineCount ?? 0;
         if (lineCount > 1000) score -= 5; // bundles enormes son ilegibles para el LLM
         else if (lineCount < 100) score += 3; // archivos pequeños son más reveladores

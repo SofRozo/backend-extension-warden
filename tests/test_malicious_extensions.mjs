@@ -2,15 +2,24 @@
  * Script de pruebas — Extension Warden (Tesis de grado)
  *
  * Envía extensiones .crx al backend, espera los resultados y exporta
- * un CSV + Excel con las métricas para el documento de grado.
+ * un CSV incremental + un Excel por batch para el documento de grado.
  *
  * Uso:
  *   node test_malicious_extensions.mjs
- *   node test_malicious_extensions.mjs --url http://localhost:3000 --count 50
- *   node test_malicious_extensions.mjs --count 10 --delay 3
+ *   node test_malicious_extensions.mjs --count 50 --batch 10
+ *   node test_malicious_extensions.mjs --count 100 --batch 25 --delay 3
+ *   node test_malicious_extensions.mjs --url http://localhost:3000 --count 20 --batch 5
  *
- * Requiere Node 18+.  No necesita paquetes externos para el CSV.
- * Para Excel instala:  npm install exceljs  (en esta misma carpeta)
+ * Parámetros:
+ *   --url    URL del backend          (default: http://localhost:3000)
+ *   --dir    Carpeta con los .crx     (default: ../../Malicious Browser Extensions)
+ *   --out    Carpeta de salida        (default: ./resultados)
+ *   --count  Total de extensiones     (default: 50)
+ *   --batch  Extensiones por Excel    (default: 10)
+ *   --delay  Segundos entre envíos    (default: 2)
+ *
+ * Requiere Node 18+.
+ * Para Excel: npm install exceljs  (en esta misma carpeta)
  */
 
 import fs   from 'fs';
@@ -25,10 +34,11 @@ const DEFAULTS = {
   dir:   path.join(__dirname, '..', '..', 'Malicious Browser Extensions'),
   out:   path.join(__dirname, 'resultados'),
   count: 50,
-  delay: 2,          // segundos entre extensiones (respeta rate-limit)
+  batch: 10,
+  delay: 2,
 };
-const POLL_INTERVAL_MS = 6_000;   // cada cuánto consultar el estado
-const MAX_WAIT_MS      = 360_000; // tiempo máximo por extensión (6 min)
+const POLL_INTERVAL_MS = 6_000;
+const MAX_WAIT_MS      = 360_000;
 const DETECTED_RISKS   = new Set(['critical', 'high', 'medium']);
 
 // ── Argumentos CLI ───────────────────────────────────────────────────────────
@@ -41,13 +51,14 @@ function parseArgs() {
       case '--dir':   cfg.dir   = args[++i]; break;
       case '--out':   cfg.out   = args[++i]; break;
       case '--count': cfg.count = parseInt(args[++i], 10); break;
+      case '--batch': cfg.batch = parseInt(args[++i], 10); break;
       case '--delay': cfg.delay = parseFloat(args[++i]); break;
     }
   }
   return cfg;
 }
 
-// ── Helpers HTTP (fetch nativo Node 18+) ────────────────────────────────────
+// ── Helpers HTTP ─────────────────────────────────────────────────────────────
 async function checkHealth(baseUrl) {
   try {
     const r = await fetch(`${baseUrl}/health/ready`, { signal: AbortSignal.timeout(10_000) });
@@ -58,15 +69,13 @@ async function checkHealth(baseUrl) {
 async function uploadExtension(baseUrl, filePath) {
   const filename = path.basename(filePath);
   const buffer   = fs.readFileSync(filePath);
-
-  // Construir multipart/form-data manualmente (compatible con Node fetch)
   const boundary = `----FormBoundary${Date.now().toString(16)}`;
   const header   = Buffer.from(
     `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
     `Content-Type: application/octet-stream\r\n\r\n`
   );
-  const footer   = Buffer.from(`\r\n--${boundary}--\r\n`);
-  const body     = Buffer.concat([header, buffer, footer]);
+  const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
+  const body   = Buffer.concat([header, buffer, footer]);
 
   const resp = await fetch(`${baseUrl}/analyze/upload`, {
     method:  'POST',
@@ -74,7 +83,6 @@ async function uploadExtension(baseUrl, filePath) {
     body,
     signal:  AbortSignal.timeout(60_000),
   });
-
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
@@ -85,7 +93,6 @@ async function uploadExtension(baseUrl, filePath) {
 async function pollStatus(baseUrl, jobId) {
   const deadline = Date.now() + MAX_WAIT_MS;
   let lastStatus = 'unknown';
-
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
     try {
@@ -122,16 +129,16 @@ function buildRow(index, filename, upload, status, report, elapsedS, error = '')
   const urlRep         = report?.contactedUrlsReputation ?? [];
   const threatIntel    = report?.threatIntelResults ?? [];
 
-  const maliciousUrls   = urlRep.filter(u => u?.malicious).length;
-  const threatDetected  = threatIntel.filter(t => t?.detected).length;
-  const overallRisk     = report?.overallRisk ?? status?.overallRisk ?? '';
-  const confidence      = report?.confidence  ?? '';
-  const durationMs      = report?.analysisDuration ?? '';
-  const recommendation  = (report?.recommendation ?? '').slice(0, 250);
+  const maliciousUrls  = urlRep.filter(u => u?.malicious).length;
+  const threatDetected = threatIntel.filter(t => t?.detected).length;
+  const overallRisk    = report?.overallRisk ?? status?.overallRisk ?? '';
+  const confidence     = report?.confidence  ?? '';
+  const durationMs     = report?.analysisDuration ?? '';
+  const recommendation = (report?.recommendation ?? '').slice(0, 250);
 
-  const privCategories  = privacyLabels.map(l => l?.category ?? '').filter(Boolean).join(', ');
-  const privSeverities  = privacyLabels.map(l => l?.severity ?? '').filter(Boolean).join(', ');
-  const detected        = DETECTED_RISKS.has(overallRisk?.toLowerCase());
+  const privCategories = privacyLabels.map(l => l?.category ?? '').filter(Boolean).join(', ');
+  const privSeverities = privacyLabels.map(l => l?.severity ?? '').filter(Boolean).join(', ');
+  const detected       = DETECTED_RISKS.has(overallRisk?.toLowerCase());
 
   return {
     '#':                      index,
@@ -160,84 +167,76 @@ function buildRow(index, filename, upload, status, report, elapsedS, error = '')
 // ── CSV ──────────────────────────────────────────────────────────────────────
 function escapeCSV(val) {
   const s = String(val ?? '');
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+  if (s.includes(',') || s.includes('"') || s.includes('\n'))
     return `"${s.replace(/"/g, '""')}"`;
-  }
   return s;
 }
-
 function rowToCsv(row, keys) {
   return keys.map(k => escapeCSV(row[k])).join(',');
 }
 
-// ── Excel con exceljs (opcional) ─────────────────────────────────────────────
-async function exportExcel(rows, outPath) {
-  let ExcelJS;
+// ── Excel ────────────────────────────────────────────────────────────────────
+async function loadExcelJS() {
   try {
-    ExcelJS = (await import('exceljs')).default;
+    return (await import('exceljs')).default;
   } catch {
-    console.log('  (exceljs no encontrado; solo se generó el CSV)');
-    console.log('  Para habilitar Excel: npm install exceljs  (en esta carpeta)');
+    return null;
+  }
+}
+
+async function exportExcel(ExcelJS, rows, outPath, label) {
+  if (!ExcelJS) {
+    console.log('  (exceljs no encontrado — solo CSV. Instala: npm install exceljs)');
     return;
   }
 
-  const wb  = new ExcelJS.Workbook();
+  const wb = new ExcelJS.Workbook();
 
   // ── Hoja 1: Datos detallados ─────────────────────────────────────────────
-  const ws  = wb.addWorksheet('Resultados Detallados');
+  const ws = wb.addWorksheet('Resultados Detallados');
 
   const RISK_COLORS = {
-    critical:     { argb: 'FFFF4C4C' },
-    high:         { argb: 'FFFF9933' },
-    medium:       { argb: 'FFFFD966' },
-    low:          { argb: 'FF70AD47' },
-    informational:{ argb: 'FFBDD7EE' },
-    none:         { argb: 'FFF2F2F2' },
+    critical:      { argb: 'FFFF4C4C' },
+    high:          { argb: 'FFFF9933' },
+    medium:        { argb: 'FFFFD966' },
+    low:           { argb: 'FF70AD47' },
+    informational: { argb: 'FFBDD7EE' },
+    none:          { argb: 'FFF2F2F2' },
   };
   const HEADER_COLOR = { argb: 'FF1F4E79' };
 
   const keys = Object.keys(rows[0] ?? {});
   const headerRow = ws.addRow(keys);
   headerRow.eachCell(cell => {
-    cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: HEADER_COLOR };
-    cell.font   = { color: { argb: 'FFFFFFFF' }, bold: true };
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: HEADER_COLOR };
+    cell.font      = { color: { argb: 'FFFFFFFF' }, bold: true };
     cell.alignment = { horizontal: 'center' };
   });
 
   for (const row of rows) {
-    const r = ws.addRow(keys.map(k => row[k]));
-    const risk   = String(row.overall_risk ?? '').toLowerCase();
-    const status = String(row.analysis_status ?? '').toLowerCase();
-    const color  = RISK_COLORS[risk] ?? (
-      ['failed', 'timeout', 'error'].includes(status)
-        ? { argb: 'FFBFBFBF' }
-        : null
+    const r     = ws.addRow(keys.map(k => row[k]));
+    const risk  = String(row.overall_risk ?? '').toLowerCase();
+    const st    = String(row.analysis_status ?? '').toLowerCase();
+    const color = RISK_COLORS[risk] ?? (
+      ['failed', 'timeout', 'error'].includes(st) ? { argb: 'FFBFBFBF' } : null
     );
-    if (color) {
-      r.eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: color };
-      });
-    }
+    if (color) r.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: color }; });
   }
 
   keys.forEach((key, i) => {
-    const col = ws.getColumn(i + 1);
-    const maxLen = Math.min(
-      Math.max(key.length, ...rows.map(r => String(r[key] ?? '').length)),
-      60
-    );
-    col.width = maxLen + 3;
+    const col    = ws.getColumn(i + 1);
+    const maxLen = Math.min(Math.max(key.length, ...rows.map(r => String(r[key] ?? '').length)), 60);
+    col.width    = maxLen + 3;
   });
-
-  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.views     = [{ state: 'frozen', ySplit: 1 }];
   ws.autoFilter = { from: 'A1', to: `${String.fromCharCode(64 + keys.length)}1` };
 
   // ── Hoja 2: Resumen estadístico ──────────────────────────────────────────
-  const ws2   = wb.addWorksheet('Resumen');
-  const total = rows.length;
+  const ws2      = wb.addWorksheet('Resumen');
+  const total    = rows.length;
   const completed = rows.filter(r => r.analysis_status === 'completed').length;
-  const failed    = total - completed;
-  const detected  = rows.filter(r => r.detected_malicious === 'SÍ').length;
+  const failed   = total - completed;
+  const detected = rows.filter(r => r.detected_malicious === 'SÍ').length;
 
   const byRisk = {};
   for (const r of rows) {
@@ -245,75 +244,64 @@ async function exportExcel(rows, outPath) {
     byRisk[k] = (byRisk[k] ?? 0) + 1;
   }
 
-  const validDur = rows
-    .map(r => Number(r.analysis_duration_ms))
-    .filter(n => n > 0);
-  const avgMs = validDur.length ? validDur.reduce((a, b) => a + b, 0) / validDur.length : 0;
-
-  const validElapsed = rows
-    .map(r => Number(r.total_elapsed_s))
-    .filter(n => n > 0);
-  const avgElapsed = validElapsed.length
-    ? validElapsed.reduce((a, b) => a + b, 0) / validElapsed.length
-    : 0;
-
-  const detRate = completed ? `${((detected / completed) * 100).toFixed(1)}%` : 'N/A';
+  const validDur    = rows.map(r => Number(r.analysis_duration_ms)).filter(n => n > 0);
+  const avgMs       = validDur.length ? validDur.reduce((a, b) => a + b, 0) / validDur.length : 0;
+  const validElap   = rows.map(r => Number(r.total_elapsed_s)).filter(n => n > 0);
+  const avgElapsed  = validElap.length ? validElap.reduce((a, b) => a + b, 0) / validElap.length : 0;
+  const detRate     = completed ? `${((detected / completed) * 100).toFixed(1)}%` : 'N/A';
 
   const summaryRows = [
+    ['Lote', label],
     ['Métrica', 'Valor'],
-    ['Total extensiones probadas',          total],
-    ['Análisis completados',                completed],
-    ['Análisis fallidos / timeout',         failed],
+    ['Total extensiones en este lote',        total],
+    ['Análisis completados',                  completed],
+    ['Análisis fallidos / timeout',           failed],
     ['Extensiones detectadas como maliciosas', detected],
-    ['Tasa de detección (%)',               detRate],
+    ['Tasa de detección (%)',                 detRate],
     ['', ''],
     ['Distribución por nivel de riesgo', ''],
     ...Object.entries(byRisk).sort().map(([k, v]) => [`  ${k}`, v]),
     ['', ''],
-    ['Duración promedio del análisis (ms)', avgMs.toFixed(0)],
-    ['Duración promedio del análisis (seg)', (avgMs / 1000).toFixed(1)],
+    ['Duración promedio del análisis (ms)',   avgMs.toFixed(0)],
+    ['Duración promedio del análisis (seg)',  (avgMs / 1000).toFixed(1)],
     ['Tiempo total promedio por extensión (s)', avgElapsed.toFixed(1)],
     ['', ''],
     ['Fecha de prueba', new Date().toLocaleString('es-CO')],
   ];
 
-  for (const [label, value] of summaryRows) {
-    const r = ws2.addRow([label, value]);
-    if (label === 'Métrica') {
+  for (const [lbl, value] of summaryRows) {
+    const r = ws2.addRow([lbl, value]);
+    if (lbl === 'Métrica' || lbl === 'Lote') {
       r.getCell(1).font = { bold: true, size: 12 };
       r.getCell(2).font = { bold: true, size: 12 };
     }
   }
-
   ws2.getColumn(1).width = 45;
   ws2.getColumn(2).width = 20;
 
   await wb.xlsx.writeFile(outPath);
-  console.log(`  Excel guardado en: ${outPath}`);
+  console.log(`  Excel guardado: ${path.basename(outPath)}`);
 }
 
-// ── Imprimir resumen en consola ──────────────────────────────────────────────
-function printSummary(rows) {
+// ── Resumen en consola ───────────────────────────────────────────────────────
+function printSummary(rows, label = 'Total') {
   const total     = rows.length;
   const completed = rows.filter(r => r.analysis_status === 'completed').length;
-  const failed    = total - completed;
   const detected  = rows.filter(r => r.detected_malicious === 'SÍ').length;
-
-  const byRisk = {};
+  const byRisk    = {};
   for (const r of rows) {
     const k = r.overall_risk || 'N/A';
     byRisk[k] = (byRisk[k] ?? 0) + 1;
   }
-
   const validDur = rows.map(r => Number(r.analysis_duration_ms)).filter(n => n > 0);
   const avgMs    = validDur.length ? validDur.reduce((a, b) => a + b, 0) / validDur.length : 0;
 
   console.log('\n' + '='.repeat(65));
-  console.log('  RESUMEN DE PRUEBAS');
+  console.log(`  RESUMEN — ${label}`);
   console.log('='.repeat(65));
   console.log(`  Total probadas:          ${total}`);
   console.log(`  Análisis completados:    ${completed}`);
-  console.log(`  Análisis fallidos:       ${failed}`);
+  console.log(`  Análisis fallidos:       ${total - completed}`);
   console.log(`  Detectadas maliciosas:   ${detected}`);
   console.log(completed
     ? `  Tasa de detección:       ${((detected / completed) * 100).toFixed(1)}%`
@@ -321,22 +309,21 @@ function printSummary(rows) {
   console.log(`  Duración promedio:       ${(avgMs / 1000).toFixed(1)}s por extensión`);
   console.log('\n  Distribución por riesgo:');
   for (const [risk, cnt] of Object.entries(byRisk).sort()) {
-    const bar = '█'.repeat(Math.min(cnt, 40));
-    console.log(`    ${risk.padEnd(15)} ${String(cnt).padStart(3)}  ${bar}`);
+    console.log(`    ${risk.padEnd(15)} ${String(cnt).padStart(3)}  ${'█'.repeat(Math.min(cnt, 40))}`);
   }
   console.log('='.repeat(65));
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  const cfg = parseArgs();
+  const cfg     = parseArgs();
   const baseUrl = cfg.url.replace(/\/$/, '');
 
-  // Listar archivos .crx
   if (!fs.existsSync(cfg.dir)) {
     console.error(`ERROR: Carpeta no encontrada: ${cfg.dir}`);
     process.exit(1);
   }
+
   const crxFiles = fs.readdirSync(cfg.dir)
     .filter(f => f.toLowerCase().endsWith('.crx'))
     .sort()
@@ -348,21 +335,22 @@ async function main() {
     process.exit(1);
   }
 
+  const totalBatches = Math.ceil(crxFiles.length / cfg.batch);
   fs.mkdirSync(cfg.out, { recursive: true });
-  const ts        = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const csvPath   = path.join(cfg.out, `resultados_${ts}.csv`);
-  const xlsxPath  = path.join(cfg.out, `resultados_${ts}.xlsx`);
+
+  const ts      = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const csvPath = path.join(cfg.out, `resultados_${ts}.csv`);
 
   console.log('='.repeat(65));
   console.log('  Extension Warden — Script de Pruebas de Tesis');
   console.log('='.repeat(65));
   console.log(`  Backend:      ${baseUrl}`);
   console.log(`  Extensiones:  ${crxFiles.length}`);
-  console.log(`  Salida CSV:   ${csvPath}`);
-  console.log(`  Salida Excel: ${xlsxPath}`);
+  console.log(`  Batch size:   ${cfg.batch} extensiones por Excel`);
+  console.log(`  Total batches:${totalBatches}`);
+  console.log(`  CSV único:    ${csvPath}`);
   console.log('='.repeat(65));
 
-  // Verificar backend
   process.stdout.write('\nVerificando backend... ');
   if (!(await checkHealth(baseUrl))) {
     console.log('NO DISPONIBLE');
@@ -371,8 +359,7 @@ async function main() {
   }
   console.log('OK');
 
-  const rows  = [];
-  const KEYS  = [
+  const KEYS = [
     '#', 'filename', 'extension_id', 'job_id',
     'upload_status', 'analysis_status', 'overall_risk', 'confidence',
     'detected_malicious', 'analysis_duration_ms', 'total_elapsed_s',
@@ -382,29 +369,32 @@ async function main() {
     'recommendation', 'error',
   ];
 
-  // Abrir CSV y escribir encabezado
-  const csvStream = fs.createWriteStream(csvPath, { encoding: 'utf8' });
+  const ExcelJS    = await loadExcelJS();
+  const csvStream  = fs.createWriteStream(csvPath, { encoding: 'utf8' });
   csvStream.write(KEYS.join(',') + '\n');
 
+  const allRows    = [];   // todos los resultados (para el CSV)
+  let   batchRows  = [];   // solo el batch actual
+
   for (let i = 0; i < crxFiles.length; i++) {
-    const filePath = crxFiles[i];
-    const filename = path.basename(filePath);
-    console.log(`\n[${String(i + 1).padStart(2)}/${crxFiles.length}] ${filename}`);
+    const filePath   = crxFiles[i];
+    const filename   = path.basename(filePath);
+    const batchNum   = Math.floor(i / cfg.batch) + 1;
+    const posInBatch = (i % cfg.batch) + 1;
+
+    console.log(`\n[${String(i + 1).padStart(2)}/${crxFiles.length}] (Lote ${batchNum}/${totalBatches}, #${posInBatch}) ${filename}`);
 
     let upload = {}, status = {}, report = null, error = '';
     const t0 = Date.now();
 
     try {
-      // 1. Subir
       process.stdout.write('    Subiendo... ');
       upload = await uploadExtension(baseUrl, filePath);
       console.log(`jobId=${upload.jobId}`);
 
-      // 2. Esperar
       console.log(`    Esperando análisis (máx ${MAX_WAIT_MS / 1000}s)...`);
       status = await pollStatus(baseUrl, upload.jobId);
 
-      // 3. Obtener reporte
       if (status.status === 'completed') {
         try {
           report = await getReport(baseUrl, upload.jobId);
@@ -426,22 +416,35 @@ async function main() {
     }
 
     const elapsed = (Date.now() - t0) / 1000;
-    const row = buildRow(i + 1, filename, upload, status, report, elapsed, error);
-    rows.push(row);
+    const row     = buildRow(i + 1, filename, upload, status, report, elapsed, error);
+    allRows.push(row);
+    batchRows.push(row);
     csvStream.write(rowToCsv(row, KEYS) + '\n');
 
-    // Pausa entre extensiones
+    // ── Guardar Excel al completar cada batch ────────────────────────────────
+    const isLastInBatch  = posInBatch === cfg.batch;
+    const isLastOverall  = i === crxFiles.length - 1;
+
+    if (isLastInBatch || isLastOverall) {
+      const batchLabel   = `Lote ${String(batchNum).padStart(2, '0')} de ${String(totalBatches).padStart(2, '0')}`;
+      const batchXlsx    = path.join(
+        cfg.out,
+        `batch_${String(batchNum).padStart(2, '0')}_de_${String(totalBatches).padStart(2, '0')}_${ts}.xlsx`
+      );
+      console.log(`\n  → Guardando Excel del ${batchLabel}...`);
+      printSummary(batchRows, batchLabel);
+      await exportExcel(ExcelJS, batchRows, batchXlsx, batchLabel);
+      batchRows = [];   // resetear para el siguiente batch
+    }
+
     if (i < crxFiles.length - 1) await sleep(cfg.delay * 1000);
   }
 
   csvStream.end();
-  console.log(`\n  CSV guardado en: ${csvPath}`);
+  console.log(`\n  CSV completo: ${csvPath}`);
 
-  printSummary(rows);
-
-  // Excel (requiere exceljs)
-  console.log('\nGenerando Excel...');
-  await exportExcel(rows, xlsxPath);
+  // ── Resumen final de todo el run ─────────────────────────────────────────
+  printSummary(allRows, `COMPLETO (${allRows.length} extensiones, ${totalBatches} lotes)`);
 
   console.log('\nPruebas finalizadas.');
 }
