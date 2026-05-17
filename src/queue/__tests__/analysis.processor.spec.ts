@@ -35,6 +35,7 @@ describe('AnalysisProcessor', () => {
         extractPath: '/tmp/extracted/ext',
         crxHash: 'abc123',
       }),
+      fetchCwsCategory: jest.fn().mockResolvedValue(null),
       cleanup: jest.fn(),
     };
 

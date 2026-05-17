@@ -1267,27 +1267,86 @@ export class AstParserService {
     );
   }
 
+  /**
+   * Builds a map of constant string values for identifiers and `obj.prop` keys.
+   *
+   * The traversal runs in multiple passes so that values that depend on other
+   * constants can be resolved (e.g. `const base = "https://x.com"; const url =
+   * base + "/api";` requires `base` to be known before `url`). We iterate
+   * until no new entries are added (fixed point) or we hit MAX_PASSES — the
+   * cap prevents pathological loops in adversarial / ofuscated code.
+   *
+   * The map is intentionally module-scoped and flat. We do not respect lexical
+   * scope: if two functions both declare `const url = "..."`, the last one
+   * wins. For the network-sink detection this is acceptable — we prefer the
+   * occasional false positive (extra domain in resultado2) over missing a
+   * dynamically-constructed exfiltration URL.
+   */
   private collectStringConstants(
     ast: ReturnType<typeof parser.parse>,
   ): Map<string, string> {
     const constants = new Map<string, string>();
-    traverse(ast, {
-      VariableDeclarator: (nodePath) => {
-        if (!t.isIdentifier(nodePath.node.id)) return;
-        const init = nodePath.node.init;
-        if (!init) return;
-        const resolved = this.resolveStringExpression(init, constants);
-        if (resolved) constants.set(nodePath.node.id.name, resolved);
-      },
-    });
+    const MAX_PASSES = 5;
+
+    for (let pass = 0; pass < MAX_PASSES; pass++) {
+      const sizeBefore = constants.size;
+
+      traverse(ast, {
+        VariableDeclarator: (nodePath) => {
+          if (!t.isIdentifier(nodePath.node.id)) return;
+          const init = nodePath.node.init;
+          if (!init) return;
+          const name = nodePath.node.id.name;
+
+          // Pattern: const obj = { key: "value", other: base + "/x" }
+          // Surface each property as `obj.key` so MemberExpression lookups
+          // can resolve them later.
+          if (t.isObjectExpression(init)) {
+            for (const prop of init.properties) {
+              if (!t.isObjectProperty(prop)) continue;
+              if (prop.computed) continue;
+              const key = t.isIdentifier(prop.key)
+                ? prop.key.name
+                : t.isStringLiteral(prop.key)
+                  ? prop.key.value
+                  : null;
+              if (!key) continue;
+              if (!t.isExpression(prop.value)) continue;
+              const resolved = this.resolveStringExpression(
+                prop.value,
+                constants,
+              );
+              if (resolved) constants.set(`${name}.${key}`, resolved);
+            }
+            return;
+          }
+
+          if (constants.has(name)) return; // already resolved in an earlier pass
+          const resolved = this.resolveStringExpression(init, constants);
+          if (resolved) constants.set(name, resolved);
+        },
+      });
+
+      // Fixed point reached — no new constants added in this pass.
+      if (constants.size === sizeBefore) break;
+    }
     return constants;
   }
+
+  /**
+   * Cap on the length of any resolved string. Concatenation chains in
+   * ofuscated code can blow up exponentially (e.g. ten levels of `a + b` where
+   * each side is itself a long literal). We truncate at the source — once a
+   * resolved value exceeds this length, callers won't be able to extract a
+   * meaningful hostname from it anyway.
+   */
+  private static readonly MAX_RESOLVED_STRING_LENGTH = 2000;
 
   private resolveStringExpression(
     node: t.Node,
     constants: Map<string, string>,
   ): string | null {
-    if (t.isStringLiteral(node)) return node.value;
+    if (t.isStringLiteral(node)) return this.capString(node.value);
     if (t.isIdentifier(node)) return constants.get(node.name) ?? null;
     if (t.isTemplateLiteral(node)) {
       let text = '';
@@ -1295,14 +1354,29 @@ export class AstParserService {
         text += node.quasis[i].value.cooked ?? node.quasis[i].value.raw;
         const expr = node.expressions[i];
         if (expr) text += this.resolveStringExpression(expr, constants) ?? '';
+        if (text.length > AstParserService.MAX_RESOLVED_STRING_LENGTH) {
+          return this.capString(text);
+        }
       }
-      return text || null;
+      return text ? this.capString(text) : null;
     }
     if (t.isBinaryExpression(node) && node.operator === '+') {
       const left = this.resolveStringExpression(node.left, constants);
       const right = this.resolveStringExpression(node.right, constants);
       if (left === null && right === null) return null;
-      return `${left ?? ''}${right ?? ''}`;
+      return this.capString(`${left ?? ''}${right ?? ''}`);
+    }
+    // Member expressions like `config.apiUrl` — looked up against the flat
+    // `obj.prop` keys that collectStringConstants surfaces from
+    // ObjectExpression initializers.
+    if (t.isMemberExpression(node) && !node.computed) {
+      const objName = t.isIdentifier(node.object) ? node.object.name : null;
+      const propName = t.isIdentifier(node.property)
+        ? node.property.name
+        : null;
+      if (objName && propName) {
+        return constants.get(`${objName}.${propName}`) ?? null;
+      }
     }
     if (t.isCallExpression(node)) {
       const callee = this.getCalleeName(node.callee);
@@ -1314,13 +1388,21 @@ export class AstParserService {
         /^[A-Za-z0-9+/]+={0,2}$/.test(first.value)
       ) {
         try {
-          return Buffer.from(first.value, 'base64').toString('utf-8');
+          return this.capString(
+            Buffer.from(first.value, 'base64').toString('utf-8'),
+          );
         } catch {
           return null;
         }
       }
     }
     return null;
+  }
+
+  private capString(value: string): string {
+    return value.length > AstParserService.MAX_RESOLVED_STRING_LENGTH
+      ? value.slice(0, AstParserService.MAX_RESOLVED_STRING_LENGTH)
+      : value;
   }
 
   private credentialLiteralKeyword(text: string): string | null {

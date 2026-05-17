@@ -263,37 +263,19 @@ export class StaticAnalysisService {
         );
       }
 
-      // 2e. Sensitive domains in extractedUrls → resultado2_priority.
-      // extractContactedDomains() only covers network-sink arguments; this
-      // catches high-risk domains (residential proxies, data brokers) that
-      // appear as URL strings anywhere in the code (variables, config objects,
-      // conditionals) and would otherwise be invisible to the domain classifier.
-      const seenContactedHosts = new Set(
-        (file.contactedDomains ?? []).map((d) => d.domain),
-      );
-      for (const eu of file.extractedUrls ?? []) {
-        const host = this.extractHostFromPattern(eu.url);
-        if (!host || seenContactedHosts.has(host)) continue;
-        const det = this.domainClassifier.classify(
-          host,
-          preprocessed.manifest.name,
-          preprocessed.manifest.author,
-        );
-        const category = det.category;
-        if (category && this.domainClassifier.isPriority(category)) {
-          seenContactedHosts.add(host);
-          const finding: DomainFinding = {
-            fileType: file.role,
-            filePath: file.path,
-            discoveryType: 'url_en_codigo',
-            domain: host,
-            category,
-            priority: this.domainClassifier.playwrightPriority(category),
-            line: eu.line,
-          };
-          priority.push(finding);
-        }
-      }
+      // Note: we deliberately do NOT scan `file.extractedUrls` to populate
+      // resultado2_priority. A URL that appears as a plain string in code
+      // (button text, "follow us on Instagram" links, comments, debug logs)
+      // is NOT a contact — it has no data flowing into it. The single source
+      // of truth for "this extension talks to X" is extractContactedDomains()
+      // above, which only counts URLs that reach a network sink (fetch, XHR,
+      // WebSocket, sendBeacon, dynamically-injected script/iframe src). The
+      // AST constant-folding (collectStringConstants) resolves URLs built via
+      // variables, concatenation, or config objects, so dynamic exfiltration
+      // patterns are still captured at the sink. URLs that never flow into a
+      // sink remain visible in `file.extractedUrls` for technical analysis
+      // (HTTPS/raw-IP/TLD classification, risk scoring) but they do not show
+      // up in the user-facing report or in the priority list sent to the LLM.
     }
 
     // ── 3. Manifest host_permissions → resultado2 ─────────────────────────────

