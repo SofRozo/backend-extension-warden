@@ -74,7 +74,7 @@ export class LlmClientService {
         options: {
           num_ctx: 12288,
           temperature: 0,
-          num_predict: format === 'text' ? 300 : 1024,
+          num_predict: format === 'text' ? 450 : 1024,
         },
       },
       { timeout: this.timeoutMs },

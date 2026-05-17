@@ -1,8 +1,10 @@
 /**
- * Script de pruebas — Extension Warden (Tesis de grado)
+ * test_malicious_extensions.mjs — Script de pruebas de tesis
  *
- * Envía extensiones .crx al backend, espera los resultados y exporta
- * un CSV incremental + un Excel por batch para el documento de grado.
+ * Envía extensiones .crx al backend, espera los resultados y:
+ *   - Guarda el JSON completo de cada job en la carpeta del batch correspondiente
+ *     con nombre: <jobId>-<nombre_extension>.json
+ *   - Genera un Excel por batch dentro de su carpeta
  *
  * Uso:
  *   node test_malicious_extensions.mjs
@@ -13,13 +15,12 @@
  * Parámetros:
  *   --url    URL del backend          (default: http://localhost:3000)
  *   --dir    Carpeta con los .crx     (default: ../../Malicious Browser Extensions)
- *   --out    Carpeta de salida        (default: ./resultados)
+ *   --out    Carpeta raíz de salida   (default: ./resultados/<timestamp>)
  *   --count  Total de extensiones     (default: 50)
- *   --batch  Extensiones por Excel    (default: 10)
+ *   --batch  Extensiones por batch    (default: 10)
  *   --delay  Segundos entre envíos    (default: 2)
  *
- * Requiere Node 18+.
- * Para Excel: npm install exceljs  (en esta misma carpeta)
+ * Requiere Node 18+.  exceljs ya está en el package.json del backend.
  */
 
 import fs   from 'fs';
@@ -32,14 +33,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULTS = {
   url:   'http://localhost:3000',
   dir:   path.join(__dirname, '..', '..', 'Malicious Browser Extensions'),
-  out:   path.join(__dirname, 'resultados'),
+  out:   path.join(__dirname, 'resultados', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)),
   count: 50,
   batch: 10,
   delay: 2,
 };
-const POLL_INTERVAL_MS = 6_000;
-const MAX_WAIT_MS      = 360_000;
-const DETECTED_RISKS   = new Set(['critical', 'high', 'medium']);
+const POLL_INTERVAL_MS = 10_000;
+const MAX_WAIT_MS      = 720_000; // 12 min — cubre runs lentos de LLM
 
 // ── Argumentos CLI ───────────────────────────────────────────────────────────
 function parseArgs() {
@@ -58,7 +58,7 @@ function parseArgs() {
   return cfg;
 }
 
-// ── Helpers HTTP ─────────────────────────────────────────────────────────────
+// ── HTTP helpers ─────────────────────────────────────────────────────────────
 async function checkHealth(baseUrl) {
   try {
     const r = await fetch(`${baseUrl}/health/ready`, { signal: AbortSignal.timeout(10_000) });
@@ -92,21 +92,20 @@ async function uploadExtension(baseUrl, filePath) {
 
 async function pollStatus(baseUrl, jobId) {
   const deadline = Date.now() + MAX_WAIT_MS;
-  let lastStatus = 'unknown';
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
     try {
       const r    = await fetch(`${baseUrl}/status/${jobId}`, { signal: AbortSignal.timeout(15_000) });
       const data = await r.json();
-      lastStatus = data.status ?? 'unknown';
+      const st   = data.status ?? 'unknown';
       const prog = data.progress ?? 0;
-      process.stdout.write(`    → [${String(prog).padStart(3)}%] ${lastStatus}       \r`);
-      if (lastStatus === 'completed' || lastStatus === 'failed') {
+      process.stdout.write(`    → [${String(prog).padStart(3)}%] ${st}       \r`);
+      if (st === 'completed' || st === 'failed') {
         process.stdout.write('\n');
         return data;
       }
     } catch (e) {
-      process.stdout.write(`\n    ! Error al consultar estado: ${e.message}\n`);
+      process.stdout.write(`\n    ! polling error: ${e.message}\n`);
     }
   }
   process.stdout.write('\n');
@@ -121,197 +120,315 @@ async function getReport(baseUrl, jobId) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── Construir fila de resultados ─────────────────────────────────────────────
-function buildRow(index, filename, upload, status, report, elapsedS, error = '') {
-  const privacyLabels  = report?.privacyLabels  ?? [];
-  const staticFindings = report?.staticFindings ?? [];
-  const contactedUrls  = report?.contactedUrls  ?? [];
-  const urlRep         = report?.contactedUrlsReputation ?? [];
-  const threatIntel    = report?.threatIntelResults ?? [];
+// ── Extraer métricas del reporte (API actual) ────────────────────────────────
+function buildRow(index, filename, upload, statusResp, report, elapsedS, error = '') {
+  if (!report) {
+    return {
+      '#':                       index,
+      archivo:                   filename,
+      job_id:                    upload?.jobId ?? '',
+      estado_job:                statusResp?.status ?? 'unknown',
+      // Agente 1
+      veredicto_agente:          '',
+      nivel_riesgo_agente:       '',
+      categoria_agente:          '',
+      proposito:                 '',
+      explicacion:               '',
+      // Veredicto usuario (determinista)
+      veredicto_usuario:         '',
+      nivel_usuario:             '',
+      resumen_usuario:           '',
+      razones_usuario:           '',
+      // Risk score
+      risk_score:                '',
+      risk_level:                '',
+      // Hallazgos estáticos
+      hallazgos_positivos_total: '',
+      hallazgos_criticos:        '',
+      hallazgos_altos:           '',
+      hallazgos_medios:          '',
+      hallazgos_bajos:           '',
+      // Categorías de comportamiento (resumen_usuario)
+      acceso_general:            '',
+      modificacion_paginas:      '',
+      lectura_informacion:       '',
+      captura_credenciales:      '',
+      keylogging:                '',
+      seguimiento_privacidad:    '',
+      manipulacion_trafico:      '',
+      abuso_management:          '',
+      // Dominios y dinámica
+      dominios_prioritarios:     '',
+      dominios_desconocidos:     '',
+      stagehand_errores:         '',
+      // Tiempos
+      duracion_analisis_s:       elapsedS.toFixed(1),
+      error,
+    };
+  }
 
-  const maliciousUrls  = urlRep.filter(u => u?.malicious).length;
-  const threatDetected = threatIntel.filter(t => t?.detected).length;
-  const overallRisk    = report?.overallRisk ?? status?.overallRisk ?? '';
-  const confidence     = report?.confidence  ?? '';
-  const durationMs     = report?.analysisDuration ?? '';
-  const recommendation = (report?.recommendation ?? '').slice(0, 250);
+  const agente1   = report.agente1   ?? {};
+  const estructura = report.estructura ?? {};
+  const resultado1 = estructura.resultado1 ?? [];
+  const prio       = estructura.resultado2_priority ?? [];
+  const unknown    = estructura.resultado2_unknown  ?? [];
+  const dinamico   = estructura.resultado_dinamico  ?? [];
+  const navDoms    = report.navegacionDominios ?? [];
+  const verdUsuario = report.veredicto_usuario ?? {};
+  const riskScore  = report.puntuacion_riesgo  ?? {};
+  const resumenUsr = report.resumen_usuario    ?? [];
 
-  const privCategories = privacyLabels.map(l => l?.category ?? '').filter(Boolean).join(', ');
-  const privSeverities = privacyLabels.map(l => l?.severity ?? '').filter(Boolean).join(', ');
-  const detected       = DETECTED_RISKS.has(overallRisk?.toLowerCase());
+  // Hallazgos estáticos positivos
+  const positivos = resultado1.filter(f => f.veredicto === 'positivo');
+  const bySev     = sev => positivos.filter(f => f.severity === sev).length;
+
+  // Estado por categoría de comportamiento (resumen_usuario)
+  const catStatus = id => {
+    const item = resumenUsr.find(c => c.id === id);
+    return item ? item.estado : 'no_detectado';
+  };
+
+  // Stagehand errors
+  const stagehandErrors = navDoms.filter(n => n.error).length;
 
   return {
-    '#':                      index,
-    filename,
-    extension_id:             upload?.extensionId ?? '',
-    job_id:                   upload?.jobId       ?? '',
-    upload_status:            upload?.jobId ? 'ok' : 'error',
-    analysis_status:          status?.status ?? 'unknown',
-    overall_risk:             overallRisk,
-    confidence,
-    detected_malicious:       detected ? 'SÍ' : 'NO',
-    analysis_duration_ms:     durationMs,
-    total_elapsed_s:          elapsedS.toFixed(1),
-    privacy_labels_count:     privacyLabels.length,
-    privacy_categories:       privCategories,
-    privacy_severities:       privSeverities,
-    static_findings_count:    staticFindings.length,
-    contacted_urls_count:     contactedUrls.length,
-    malicious_urls_count:     maliciousUrls,
-    threat_detections:        threatDetected,
-    recommendation,
+    '#':                       index,
+    archivo:                   filename,
+    job_id:                    upload?.jobId ?? '',
+    estado_job:                statusResp?.status ?? 'unknown',
+    // Agente 1
+    veredicto_agente:          agente1.veredicto_global ?? '',
+    nivel_riesgo_agente:       agente1.nivel_riesgo_inicial ?? '',
+    categoria_agente:          agente1.categoria ?? '',
+    proposito:                 (agente1.proposito ?? '').slice(0, 150),
+    explicacion:               (agente1.explicacion ?? '').slice(0, 300),
+    // Veredicto determinista (UserRiskSummaryService)
+    veredicto_usuario:         verdUsuario.veredicto ?? '',
+    nivel_usuario:             verdUsuario.nivel     ?? '',
+    resumen_usuario:           (verdUsuario.resumen  ?? '').slice(0, 200),
+    razones_usuario:           (verdUsuario.razones  ?? []).join(' | ').slice(0, 300),
+    // Risk score
+    risk_score:                riskScore.score ?? '',
+    risk_level:                riskScore.level ?? '',
+    // Hallazgos estáticos (solo positivos)
+    hallazgos_positivos_total: positivos.length,
+    hallazgos_criticos:        bySev('critical'),
+    hallazgos_altos:           bySev('high'),
+    hallazgos_medios:          bySev('medium'),
+    hallazgos_bajos:           bySev('low'),
+    // 10 categorías de comportamiento
+    acceso_general:            catStatus('acceso_general_navegador'),
+    modificacion_paginas:      catStatus('modificacion_paginas'),
+    lectura_informacion:       catStatus('lectura_informacion'),
+    captura_credenciales:      catStatus('captura_credenciales'),
+    keylogging:                catStatus('keylogging'),
+    seguimiento_privacidad:    catStatus('seguimiento_privacidad'),
+    manipulacion_trafico:      catStatus('manipulacion_trafico'),
+    abuso_management:          catStatus('abuso_management'),
+    // Dominios
+    dominios_prioritarios:     prio.length,
+    dominios_desconocidos:     unknown.length,
+    stagehand_errores:         stagehandErrors,
+    // Tiempo
+    duracion_analisis_s:       elapsedS.toFixed(1),
     error,
   };
 }
 
-// ── CSV ──────────────────────────────────────────────────────────────────────
-function escapeCSV(val) {
-  const s = String(val ?? '');
-  if (s.includes(',') || s.includes('"') || s.includes('\n'))
-    return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
-function rowToCsv(row, keys) {
-  return keys.map(k => escapeCSV(row[k])).join(',');
-}
-
-// ── Excel ────────────────────────────────────────────────────────────────────
+// ── Excel (un archivo por batch) ─────────────────────────────────────────────
 async function loadExcelJS() {
   try {
-    return (await import('exceljs')).default;
+    // Intenta desde node_modules del backend
+    const mod = await import('../node_modules/exceljs/dist/es5/index.nodejs.js');
+    return mod.default ?? mod;
   } catch {
-    return null;
+    try {
+      return (await import('exceljs')).default;
+    } catch {
+      return null;
+    }
   }
 }
 
-async function exportExcel(ExcelJS, rows, outPath, label) {
+async function exportBatchExcel(ExcelJS, rows, outPath, batchLabel) {
   if (!ExcelJS) {
-    console.log('  (exceljs no encontrado — solo CSV. Instala: npm install exceljs)');
+    console.log('  (exceljs no disponible — omitiendo Excel)');
     return;
   }
 
   const wb = new ExcelJS.Workbook();
+  wb.creator = 'ExtWarden-batch-test';
+  wb.created = new Date();
 
-  // ── Hoja 1: Datos detallados ─────────────────────────────────────────────
-  const ws = wb.addWorksheet('Resultados Detallados');
-
-  const RISK_COLORS = {
-    critical:      { argb: 'FFFF4C4C' },
-    high:          { argb: 'FFFF9933' },
-    medium:        { argb: 'FFFFD966' },
-    low:           { argb: 'FF70AD47' },
-    informational: { argb: 'FFBDD7EE' },
-    none:          { argb: 'FFF2F2F2' },
-  };
-  const HEADER_COLOR = { argb: 'FF1F4E79' };
-
+  // ── Hoja 1: Resultados detallados ────────────────────────────────────────
+  const ws   = wb.addWorksheet('Resultados');
   const keys = Object.keys(rows[0] ?? {});
+
+  const HEADER_COLOR = 'FF1F4E79';
+  const STATUS_COLORS = {
+    critico:        'FFFF4C4C',
+    critical:       'FFFF4C4C',
+    maliciosa:      'FFFFC7CE',
+    alto:           'FFFF9933',
+    high:           'FFFF9933',
+    sospechosa:     'FFFFEB9C',
+    medio:          'FFFFD966',
+    medium:         'FFFFD966',
+    benigna:        'FFC6EFCE',
+    bajo:           'FFC6EFCE',
+    low:            'FFC6EFCE',
+    no_detectado:   'FFF2F2F2',
+  };
+
+  // Cabecera
   const headerRow = ws.addRow(keys);
   headerRow.eachCell(cell => {
-    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: HEADER_COLOR };
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_COLOR } };
     cell.font      = { color: { argb: 'FFFFFFFF' }, bold: true };
-    cell.alignment = { horizontal: 'center' };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   });
+  ws.getRow(1).height = 28;
 
+  // Filas de datos
   for (const row of rows) {
     const r     = ws.addRow(keys.map(k => row[k]));
-    const risk  = String(row.overall_risk ?? '').toLowerCase();
-    const st    = String(row.analysis_status ?? '').toLowerCase();
-    const color = RISK_COLORS[risk] ?? (
-      ['failed', 'timeout', 'error'].includes(st) ? { argb: 'FFBFBFBF' } : null
-    );
-    if (color) r.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: color }; });
-  }
-
-  keys.forEach((key, i) => {
-    const col    = ws.getColumn(i + 1);
-    const maxLen = Math.min(Math.max(key.length, ...rows.map(r => String(r[key] ?? '').length)), 60);
-    col.width    = maxLen + 3;
-  });
-  ws.views     = [{ state: 'frozen', ySplit: 1 }];
-  ws.autoFilter = { from: 'A1', to: `${String.fromCharCode(64 + keys.length)}1` };
-
-  // ── Hoja 2: Resumen estadístico ──────────────────────────────────────────
-  const ws2      = wb.addWorksheet('Resumen');
-  const total    = rows.length;
-  const completed = rows.filter(r => r.analysis_status === 'completed').length;
-  const failed   = total - completed;
-  const detected = rows.filter(r => r.detected_malicious === 'SÍ').length;
-
-  const byRisk = {};
-  for (const r of rows) {
-    const k = r.overall_risk || 'N/A';
-    byRisk[k] = (byRisk[k] ?? 0) + 1;
-  }
-
-  const validDur    = rows.map(r => Number(r.analysis_duration_ms)).filter(n => n > 0);
-  const avgMs       = validDur.length ? validDur.reduce((a, b) => a + b, 0) / validDur.length : 0;
-  const validElap   = rows.map(r => Number(r.total_elapsed_s)).filter(n => n > 0);
-  const avgElapsed  = validElap.length ? validElap.reduce((a, b) => a + b, 0) / validElap.length : 0;
-  const detRate     = completed ? `${((detected / completed) * 100).toFixed(1)}%` : 'N/A';
-
-  const summaryRows = [
-    ['Lote', label],
-    ['Métrica', 'Valor'],
-    ['Total extensiones en este lote',        total],
-    ['Análisis completados',                  completed],
-    ['Análisis fallidos / timeout',           failed],
-    ['Extensiones detectadas como maliciosas', detected],
-    ['Tasa de detección (%)',                 detRate],
-    ['', ''],
-    ['Distribución por nivel de riesgo', ''],
-    ...Object.entries(byRisk).sort().map(([k, v]) => [`  ${k}`, v]),
-    ['', ''],
-    ['Duración promedio del análisis (ms)',   avgMs.toFixed(0)],
-    ['Duración promedio del análisis (seg)',  (avgMs / 1000).toFixed(1)],
-    ['Tiempo total promedio por extensión (s)', avgElapsed.toFixed(1)],
-    ['', ''],
-    ['Fecha de prueba', new Date().toLocaleString('es-CO')],
-  ];
-
-  for (const [lbl, value] of summaryRows) {
-    const r = ws2.addRow([lbl, value]);
-    if (lbl === 'Métrica' || lbl === 'Lote') {
-      r.getCell(1).font = { bold: true, size: 12 };
-      r.getCell(2).font = { bold: true, size: 12 };
+    // Color por veredicto_agente
+    const vCol  = keys.indexOf('veredicto_agente');
+    const vVal  = String(row.veredicto_agente ?? '').toLowerCase();
+    const color = STATUS_COLORS[vVal];
+    if (color && vCol >= 0) {
+      r.getCell(vCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+    }
+    // Color por veredicto_usuario
+    const vuCol = keys.indexOf('veredicto_usuario');
+    const vuVal = String(row.veredicto_usuario ?? '').toLowerCase();
+    const vuColor = STATUS_COLORS[vuVal];
+    if (vuColor && vuCol >= 0) {
+      r.getCell(vuCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vuColor } };
     }
   }
+
+  // Ancho de columnas
+  keys.forEach((key, i) => {
+    const maxLen = Math.min(
+      Math.max(key.length, ...rows.map(r => String(r[key] ?? '').length)),
+      60
+    );
+    ws.getColumn(i + 1).width = maxLen + 2;
+  });
+
+  ws.views     = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+  ws.autoFilter = { from: 'A1', to: `${colLetter(keys.length)}1` };
+
+  // ── Hoja 2: Resumen estadístico ──────────────────────────────────────────
+  const ws2       = wb.addWorksheet('Resumen');
+  const completed = rows.filter(r => r.estado_job === 'completed');
+  const failed    = rows.length - completed.length;
+
+  const countV = v => completed.filter(r => String(r.veredicto_agente).toLowerCase() === v).length;
+  const countU = v => completed.filter(r => String(r.veredicto_usuario).toLowerCase() === v).length;
+  const countN = n => completed.filter(r => String(r.nivel_riesgo_agente).toLowerCase() === n).length;
+  const countCat = (col, estado) => completed.filter(r => r[col] === estado).length;
+
+  const avgDur = completed.length
+    ? (completed.reduce((s, r) => s + parseFloat(r.duracion_analisis_s || 0), 0) / completed.length).toFixed(1)
+    : 'N/A';
+
+  const addBold = (label, value) => {
+    const r = ws2.addRow([label, value]);
+    r.getCell(1).font = { bold: true };
+    return r;
+  };
+  const addRow  = (label, value) => ws2.addRow([label, value]);
+  const addSep  = () => ws2.addRow([]);
+
+  addBold('Lote', batchLabel);
+  addBold('Fecha', new Date().toLocaleString('es-CO'));
+  addSep();
+  addBold('GENERAL', '');
+  addRow('Total extensiones',                   rows.length);
+  addRow('Análisis completados',                completed.length);
+  addRow('Fallidos / Timeout / Error',          failed);
+  addRow('Duración promedio (s)',               avgDur);
+  addSep();
+  addBold('VEREDICTO AGENTE IA', '');
+  addRow('Maliciosa',   countV('maliciosa'));
+  addRow('Sospechosa',  countV('sospechosa'));
+  addRow('Benigna',     countV('benigna'));
+  addRow('Sin veredicto', completed.filter(r => !r.veredicto_agente).length);
+  addSep();
+  addBold('VEREDICTO DETERMINISTA (usuario)', '');
+  addRow('Maliciosa',   countU('maliciosa'));
+  addRow('Sospechosa',  countU('sospechosa'));
+  addRow('Benigna',     countU('benigna'));
+  addSep();
+  addBold('NIVEL DE RIESGO (Agente)', '');
+  addRow('Crítico', countN('critico'));
+  addRow('Alto',    countN('alto'));
+  addRow('Medio',   countN('medio'));
+  addRow('Bajo',    countN('bajo'));
+  addSep();
+  addBold('CATEGORÍAS DE COMPORTAMIENTO (critico/sospechoso)', '');
+  const cats = [
+    ['acceso_general',         'Acceso general al navegador'],
+    ['modificacion_paginas',   'Modificación de páginas'],
+    ['lectura_informacion',    'Lectura de información'],
+    ['captura_credenciales',   'Captura de credenciales'],
+    ['keylogging',             'Keylogging'],
+    ['seguimiento_privacidad', 'Seguimiento y privacidad'],
+    ['manipulacion_trafico',   'Manipulación de tráfico'],
+    ['abuso_management',       'Abuso de Management API'],
+  ];
+  for (const [col, label] of cats) {
+    const crit = countCat(col, 'critico');
+    const susp = countCat(col, 'sospechoso');
+    addRow(label, `critico: ${crit}  sospechoso: ${susp}`);
+  }
+  addSep();
+  addBold('HALLAZGOS ESTÁTICOS (positivos)', '');
+  addRow('Críticos totales', completed.reduce((s, r) => s + (parseInt(r.hallazgos_criticos) || 0), 0));
+  addRow('Altos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_altos) || 0), 0));
+  addRow('Medios totales',   completed.reduce((s, r) => s + (parseInt(r.hallazgos_medios) || 0), 0));
+  addRow('Bajos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_bajos) || 0), 0));
+
   ws2.getColumn(1).width = 45;
-  ws2.getColumn(2).width = 20;
+  ws2.getColumn(2).width = 30;
 
   await wb.xlsx.writeFile(outPath);
-  console.log(`  Excel guardado: ${path.basename(outPath)}`);
+  console.log(`  📊 Excel → ${path.basename(outPath)}`);
+}
+
+function colLetter(n) {
+  let s = '';
+  while (n > 0) {
+    n--;
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26);
+  }
+  return s;
 }
 
 // ── Resumen en consola ───────────────────────────────────────────────────────
-function printSummary(rows, label = 'Total') {
-  const total     = rows.length;
-  const completed = rows.filter(r => r.analysis_status === 'completed').length;
-  const detected  = rows.filter(r => r.detected_malicious === 'SÍ').length;
-  const byRisk    = {};
-  for (const r of rows) {
-    const k = r.overall_risk || 'N/A';
-    byRisk[k] = (byRisk[k] ?? 0) + 1;
-  }
-  const validDur = rows.map(r => Number(r.analysis_duration_ms)).filter(n => n > 0);
-  const avgMs    = validDur.length ? validDur.reduce((a, b) => a + b, 0) / validDur.length : 0;
+function printSummary(rows, label) {
+  const completed = rows.filter(r => r.estado_job === 'completed');
+  const mal  = completed.filter(r => r.veredicto_agente === 'maliciosa').length;
+  const sosp = completed.filter(r => r.veredicto_agente === 'sospechosa').length;
+  const ben  = completed.filter(r => r.veredicto_agente === 'benigna').length;
+  const avgDur = completed.length
+    ? (completed.reduce((s, r) => s + parseFloat(r.duracion_analisis_s || 0), 0) / completed.length).toFixed(1)
+    : 'N/A';
 
-  console.log('\n' + '='.repeat(65));
+  console.log('\n' + '═'.repeat(65));
   console.log(`  RESUMEN — ${label}`);
-  console.log('='.repeat(65));
-  console.log(`  Total probadas:          ${total}`);
-  console.log(`  Análisis completados:    ${completed}`);
-  console.log(`  Análisis fallidos:       ${total - completed}`);
-  console.log(`  Detectadas maliciosas:   ${detected}`);
-  console.log(completed
-    ? `  Tasa de detección:       ${((detected / completed) * 100).toFixed(1)}%`
-    : `  Tasa de detección:       N/A`);
-  console.log(`  Duración promedio:       ${(avgMs / 1000).toFixed(1)}s por extensión`);
-  console.log('\n  Distribución por riesgo:');
-  for (const [risk, cnt] of Object.entries(byRisk).sort()) {
-    console.log(`    ${risk.padEnd(15)} ${String(cnt).padStart(3)}  ${'█'.repeat(Math.min(cnt, 40))}`);
-  }
-  console.log('='.repeat(65));
+  console.log('═'.repeat(65));
+  console.log(`  Total:               ${rows.length}`);
+  console.log(`  Completadas:         ${completed.length}  |  Fallidas: ${rows.length - completed.length}`);
+  console.log(`  Maliciosa:           ${mal}`);
+  console.log(`  Sospechosa:          ${sosp}`);
+  console.log(`  Benigna:             ${ben}`);
+  console.log(`  Sin veredicto:       ${completed.filter(r => !r.veredicto_agente).length}`);
+  console.log(`  Duración promedio:   ${avgDur}s`);
+  console.log('═'.repeat(65));
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -328,7 +445,7 @@ async function main() {
     .filter(f => f.toLowerCase().endsWith('.crx'))
     .sort()
     .slice(0, cfg.count)
-    .map(f => path.join(cfg.dir, f));
+    .map(f => ({ fullPath: path.join(cfg.dir, f), name: f }));
 
   if (crxFiles.length === 0) {
     console.error(`ERROR: No hay archivos .crx en ${cfg.dir}`);
@@ -338,115 +455,91 @@ async function main() {
   const totalBatches = Math.ceil(crxFiles.length / cfg.batch);
   fs.mkdirSync(cfg.out, { recursive: true });
 
-  const ts      = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const csvPath = path.join(cfg.out, `resultados_${ts}.csv`);
-
-  console.log('='.repeat(65));
+  console.log('═'.repeat(65));
   console.log('  Extension Warden — Script de Pruebas de Tesis');
-  console.log('='.repeat(65));
-  console.log(`  Backend:      ${baseUrl}`);
-  console.log(`  Extensiones:  ${crxFiles.length}`);
-  console.log(`  Batch size:   ${cfg.batch} extensiones por Excel`);
-  console.log(`  Total batches:${totalBatches}`);
-  console.log(`  CSV único:    ${csvPath}`);
-  console.log('='.repeat(65));
+  console.log('═'.repeat(65));
+  console.log(`  Backend:        ${baseUrl}`);
+  console.log(`  Extensiones:    ${crxFiles.length} de ${fs.readdirSync(cfg.dir).filter(f => f.endsWith('.crx')).length} disponibles`);
+  console.log(`  Batch size:     ${cfg.batch}  |  Total batches: ${totalBatches}`);
+  console.log(`  Salida raíz:    ${cfg.out}`);
+  console.log('═'.repeat(65));
 
   process.stdout.write('\nVerificando backend... ');
   if (!(await checkHealth(baseUrl))) {
     console.log('NO DISPONIBLE');
-    console.log(`Asegúrate de que el backend esté corriendo en ${baseUrl}`);
+    console.error(`Asegúrate de que el backend esté corriendo en ${baseUrl}`);
     process.exit(1);
   }
-  console.log('OK');
+  console.log('OK\n');
 
-  const KEYS = [
-    '#', 'filename', 'extension_id', 'job_id',
-    'upload_status', 'analysis_status', 'overall_risk', 'confidence',
-    'detected_malicious', 'analysis_duration_ms', 'total_elapsed_s',
-    'privacy_labels_count', 'privacy_categories', 'privacy_severities',
-    'static_findings_count', 'contacted_urls_count',
-    'malicious_urls_count', 'threat_detections',
-    'recommendation', 'error',
-  ];
-
-  const ExcelJS    = await loadExcelJS();
-  const csvStream  = fs.createWriteStream(csvPath, { encoding: 'utf8' });
-  csvStream.write(KEYS.join(',') + '\n');
-
-  const allRows    = [];   // todos los resultados (para el CSV)
-  let   batchRows  = [];   // solo el batch actual
+  const ExcelJS  = await loadExcelJS();
+  const allRows  = [];
 
   for (let i = 0; i < crxFiles.length; i++) {
-    const filePath   = crxFiles[i];
-    const filename   = path.basename(filePath);
-    const batchNum   = Math.floor(i / cfg.batch) + 1;
-    const posInBatch = (i % cfg.batch) + 1;
+    const { fullPath, name } = crxFiles[i];
+    const extName     = name.replace(/\.crx$/i, '');
+    const batchNum    = Math.floor(i / cfg.batch) + 1;
+    const posInBatch  = (i % cfg.batch) + 1;
+    const batchLabel  = `Batch ${String(batchNum).padStart(2, '0')} de ${String(totalBatches).padStart(2, '0')}`;
+    const batchDir    = path.join(cfg.out, `batch-${String(batchNum).padStart(2, '0')}`);
 
-    console.log(`\n[${String(i + 1).padStart(2)}/${crxFiles.length}] (Lote ${batchNum}/${totalBatches}, #${posInBatch}) ${filename}`);
+    fs.mkdirSync(batchDir, { recursive: true });
 
-    let upload = {}, status = {}, report = null, error = '';
+    console.log(`[${String(i + 1).padStart(3)}/${crxFiles.length}] (${batchLabel}, #${posInBatch}) ${name}`);
+
+    let upload = {}, statusResp = {}, report = null, error = '';
     const t0 = Date.now();
 
     try {
-      process.stdout.write('    Subiendo... ');
-      upload = await uploadExtension(baseUrl, filePath);
+      process.stdout.write('  ↑ Subiendo... ');
+      upload = await uploadExtension(baseUrl, fullPath);
       console.log(`jobId=${upload.jobId}`);
 
-      console.log(`    Esperando análisis (máx ${MAX_WAIT_MS / 1000}s)...`);
-      status = await pollStatus(baseUrl, upload.jobId);
+      console.log(`  ⏳ Esperando análisis (máx ${MAX_WAIT_MS / 1000}s)...`);
+      statusResp = await pollStatus(baseUrl, upload.jobId);
 
-      if (status.status === 'completed') {
-        try {
-          report = await getReport(baseUrl, upload.jobId);
-          const risk = report.overallRisk ?? '?';
-          const conf = report.confidence  ?? '?';
-          const dur  = report.analysisDuration ?? '?';
-          console.log(`    Riesgo: ${risk.toUpperCase().padEnd(8)}  Confianza: ${conf}  Duración: ${dur}ms`);
-        } catch (e) {
-          error = `reporte_error: ${e.message}`;
-          console.log(`    ! No se pudo obtener reporte: ${e.message}`);
-        }
+      if (statusResp.status === 'completed') {
+        report = await getReport(baseUrl, upload.jobId);
+
+        // ── Guardar JSON del job ──────────────────────────────────────────
+        const jsonPath = path.join(batchDir, `${upload.jobId}-${extName}.json`);
+        fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2), 'utf-8');
+        console.log(`  💾 JSON → ${path.relative(cfg.out, jsonPath)}`);
+
+        const a1 = report.agente1 ?? {};
+        console.log(`  📊 Veredicto agente=${a1.veredicto_global ?? '?'}  Nivel=${a1.nivel_riesgo_inicial ?? '?'}  ` +
+                    `Veredicto usuario=${report.veredicto_usuario?.veredicto ?? '?'}`);
       } else {
-        console.log(`    Estado final: ${status.status}`);
-        if (status.status === 'timeout') error = `timeout tras ${MAX_WAIT_MS / 1000}s`;
+        console.log(`  ❌ Estado final: ${statusResp.status}`);
+        if (statusResp.status === 'timeout') error = `timeout tras ${MAX_WAIT_MS / 1000}s`;
+        else error = `job ${statusResp.status}`;
       }
     } catch (e) {
       error = e.message.slice(0, 200);
-      console.log(`    ! ${error}`);
+      console.log(`  💥 ${error}`);
     }
 
-    const elapsed = (Date.now() - t0) / 1000;
-    const row     = buildRow(i + 1, filename, upload, status, report, elapsed, error);
+    const elapsedS = (Date.now() - t0) / 1000;
+    const row      = buildRow(i + 1, name, upload, statusResp, report, elapsedS, error);
     allRows.push(row);
-    batchRows.push(row);
-    csvStream.write(rowToCsv(row, KEYS) + '\n');
 
-    // ── Guardar Excel al completar cada batch ────────────────────────────────
-    const isLastInBatch  = posInBatch === cfg.batch;
-    const isLastOverall  = i === crxFiles.length - 1;
+    // ── Generar Excel al completar el batch (o al terminar) ──────────────
+    const isLastInBatch = posInBatch === cfg.batch;
+    const isLastOverall = i === crxFiles.length - 1;
 
     if (isLastInBatch || isLastOverall) {
-      const batchLabel   = `Lote ${String(batchNum).padStart(2, '0')} de ${String(totalBatches).padStart(2, '0')}`;
-      const batchXlsx    = path.join(
-        cfg.out,
-        `batch_${String(batchNum).padStart(2, '0')}_de_${String(totalBatches).padStart(2, '0')}_${ts}.xlsx`
-      );
-      console.log(`\n  → Guardando Excel del ${batchLabel}...`);
+      const batchRows  = allRows.slice((batchNum - 1) * cfg.batch, batchNum * cfg.batch);
+      const excelPath  = path.join(batchDir, `resultados-batch-${String(batchNum).padStart(2, '0')}.xlsx`);
       printSummary(batchRows, batchLabel);
-      await exportExcel(ExcelJS, batchRows, batchXlsx, batchLabel);
-      batchRows = [];   // resetear para el siguiente batch
+      await exportBatchExcel(ExcelJS, batchRows, excelPath, batchLabel);
     }
 
     if (i < crxFiles.length - 1) await sleep(cfg.delay * 1000);
   }
 
-  csvStream.end();
-  console.log(`\n  CSV completo: ${csvPath}`);
-
-  // ── Resumen final de todo el run ─────────────────────────────────────────
-  printSummary(allRows, `COMPLETO (${allRows.length} extensiones, ${totalBatches} lotes)`);
-
-  console.log('\nPruebas finalizadas.');
+  // ── Resumen final global ─────────────────────────────────────────────────
+  printSummary(allRows, `COMPLETO — ${allRows.length} extensiones, ${totalBatches} batches`);
+  console.log(`\n✅ Resultados en: ${cfg.out}\n`);
 }
 
 main().catch(err => {

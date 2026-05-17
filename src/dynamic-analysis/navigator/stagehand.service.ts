@@ -72,12 +72,14 @@ export class StagehandService {
     try {
       const stagehandOpts = this.buildStagehandOptions(extensionPath);
       stagehand = new Stagehand(stagehandOpts);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const initResult = (await (stagehand.init() as unknown as Promise<{ page: any }>));
-      const page: any = initResult?.page ?? (stagehand as any).page;
+      await stagehand.init();
 
-      await page
-        .goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 })
+      // Stagehand launches its own browser (with the extension loaded).
+      // Use its internal active page — passing the orchestrator's page to
+      // observe/act/extract fails because it belongs to a different browser context.
+      const shPage = await (stagehand as any).context.awaitActivePage();
+      await shPage
+        .goto(url, { waitUntil: 'domcontentloaded', timeoutMs: 20_000 })
         .catch(() => {});
 
       if (honeypotSessionUsed) {
@@ -96,7 +98,7 @@ export class StagehandService {
         'StagehandService',
       );
       const actions = await stagehand
-        .observe(observePrompt, { page })
+        .observe(observePrompt)
         .catch((e) => {
           this.logger.logWithJob(
             jobId,
@@ -141,7 +143,6 @@ export class StagehandService {
       if (isSensitive) {
         stepCounter = await this.runAct(
           stagehand,
-          page,
           stepCounter,
           tag,
           jobId,
@@ -155,7 +156,6 @@ export class StagehandService {
         if (actionsPerformed.includes('type:honeypot_email')) {
           stepCounter = await this.runAct(
             stagehand,
-            page,
             stepCounter,
             tag,
             jobId,
@@ -169,7 +169,6 @@ export class StagehandService {
           if (actionsPerformed.includes('type:honeypot_password')) {
             stepCounter = await this.runAct(
               stagehand,
-              page,
               stepCounter,
               tag,
               jobId,
@@ -184,7 +183,6 @@ export class StagehandService {
       } else {
         stepCounter = await this.runAct(
           stagehand,
-          page,
           stepCounter,
           tag,
           jobId,
@@ -219,7 +217,6 @@ export class StagehandService {
             detectado: z.boolean(),
             descripcion: z.string(),
           }),
-          { page },
         );
 
         this.logger.logWithJob(
@@ -320,7 +317,6 @@ export class StagehandService {
    */
   private async runAct(
     stagehand: Stagehand,
-    page: any,
     stepCounter: number,
     tag: string,
     jobId: string,
@@ -338,7 +334,7 @@ export class StagehandService {
       'StagehandService',
     );
     const res = await stagehand
-      .act(prompt, { page })
+      .act(prompt)
       .catch(() => ({ success: false }));
     const success = (res as { success?: boolean }).success === true;
     this.logger.logWithJob(
