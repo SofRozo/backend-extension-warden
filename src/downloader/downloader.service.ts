@@ -287,6 +287,137 @@ export class DownloaderService {
     });
   }
 
+  /**
+   * Best-effort scrape of the Chrome Web Store detail page to extract the
+   * official store category (e.g. "Privacy & Security", "Productivity").
+   * Returns null if the extension is local, the fetch fails, or the category
+   * cannot be parsed from the page HTML.
+   */
+  async fetchCwsCategory(
+    extensionId: string,
+    jobId: string,
+  ): Promise<string | null> {
+    if (!extensionId || extensionId.startsWith('local-')) return null;
+
+    const url = `https://chromewebstore.google.com/detail/${extensionId}`;
+    const KNOWN_CATEGORIES = [
+      'Accessibility',
+      'Art & Design',
+      'Communication',
+      'Developer Tools',
+      'Entertainment',
+      'News & Weather',
+      'Productivity',
+      'Privacy & Security',
+      'Search Tools',
+      'Shopping',
+      'Social & Communication',
+      'Sports',
+      'Travel',
+      'Well-being',
+      'Fun',
+      'Games',
+    ];
+
+    try {
+      const html = await new Promise<string>((resolve, reject) => {
+        const req = https.get(
+          url,
+          {
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+            timeout: 6000,
+          },
+          (res) => {
+            if (
+              res.statusCode &&
+              res.statusCode >= 300 &&
+              res.statusCode < 400 &&
+              res.headers.location
+            ) {
+              // Follow one redirect
+              https
+                .get(
+                  res.headers.location,
+                  { timeout: 6000 },
+                  (r2) => {
+                    const chunks: Buffer[] = [];
+                    r2.on('data', (c: Buffer) => chunks.push(c));
+                    r2.on('end', () =>
+                      resolve(Buffer.concat(chunks).toString('utf-8')),
+                    );
+                    r2.on('error', reject);
+                  },
+                )
+                .on('error', reject);
+              return;
+            }
+            if (res.statusCode !== 200) {
+              reject(new Error(`HTTP ${res.statusCode}`));
+              return;
+            }
+            const chunks: Buffer[] = [];
+            res.on('data', (c: Buffer) => chunks.push(c));
+            res.on('end', () =>
+              resolve(Buffer.concat(chunks).toString('utf-8')),
+            );
+            res.on('error', reject);
+          },
+        );
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('CWS fetch timeout'));
+        });
+      });
+
+      // 1. JSON-LD breadcrumb: second ListItem after "Extensions" is the category
+      const ldMatch = html.match(
+        /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/i,
+      );
+      if (ldMatch) {
+        try {
+          const ld = JSON.parse(ldMatch[1]) as Record<string, unknown>;
+          const items = (
+            (ld['itemListElement'] as Array<{ name?: string }>) ?? []
+          ).map((i) => i.name ?? '');
+          const extIdx = items.findIndex((n) =>
+            /^extensions?$/i.test(n.trim()),
+          );
+          if (extIdx !== -1 && items[extIdx + 1]) {
+            return items[extIdx + 1];
+          }
+        } catch {
+          /* not valid JSON-LD */
+        }
+      }
+
+      // 2. Scan for known category strings in the HTML
+      for (const cat of KNOWN_CATEGORIES) {
+        if (html.includes(cat)) return cat;
+      }
+
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `CWS category not found in page for ${extensionId}`,
+        'DownloaderService',
+      );
+      return null;
+    } catch (err) {
+      this.logger.logWithJob(
+        jobId,
+        'warn',
+        `CWS category fetch failed for ${extensionId}: ${err instanceof Error ? err.message : String(err)}`,
+        'DownloaderService',
+      );
+      return null;
+    }
+  }
+
   cleanup(extensionId: string): void {
     const downloadDir =
       this.config.get<string>('analysis.crxDownloadDir') ||

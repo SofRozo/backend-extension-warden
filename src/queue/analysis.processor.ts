@@ -73,20 +73,23 @@ export class AnalysisProcessor extends WorkerHost {
         packagePath,
       );
 
-      // Step 2: Preprocess + Static Analysis (preprocessing fills resultado1
-      // and resultado2 in-place via StaticAnalysisService.analyze).
+      // Step 2: Preprocess + Static Analysis + CWS category (in parallel).
       await this.updateJobStatus(jobId, AnalysisStatus.PREPROCESSING);
       const preprocessTimeoutMs =
         this.config.get<number>('analysis.preprocessTimeoutMs') ?? 180_000;
-      const preprocessed = await this.withTimeout(
-        this.preprocessAndAnalyzeStatic(
-          downloadResult.extractPath,
-          downloadResult.crxHash,
-          jobId,
+      const [preprocessed, cwsCategory] = await Promise.all([
+        this.withTimeout(
+          this.preprocessAndAnalyzeStatic(
+            downloadResult.extractPath,
+            downloadResult.crxHash,
+            jobId,
+          ),
+          preprocessTimeoutMs,
+          'Preprocessing + static analysis timeout (3min exceeded)',
         ),
-        preprocessTimeoutMs,
-        'Preprocessing + static analysis timeout (3min exceeded)',
-      );
+        this.downloader.fetchCwsCategory(analysisId, jobId),
+      ]);
+      preprocessed.cwsCategory = cwsCategory;
 
       await this.jobRepository.update(jobId, {
         extensionName: preprocessed.manifest.name || undefined,
@@ -170,7 +173,7 @@ export class AnalysisProcessor extends WorkerHost {
       let agentAnalysis: AgentAnalysisResult;
       try {
         const agentTimeoutMs =
-          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 300_000;
+          Number(this.config.get<number>('AGENT_TIMEOUT_MS') ?? 300_000);
         agentAnalysis = await this.withTimeout(
           this.agentsOrchestrator.run(preprocessed, jobId, {
             dynamicObservations: dynamicResult?.domainObservations ?? [],

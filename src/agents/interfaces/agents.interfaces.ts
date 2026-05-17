@@ -14,8 +14,12 @@
  * the report is meaningful even when no LLM is configured.
  *
  * Field semantics:
- *  - proposito / categoria / acciones_*           → high-level intent
- *  - nivel_riesgo_inicial / razon_nivel_riesgo    → preserved for the frontend
+ *  - proposito                                    → high-level intent (first
+ *    sentence of the narrative report)
+ *  - categoria                                    → Chrome Web Store category
+ *    (propagated from preprocessed.cwsCategory; falls back to 'otro' for
+ *    locally-uploaded extensions that don't have a CWS listing)
+ *  - nivel_riesgo_inicial                         → preserved for the frontend
  *    Agent1Summary block
  *  - veredicto_global                             → holistic verdict
  *    (maliciosa | sospechosa | benigna)
@@ -30,11 +34,7 @@
 export interface Agent1Output {
   proposito: string;
   categoria: string;
-  acciones_esperadas: string[];
-  acciones_NO_esperadas: string[];
-  senales_alarma_manifest: string[];
   nivel_riesgo_inicial: 'bajo' | 'medio' | 'alto' | 'critico';
-  razon_nivel_riesgo: string;
   veredicto_global: 'maliciosa' | 'sospechosa' | 'benigna';
   explicacion: string;
   /** Whether the extension violates the Principle of Least Privilege (PoLP).

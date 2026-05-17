@@ -74,16 +74,18 @@ export class StagehandService {
       stagehand = new Stagehand(stagehandOpts);
       await stagehand.init();
 
-      // Stagehand launches its own browser (with the extension loaded).
-      // Use its internal active page — passing the orchestrator's page to
-      // observe/act/extract fails because it belongs to a different browser context.
-      const shPage = await (stagehand as any).context.awaitActivePage();
+      // Stagehand v3 (LOCAL mode) exposes the active Playwright page via .page
+      // after init(). Do NOT use context.awaitActivePage() — that method does not
+      // exist on Playwright's BrowserContext; it is internal to Stagehand's own
+      // context wrapper and is not reachable from outside.
+      const shPage = (stagehand as any).page;
+      if (!shPage) throw new Error('Stagehand page undefined after init');
       await shPage
-        .goto(url, { waitUntil: 'domcontentloaded', timeoutMs: 20_000 })
+        .goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 })
         .catch(() => {});
 
       if (honeypotSessionUsed) {
-        await this.restoreLocalStorage(page, domain, jobId);
+        await this.restoreLocalStorage(shPage, domain, jobId);
       }
 
       // ── observe ────────────────────────────────────────────────────────

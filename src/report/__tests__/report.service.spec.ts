@@ -105,11 +105,7 @@ describe('ReportService', () => {
     agent1: {
       proposito: 'Mascota virtual',
       categoria: 'entretenimiento',
-      acciones_esperadas: ['mostrar mascota'],
-      acciones_NO_esperadas: ['acceder a redes sociales'],
-      senales_alarma_manifest: [],
       nivel_riesgo_inicial: 'alto',
-      razon_nivel_riesgo: 'permisos amplios y exfiltración detectada',
       veredicto_global: 'maliciosa',
       explicacion:
         'La extensión declara ser una mascota virtual pero registra teclas y contacta Instagram, lo que no es coherente con su propósito declarado.',

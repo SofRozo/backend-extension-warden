@@ -280,6 +280,8 @@ export interface PreprocessorOutput {
     level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     reasons: string[];
   };
+  /** Category from Chrome Web Store (best-effort scrape, null if unavailable) */
+  cwsCategory?: string | null;
 }
 
 // ─── Dynamic analysis ────────────────────────────────────────────────────────
