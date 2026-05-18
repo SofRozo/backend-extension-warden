@@ -1,0 +1,821 @@
+{
+  "jobId": "f4f21b4b-5ff5-4ee5-b4bc-753b266d3896",
+  "agente1": {
+    "categoria": "Accessibility",
+    "proposito": "La extensión Amazon Weight Converter está diseñada para detectar unidades de peso en Amazon y mostrar su conversión a kilogramos o gramos",
+    "explicacion": "La extensión Amazon Weight Converter está diseñada para detectar unidades de peso en Amazon y mostrar su conversión a kilogramos o gramos. Lo que hace es normal para su función es modificar el contenido de las páginas web para mostrar la conversión. Sin embargo, también incluye un enlace a un sitio externo desconocido que parece promover un servicio de búsqueda de ASIN, lo cual no está relacionado con su función principal. Este comportamiento va más allá de lo esperado para una herramienta de conversión de peso.\nRecomendación: Desinstala esta extensión y evita usar extensiones que incluyan enlaces a servicios externos sin relación con su función principal.",
+    "veredicto_global": "sospechosa",
+    "respuestas_usuario": {
+      "puede_ver_historial": "no_detectado",
+      "puede_leer_formularios": "no_detectado",
+      "puede_registrar_teclas": "no_detectado",
+      "puede_modificar_paginas": "si",
+      "puede_espiar_sin_saberlo": "no_detectado",
+      "puede_interceptar_trafico": "no_detectado",
+      "codigo_oculto_o_sospechoso": "si",
+      "puede_capturar_contrasenas": "no_detectado",
+      "puede_ver_paginas_visitadas": "no_detectado",
+      "puede_afectar_otras_extensiones": "no_detectado"
+    },
+    "nivel_riesgo_inicial": "medio"
+  },
+  "crxHash": "753dd971ca014d8fd73c37886f3139fe0fe6ee05b551e3b38859f7a27e7b2cdd",
+  "estructura": {
+    "resultado1": [
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 11,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 12,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.cn/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 13,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.in/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 14,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.co.jp/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 15,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.sg/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 16,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.tr/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 17,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.ae/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 18,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.sa/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 19,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.fr/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 20,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.de/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 21,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.it/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 22,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.nl/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 23,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.es/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 24,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.co.uk/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 25,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.ca/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 26,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.mx/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 27,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.au/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 28,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.br/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 29,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.se/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 30,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.pl/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 31,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.be/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 32,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.eg/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 46,
+        "razon": "Reads page text content",
+        "detail": "node.textContent",
+        "category": "data_theft",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "if (/\\d/.test(node.textContent) && /[l|o|p]/i.test(node.textContent)) {",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 47,
+        "razon": "Reads page text content",
+        "detail": "node.textContent",
+        "category": "data_theft",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const newData = convertWeight(node.textContent);",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 48,
+        "razon": "Reads page text content",
+        "detail": "node.textContent",
+        "category": "data_theft",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "if (newData !== node.textContent) {",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 50,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.7,
+        "codeSnippet": "span.innerHTML = newData;",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 142,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(['conversionEnabled'], (result) => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 156,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(['conversionEnabled'], (result) => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 5,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(['conversionEnabled'], (result) => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 17,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.set({ conversionEnabled: enabled }, () => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      }
+    ],
+    "resultado2_unknown": [
+      {
+        "line": 14,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.co.jp",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 15,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.com.sg",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 16,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.com.tr",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 24,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.co.uk",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 26,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.com.mx",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 27,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.com.au",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 28,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.com.br",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      },
+      {
+        "line": 31,
+        "razon": "Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+        "domain": "amazon.com.be",
+        "category": "desconocido",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "host_permission_manifest"
+      }
+    ],
+    "resultado_dinamico": [],
+    "resultado2_priority": []
+  },
+  "extensionId": "upload-1779081355232-dfnannaibdndmkienngjahldiofjbkmj",
+  "extensionName": "Amazon Weight Converter",
+  "resumen_usuario": [
+    {
+      "id": "modificacion_paginas",
+      "estado": "sospechoso",
+      "titulo": "Modificación de páginas",
+      "resumen": "La extensión puede modificar el aspecto o contenido de las páginas web que visitas.",
+      "evidencias": [
+        "Detectamos que modifica el contenido de páginas web.",
+        "Modificación/inyección de DOM o script en content.js:50.",
+        "Señal de inserción/modificación visual en content.js:50."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 50,
+          "texto": "Modificación/inyección de DOM o script en content.js:50.",
+          "filePath": "content.js",
+          "fileType": "content script"
+        },
+        {
+          "line": 50,
+          "texto": "Señal de inserción/modificación visual en content.js:50.",
+          "filePath": "content.js",
+          "fileType": "content script"
+        }
+      ],
+      "reglas_activadas": [
+        "page_mod.dom_injection",
+        "page_mod.html_or_frame_injection"
+      ],
+      "preguntas_responde": [
+        "¿Puede modificar el contenido de una página web?",
+        "¿Puede insertar elementos invisibles dentro de sitios?",
+        "¿Puede cambiar botones, formularios o enlaces?",
+        "¿Puede reemplazar anuncios o resultados de búsqueda?",
+        "¿Puede alterar lo que veo en redes sociales o bancos?",
+        "¿Puede superponer interfaces falsas sobre páginas reales?"
+      ]
+    },
+    {
+      "id": "acceso_general_navegador",
+      "estado": "capacidad",
+      "titulo": "Acceso general al navegador",
+      "resumen": "La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente.",
+      "evidencias": [
+        "Se ejecuta automáticamente en las páginas que visitas.",
+        "Puede abrir nuevas pestañas o redirigirte a otras páginas desde código.",
+        "Tiene content scripts que pueden ejecutarse automáticamente al visitar páginas."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver todas las páginas que visito?",
+        "¿Puede actuar en bancos o correos?",
+        "¿Realmente necesita acceso a todos los sitios web?",
+        "¿Puede ejecutarse automáticamente sin que yo haga clic?"
+      ]
+    },
+    {
+      "id": "captura_credenciales",
+      "estado": "no_detectado",
+      "titulo": "Contraseñas, tokens y sesiones",
+      "resumen": "No vimos señales de que esta extensión capture contraseñas o credenciales.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede capturar contraseñas?",
+        "¿Puede leer usuarios y sesiones activas?",
+        "¿Puede interceptar formularios antes de ser enviados?",
+        "¿Puede capturar tokens de autenticación?",
+        "¿Puede acceder a cookies de sesión?"
+      ]
+    },
+    {
+      "id": "keylogging",
+      "estado": "no_detectado",
+      "titulo": "Keylogging y captura de teclado",
+      "resumen": "No vimos señales de que esta extensión registre lo que escribes.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede registrar teclas que escribo?",
+        "¿Escucha todos los eventos del teclado?",
+        "¿Puede capturar texto antes de enviarlo?",
+        "¿Puede detectar combinaciones de teclas o atajos?"
+      ]
+    },
+    {
+      "id": "lectura_informacion",
+      "estado": "no_detectado",
+      "titulo": "Lectura de información en páginas",
+      "resumen": "No vimos señales de que esta extensión lea contenido de tus páginas.",
+      "evidencias": [
+        "Los content scripts pueden leer o inspeccionar el DOM de las páginas donde corren."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer texto dentro de páginas web?",
+        "¿Puede leer mensajes, correos o documentos abiertos en el navegador?",
+        "¿Puede leer contenido escrito en formularios?",
+        "¿Puede inspeccionar información sensible mostrada en pantalla?",
+        "¿Puede acceder al contenido completo de una página?"
+      ]
+    },
+    {
+      "id": "manipulacion_trafico",
+      "estado": "no_detectado",
+      "titulo": "Manipulación de tráfico",
+      "resumen": "No vimos permisos fuertes de manipulación de tráfico.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede interceptar solicitudes web?",
+        "¿Puede modificar respuestas HTTP?",
+        "¿Puede redirigirme a otras páginas?",
+        "¿Puede alterar descargas o recursos cargados?",
+        "¿Puede vigilar mi tráfico de red en todas las páginas?"
+      ]
+    },
+    {
+      "id": "seguimiento_privacidad",
+      "estado": "no_detectado",
+      "titulo": "Seguimiento y privacidad",
+      "resumen": "No vimos señales de que esta extensión rastree tu actividad.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Rastrea mi actividad de navegación?",
+        "¿Crea perfiles sobre mis hábitos?",
+        "¿Comparte mis datos con terceros?",
+        "¿Recolecta métricas de uso?",
+        "¿Utiliza analytics ocultos?",
+        "¿Almacena identificadores persistentes?",
+        "¿Puede seguirme entre múltiples sitios web?"
+      ]
+    },
+    {
+      "id": "abuso_management",
+      "estado": "no_detectado",
+      "titulo": "Abuso de APIs de administración",
+      "resumen": "No se detectó uso de APIs de administración de extensiones.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver qué otras extensiones tengo instaladas?",
+        "¿Puede desactivar mi bloqueador de anuncios o antivirus?",
+        "¿Puede desinstalarse a sí misma para borrar evidencia?",
+        "¿Puede deshabilitar extensiones de seguridad antes de operar?"
+      ]
+    },
+    {
+      "id": "fingerprinting_severo",
+      "estado": "no_detectado",
+      "titulo": "Fingerprinting severo",
+      "resumen": "No se detectaron técnicas de fingerprinting severo.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede identificarme de forma única sin cookies?",
+        "¿Puede rastrearme entre diferentes sitios web?",
+        "¿Crea un perfil permanente de mi dispositivo?",
+        "¿Vende o comparte mi huella digital con terceros?",
+        "¿Viola mi privacidad incluso en modo incógnito?"
+      ]
+    },
+    {
+      "id": "mineria_recursos",
+      "estado": "no_detectado",
+      "titulo": "Minería de recursos / Cryptojacking",
+      "resumen": "No se detectaron señales de minería de recursos.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede usar mi CPU para minar criptomonedas?",
+        "¿Puede ralentizar mi computador con cómputo oculto?",
+        "¿Carga código binario externo que no puedo inspeccionar?",
+        "¿Opera en segundo plano cuando no la estoy usando?"
+      ]
+    },
+    {
+      "id": "acceso_historial",
+      "estado": "no_detectado",
+      "titulo": "Historial de navegación",
+      "resumen": "No vimos que esta extensión acceda a tu historial de navegación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer mi historial de navegación?",
+        "¿Almacena o transmite las páginas que visito?",
+        "¿Analiza patrones de comportamiento basados en historial?"
+      ]
+    },
+    {
+      "id": "descargas_archivos",
+      "estado": "no_detectado",
+      "titulo": "Descargas y archivos",
+      "resumen": "No vimos permiso fuerte para gestionar descargas.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede descargar archivos automáticamente?",
+        "¿Puede generar archivos en mi equipo?",
+        "¿Puede abrir o modificar descargas?",
+        "¿Puede actuar como un downloader de malware?"
+      ]
+    },
+    {
+      "id": "ofuscacion_transparencia",
+      "estado": "no_detectado",
+      "titulo": "Ofuscación y transparencia",
+      "resumen": "No vimos señales fuertes de ofuscación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿El código está ofuscado?",
+        "¿El comportamiento de la extensión es entendible?",
+        "¿Existen partes imposibles de auditar fácilmente?",
+        "¿Usa técnicas anti-debugging?"
+      ]
+    }
+  ],
+  "analysisDuration": 152229,
+  "extensionVersion": "3.0.1",
+  "analysisTimestamp": "2026-05-18T05:18:27.481Z",
+  "puntuacion_riesgo": {
+    "level": "MEDIUM",
+    "score": 2,
+    "reasons": []
+  },
+  "veredicto_usuario": {
+    "nivel": "medio",
+    "razones": [
+      "Modificación de páginas: La extensión puede modificar el aspecto o contenido de las páginas web que visitas. Evidencia: Detectamos que modifica el contenido de páginas web.",
+      "Acceso general al navegador: La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente. Evidencia: Se ejecuta automáticamente en las páginas que visitas."
+    ],
+    "resumen": "La extensión Amazon Weight Converter está diseñada para detectar unidades de peso en Amazon y mostrar su conversión a kilogramos o gramos. Lo que hace es normal para su función es modificar el contenido de las páginas web para mostrar la conversión. Sin embargo, también incluye un enlace a un sitio ",
+    "veredicto": "sospechosa"
+  },
+  "navegacionDominios": [],
+  "respuestas_usuario": {
+    "puede_ver_historial": "no_detectado",
+    "puede_leer_formularios": "no_detectado",
+    "puede_registrar_teclas": "no_detectado",
+    "puede_modificar_paginas": "si",
+    "puede_espiar_sin_saberlo": "no_detectado",
+    "puede_interceptar_trafico": "no_detectado",
+    "codigo_oculto_o_sospechoso": "si",
+    "puede_capturar_contrasenas": "no_detectado",
+    "puede_ver_paginas_visitadas": "no_detectado",
+    "puede_afectar_otras_extensiones": "no_detectado"
+  },
+  "hallazgos_dinamicos_positivos": [],
+  "hallazgos_estaticos_positivos": [
+    "En el content script (content.js, línea 50) detectamos inyección o modificación de DOM/script (innerHTML); esto puede alterar páginas o ejecutar código adicional. Motivo: Modifies page content or UI (may be used for pet/theme features) Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 70%.",
+    "En el manifest (manifest.json, línea 14) encontramos el dominio amazon.co.jp, declarado como permiso de host, clasificado como desconocido. Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+    "En el manifest (manifest.json, línea 15) encontramos el dominio amazon.com.sg, declarado como permiso de host, clasificado como desconocido. Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+    "En el manifest (manifest.json, línea 16) encontramos el dominio amazon.com.tr, declarado como permiso de host, clasificado como desconocido. Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+    "En el manifest (manifest.json, línea 24) encontramos el dominio amazon.co.uk, declarado como permiso de host, clasificado como desconocido. Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+    "En el manifest (manifest.json, línea 26) encontramos el dominio amazon.com.mx, declarado como permiso de host, clasificado como desconocido. Dominio desconocido referenciado por la extensión (declarado en host_permissions)",
+    "Además, se omitieron 3 dominio(s) repetidos o de menor prioridad en esta vista."
+  ],
+  "dominios_contactados_prioritarios": []
+}
