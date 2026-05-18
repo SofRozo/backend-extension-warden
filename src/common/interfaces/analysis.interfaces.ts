@@ -491,6 +491,7 @@ export interface AnalysisReport {
    * timeline and lets the user compare agents side by side.
    */
   navegacionDominios: DomainNavigationLog[];
+  respuestas_usuario: Record<string, 'si' | 'no_detectado' | 'posible'> | null;
   puntuacion_riesgo?: {
     score: number;
     level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -519,6 +520,14 @@ export type UserRiskStatus =
   | 'sospechoso'
   | 'critico';
 
+/** One code-level finding attached to a category card. */
+export interface HallazgoCodigo {
+  filePath: string;
+  line: number;
+  fileType: string;
+  texto: string;
+}
+
 export interface UserRiskSummaryItem {
   id: UserRiskSummaryId;
   titulo: string;
@@ -528,6 +537,8 @@ export interface UserRiskSummaryItem {
   /** IDs de reglas internas que explican por qué se marcó la categoría. */
   reglas_activadas?: string[];
   preguntas_responde: string[];
+  /** Raw code findings (file + line) that belong to this category. */
+  hallazgos_codigo?: HallazgoCodigo[];
 }
 
 export interface UserFacingVerdict {

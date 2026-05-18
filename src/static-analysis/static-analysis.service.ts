@@ -263,19 +263,37 @@ export class StaticAnalysisService {
         );
       }
 
-      // Note: we deliberately do NOT scan `file.extractedUrls` to populate
-      // resultado2_priority. A URL that appears as a plain string in code
-      // (button text, "follow us on Instagram" links, comments, debug logs)
-      // is NOT a contact — it has no data flowing into it. The single source
-      // of truth for "this extension talks to X" is extractContactedDomains()
-      // above, which only counts URLs that reach a network sink (fetch, XHR,
-      // WebSocket, sendBeacon, dynamically-injected script/iframe src). The
-      // AST constant-folding (collectStringConstants) resolves URLs built via
-      // variables, concatenation, or config objects, so dynamic exfiltration
-      // patterns are still captured at the sink. URLs that never flow into a
-      // sink remain visible in `file.extractedUrls` for technical analysis
-      // (HTTPS/raw-IP/TLD classification, risk scoring) but they do not show
-      // up in the user-facing report or in the priority list sent to the LLM.
+      // Fallback for minified/AST-skipped files: the AST cannot trace network
+      // sinks through bundled/minified code, so contacted domains stay empty.
+      // For these files we fall back to file.domains (all domain strings seen
+      // in the source). This is a weaker signal (no sink confirmation), but
+      // for heavily minified ad-injection payloads it is the only signal we have.
+      // The finding is annotated as url_en_codigo so the downstream classifier
+      // can treat it as such.
+      if ((file.skippedAst || file.isMinified) && (file.contactedDomains ?? []).length === 0 && file.domains.length > 0 && (file.usesFetch || file.usesXHR)) {
+        for (const d of file.domains) {
+          const det = this.domainClassifier.classify(
+            d.domain,
+            preprocessed.manifest.name,
+            preprocessed.manifest.author,
+          );
+          const category = det.category ?? 'desconocido';
+          const finding: DomainFinding = {
+            fileType: file.role,
+            filePath: file.path,
+            discoveryType: 'url_en_codigo',
+            domain: d.domain,
+            category,
+            priority: this.domainClassifier.playwrightPriority(category),
+            line: d.line,
+          };
+          if (this.domainClassifier.isPriority(category)) {
+            priority.push(finding);
+          } else if (category === 'desconocido') {
+            unknown.push(finding);
+          }
+        }
+      }
     }
 
     // ── 3. Manifest host_permissions → resultado2 ─────────────────────────────
@@ -1139,7 +1157,13 @@ export class StaticAnalysisService {
     // Whole-bundle helpers — still used by Tier B rules that combine a manifest
     // permission with ANY presence of a sink (the permission applies globally,
     // so finding a sink anywhere in the extension is enough).
-    const fetchFinding = findFinding(isFetch);
+    // Polyfill files (modulepreload-polyfill, vite/webpack runtime shims) use
+    // fetch() only to prefetch same-origin resources declared in HTML — they are
+    // build infrastructure, not exfiltration sinks, and should not trigger
+    // permission-correlation rules.
+    const fetchFinding = findFinding(
+      (f) => isFetch(f) && !/polyfill/i.test(f.filePath),
+    );
     const evalFinding = findFinding(isEval);
     const storageFinding = findFinding(isStorage);
     const domInjectionFinding = findFinding(isDomInjection);
@@ -1309,16 +1333,25 @@ export class StaticAnalysisService {
       });
     }
 
-    // B2: tabCapture / pageCapture permission + network sink = screen exfiltration
+    // B2a: pageCapture / desktopCapture + network sink = screen/page exfiltration
+    // (tabCapture is excluded here — it only captures tab audio via chromeMediaSource,
+    // not video or DOM content, so the exfiltration risk model does not apply.)
     if (
-      (perms.has('tabCapture') ||
-        perms.has('pageCapture') ||
-        perms.has('desktopCapture')) &&
+      (perms.has('pageCapture') || perms.has('desktopCapture')) &&
       fetchFinding
     ) {
       add({
-        detail: `screen-capture permission (${[...perms].filter((p) => /Capture$/i.test(p)).join(', ')}) + network sink — screen/page exfiltration risk`,
+        detail: `screen-capture permission (${[...perms].filter((p) => p === 'pageCapture' || p === 'desktopCapture').join(', ')}) + network sink — screen/page exfiltration risk`,
         confidence: 0.9,
+      });
+    }
+
+    // B2b: tabCapture + network sink = audio stream exfiltration (lower risk than screen)
+    // tabCapture only captures tab audio — it cannot capture video or page content.
+    if (perms.has('tabCapture') && fetchFinding) {
+      add({
+        detail: `tabCapture permission + network sink — captures tab audio stream; verify whether audio is sent to external servers`,
+        confidence: 0.5,
       });
     }
 

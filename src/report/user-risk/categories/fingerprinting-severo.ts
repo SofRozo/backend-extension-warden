@@ -151,5 +151,6 @@ export const evaluateFingerprintingSevero: UserRiskCategoryEvaluator = (
       '¿Vende o comparte mi huella digital con terceros?',
       '¿Viola mi privacidad incluso en modo incógnito?',
     ],
+    fingerprintingSeveroStaticRules,
   );
 };

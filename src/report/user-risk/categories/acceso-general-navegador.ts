@@ -134,38 +134,38 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
     'Acceso general al navegador',
     estado,
     isCritical
-      ? 'La extensión inyecta código en cada página que visitas usando chrome.scripting.executeScript con permisos amplios. Es la capacidad de mayor impacto que existe en MV3.'
+      ? 'La extensión inserta su código dentro de todas las páginas que visitas y puede actuar sobre ellas en cualquier momento, sin que tú hagas nada.'
       : isSuspicious
-        ? 'La extensión usa APIs que le permiten ver o actuar sobre páginas activamente (no solo las pide en el manifest).'
+        ? 'La extensión accede activamente a información de tus pestañas y páginas — no solo lo declara, sino que lo usa en su código.'
         : hasOnlyDeclaration
-          ? 'La extensión declara permisos amplios o tiene content scripts, pero su código aparentemente no los ejerce.'
+          ? 'La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente.'
           : sensitiveReach
-            ? 'La extensión declara acceso a sitios sensibles (bancos, correos o redes).'
-            : 'No vimos permisos amplios para todos los sitios.',
+            ? 'La extensión declara acceso a sitios sensibles como bancos, correos o redes sociales.'
+            : 'No vimos que esta extensión tenga acceso amplio a todos los sitios.',
     [
-      broadHost && 'Permisos o content scripts sobre <all_urls> / *://*/*.',
+      broadHost && 'Tiene permiso para operar en todos los sitios web que visitas.',
       usesScriptingExecute &&
         scriptingCall &&
-        `Inyecta scripts en páginas con ${scriptingCall.api} (${scriptingCall.filePath}:${scriptingCall.line}).`,
+        `Inserta código en páginas activamente (${scriptingCall.filePath}:${scriptingCall.line}).`,
       perms.has('scripting') &&
         !usesScriptingExecute &&
-        'Permiso scripting declarado pero no vimos llamadas reales en el código.',
+        'Tiene permiso para insertar código en páginas, pero no vimos que lo use.',
       usesTabObservation &&
-        'Observa pestañas/navegación activamente (chrome.tabs.query/onUpdated/webNavigation).',
+        'Monitorea activamente las pestañas que abres y los sitios que visitas.',
       perms.has('tabs') &&
         !usesTabObservation &&
-        'Permiso tabs declarado pero sin uso observado.',
-      hasContentScript && 'Tiene content scripts que se ejecutan en páginas.',
+        'Tiene permiso para ver tus pestañas, pero no vimos que lo use.',
+      hasContentScript && 'Se ejecuta automáticamente en las páginas que visitas.',
       autoRunScripts &&
-        'Content scripts con run_at=document_start/end: arrancan automáticamente al cargar la página.',
+        'Comienza a ejecutarse en cuanto cargas una página, antes de que termines de leerla.',
       hasBackground &&
         usesScriptingExecute &&
-        'Background/service worker con permiso scripting USADO: inyección dirigida por servidor o eventos.',
+        'Su proceso de fondo inserta código en páginas activamente — puede hacerlo en respuesta a órdenes remotas.',
       sensitiveReach &&
-        'Sus matches o host_permissions incluyen sitios sensibles (banca, correo, redes, billeteras).',
+        'Está configurada para actuar en sitios sensibles: bancos, correo, redes sociales o billeteras digitales.',
       invisibleBackgroundExecution &&
-        'Corre sin UI visible (sin popup ni options): el usuario no tiene una forma directa de "encenderla" o "apagarla".',
-      usesTabOpen && 'Puede abrir/redirigir pestañas desde código.',
+        'No tiene una ventana visible: opera en segundo plano sin que puedas "apagarla" directamente.',
+      usesTabOpen && 'Puede abrir nuevas pestañas o redirigirte a otras páginas desde código.',
     ],
     [
       '¿Puede ver todas las páginas que visito?',
@@ -173,5 +173,6 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
       '¿Realmente necesita acceso a todos los sitios web?',
       '¿Puede ejecutarse automáticamente sin que yo haga clic?',
     ],
+    accesoGeneralNavegadorStaticRules,
   );
 };

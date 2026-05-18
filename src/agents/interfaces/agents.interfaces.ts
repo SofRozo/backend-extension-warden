@@ -45,6 +45,7 @@ export interface Agent1Output {
     razones: string[];
   };
   hallazgos_propios?: AgentFinding[];
+  respuestas_usuario?: Record<string, 'si' | 'no_detectado' | 'posible'>;
 }
 
 /**

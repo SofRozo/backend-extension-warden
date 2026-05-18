@@ -91,5 +91,6 @@ export const evaluateAbusoManagement: UserRiskCategoryEvaluator = (context) => {
       '¿Puede desinstalarse a sí misma para borrar evidencia?',
       '¿Puede deshabilitar extensiones de seguridad antes de operar?',
     ],
+    abusoManagementStaticRules,
   );
 };

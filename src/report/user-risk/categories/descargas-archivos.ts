@@ -135,5 +135,6 @@ export const evaluateDescargasArchivos: UserRiskCategoryEvaluator = (
       '¿Puede abrir o modificar descargas?',
       '¿Puede actuar como un downloader de malware?',
     ],
+    descargasArchivosStaticRules,
   );
 };

@@ -167,5 +167,6 @@ export const evaluateMineriaRecursos: UserRiskCategoryEvaluator = (context) => {
       '¿Carga código binario externo que no puedo inspeccionar?',
       '¿Opera en segundo plano cuando no la estoy usando?',
     ],
+    mineriaRecursosStaticRules,
   );
 };

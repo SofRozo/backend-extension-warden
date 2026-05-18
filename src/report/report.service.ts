@@ -91,6 +91,35 @@ export class ReportService {
     const resultado1 = preprocessed.resultado1.map((f) =>
       this.verdictStatic(f),
     );
+    const soloPositivos = resultado1.filter((f) => f.veredicto === 'positivo');
+    const scoreReal = soloPositivos.reduce(
+      (acc, f) => acc + ((f as any).scoreImpact ?? 0),
+      0,
+    );
+    const puntuacionReal =
+      scoreReal > 0
+        ? {
+            score: scoreReal,
+            level: (
+              scoreReal >= 50
+                ? 'CRITICAL'
+                : scoreReal >= 25
+                  ? 'HIGH'
+                  : scoreReal >= 10
+                    ? 'MEDIUM'
+                    : 'LOW'
+            ) as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+            reasons: riskScore?.reasons ?? [],
+          }
+        : undefined;
+    if (puntuacionReal && agentAnalysis.ranSuccessfully && agentAnalysis.agent1) {
+      puntuacionReal.level = ({
+        bajo:    'LOW',
+        medio:   'MEDIUM',
+        alto:    'HIGH',
+        critico: 'CRITICAL',
+      } as const)[agentAnalysis.agent1.nivel_riesgo_inicial] ?? puntuacionReal.level;
+    }
     const priority = preprocessed.resultado2_priority.map((f) =>
       this.verdictDomain(f),
     );
@@ -118,7 +147,17 @@ export class ReportService {
       [...priority, ...unknown],
       dinamico,
     );
-    const veredictoUsuario = this.userRiskSummary.buildVerdict(resumenUsuario);
+    const agent1 = agentAnalysis.agent1;
+    const verdictoDeterministico = this.derivarVerdictoDeterministico(resumenUsuario);
+    const veredictoUsuario =
+      agentAnalysis.ranSuccessfully && agent1
+        ? {
+            veredicto: agent1.veredicto_global ?? verdictoDeterministico.veredicto,
+            nivel: agent1.nivel_riesgo_inicial ?? verdictoDeterministico.nivel,
+            resumen: agent1.explicacion?.slice(0, 300) ?? verdictoDeterministico.resumen,
+            razones: verdictoDeterministico.razones,
+          }
+        : verdictoDeterministico;
 
     // Per-finding narratives are ALWAYS deterministic — they come from the
     // static-analysis rules + the report formatter, never from the LLM agent.
@@ -155,7 +194,7 @@ export class ReportService {
       crxHash: metadata.crxHash,
       analysisTimestamp: new Date(),
       analysisDuration,
-      agente1: agentAnalysis.agent1,
+      agente1: agent1,
       dominios_contactados_prioritarios: dominios,
       resumen_usuario: resumenUsuario,
       veredicto_usuario: veredictoUsuario,
@@ -168,8 +207,17 @@ export class ReportService {
         resultado_dinamico: dinamico,
       },
       navegacionDominios,
-      puntuacion_riesgo: riskScore,
+      respuestas_usuario:
+        agent1?.respuestas_usuario ??
+        this.userRiskSummary.buildFallbackRespuestas(resumenUsuario),
+      puntuacion_riesgo: puntuacionReal,
     };
+  }
+
+  private derivarVerdictoDeterministico(
+    resumen: Parameters<UserRiskSummaryService['buildVerdict']>[0],
+  ): ReturnType<UserRiskSummaryService['buildVerdict']> {
+    return this.userRiskSummary.buildVerdict(resumen);
   }
 
   // ─── Verdict derivation (rule-based, no LLM) ──────────────────────────────

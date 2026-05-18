@@ -219,5 +219,6 @@ export const evaluateManipulacionTrafico: UserRiskCategoryEvaluator = (
       '¿Puede alterar descargas o recursos cargados?',
       '¿Puede vigilar mi tráfico de red en todas las páginas?',
     ],
+    manipulacionTraficoStaticRules,
   );
 };

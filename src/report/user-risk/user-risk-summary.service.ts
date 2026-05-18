@@ -32,12 +32,20 @@ export class UserRiskSummaryService {
       ...preprocessed.manifest.apiPermissions,
       ...preprocessed.manifest.optionalPermissions,
     ]);
-    const hostPerms = preprocessed.manifest.hostPermissions ?? [];
     const contentMatches = preprocessed.manifest.contentScripts.flatMap(
       (cs) => cs.matches,
     );
 
-    const apiCalls = this.collectApiCalls(preprocessed);
+    // Build a set of filePath:line keys that VerdictService explicitly marked
+    // as falso_positivo. Any API call site at those coordinates is excluded
+    // from apiCalls so it cannot escalate categories to sospechoso/critico.
+    const falsoPosKeys = new Set<string>(
+      staticFindings
+        .filter((f) => f.veredicto === 'falso_positivo')
+        .map((f) => `${f.filePath}:${f.line}`),
+    );
+
+    const apiCalls = this.collectApiCalls(preprocessed, falsoPosKeys);
     const usedPermissions = new Set<string>();
     for (const call of apiCalls) usedPermissions.add(call.permission);
     // unusedPermissions = declared but never invoked. This is the signal that
@@ -48,15 +56,31 @@ export class UserRiskSummaryService {
       if (!usedPermissions.has(p)) unusedPermissions.add(p);
     }
 
+    // broadHost is only true when a broad host-permission finding survived
+    // VerdictService (i.e. was NOT marked falso_positivo). Reading the raw
+    // manifest directly ignores verdicts and causes false escalations in benign
+    // extensions where a wide host pattern was justified / dismissed.
+    const broadHostPatternPositive = positives.some(
+      (f) =>
+        f.discoveryType === 'permiso_chrome_manifest_riesgoso' &&
+        /(<all_urls>|\*:\/\/\*\/\*|http:\/\/\*\/\*|https:\/\/\*\/\*)/.test(
+          f.detail,
+        ),
+    );
+    // Content-script matches are not individually verdicted, so fall back to
+    // the raw list for those — but only when the broad pattern itself wasn't
+    // dismissed at the manifest-permission level.
+    const broadHostContentScript = contentMatches.some((p) =>
+      this.isBroadHostPattern(p),
+    );
+
     const context: UserRiskContext = {
       preprocessed,
       positives,
       domainFindings,
       dynamicFindings: suspiciousDynamic,
       perms,
-      broadHost: [...hostPerms, ...contentMatches].some((p) =>
-        this.isBroadHostPattern(p),
-      ),
+      broadHost: broadHostPatternPositive || broadHostContentScript,
       hasContentScript: preprocessed.manifest.contentScripts.length > 0,
       apiCalls,
       usedPermissions,
@@ -68,6 +92,7 @@ export class UserRiskSummaryService {
         suspiciousDynamic,
       ),
       triggeredRulesByCategory: this.collectTriggeredRules(positives),
+      cwsCategory: preprocessed.cwsCategory ?? null,
     };
 
     const summary = USER_RISK_CATEGORY_EVALUATORS.map((evaluate) =>
@@ -91,6 +116,52 @@ export class UserRiskSummaryService {
     }
 
     return this.orderSummary(summary);
+  }
+
+  /**
+   * Derives the 10 FAQ answers deterministically from category states.
+   * Used as fallback when Agent 1 fails or is disabled.
+   */
+  buildFallbackRespuestas(
+    summary: UserRiskSummaryItem[],
+  ): Record<string, 'si' | 'posible' | 'no_detectado'> {
+    const state = (id: UserRiskSummaryId): UserRiskStatus =>
+      summary.find((i) => i.id === id)?.estado ?? 'no_detectado';
+
+    const map = (status: UserRiskStatus): 'si' | 'posible' | 'no_detectado' => {
+      if (status === 'critico') return 'si';
+      if (status === 'sospechoso') return 'posible';
+      if (status === 'capacidad') return 'posible';
+      return 'no_detectado';
+    };
+
+    const creds = state('captura_credenciales');
+    const keylog = state('keylogging');
+    const lectura = state('lectura_informacion');
+    const mod = state('modificacion_paginas');
+    const trafico = state('manipulacion_trafico');
+    const historial = state('acceso_historial');
+    const general = state('acceso_general_navegador');
+    const ofusc = state('ofuscacion_transparencia');
+    const mgmt = state('abuso_management');
+
+    return {
+      puede_capturar_contrasenas: map(creds),
+      puede_registrar_teclas: map(keylog),
+      puede_espiar_sin_saberlo:
+        creds === 'critico' || keylog === 'critico' || lectura === 'critico'
+          ? 'si'
+          : creds === 'sospechoso' || keylog === 'sospechoso' || lectura === 'sospechoso'
+            ? 'posible'
+            : 'no_detectado',
+      puede_leer_formularios: map(lectura),
+      puede_modificar_paginas: map(mod),
+      puede_interceptar_trafico: map(trafico),
+      puede_ver_paginas_visitadas: map(general),
+      puede_ver_historial: map(historial),
+      codigo_oculto_o_sospechoso: map(ofusc),
+      puede_afectar_otras_extensiones: map(mgmt),
+    };
   }
 
   buildVerdict(summary: UserRiskSummaryItem[]): UserFacingVerdict {
@@ -173,6 +244,7 @@ export class UserRiskSummaryService {
    */
   private collectApiCalls(
     preprocessed: PreprocessorOutput,
+    falsoPosKeys: Set<string>,
   ): ChromeApiCallSite[] {
     const out: ChromeApiCallSite[] = [];
     for (const file of preprocessed.files) {
@@ -180,6 +252,8 @@ export class UserRiskSummaryService {
       for (const api of file.chromeApis ?? []) {
         const root = api.api.replace(/^chrome\./, '').split('.')[0];
         if (!root) continue;
+        // Skip API call sites that VerdictService explicitly dismissed.
+        if (falsoPosKeys.has(`${file.path}:${api.line}`)) continue;
         out.push({
           api: api.api,
           permission: root,

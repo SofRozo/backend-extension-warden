@@ -23,7 +23,7 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
     id: 'lectura_informacion',
     matches: (finding) => finding.discoveryType === 'flujo_datos_a_red',
     evidence: (finding) =>
-      `Dato sensible llega a red o mensajería (${finding.filePath}:${finding.line}).`,
+      `Información leída de la página viaja hacia un servidor externo (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.cookie_access',
@@ -31,7 +31,7 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
     id: 'lectura_informacion',
     matches: (finding) => finding.discoveryType === 'lectura_cookies',
     evidence: (finding) =>
-      `Acceso a cookies de la página en ${finding.filePath}:${finding.line}.`,
+      `Puede leer las cookies del sitio que estás visitando — ahí se guardan tus sesiones activas (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.browser_storage_access',
@@ -39,7 +39,7 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
     id: 'lectura_informacion',
     matches: (finding) => finding.discoveryType === 'lectura_storage_navegador',
     evidence: (finding) =>
-      `Lectura de almacenamiento del navegador en ${finding.filePath}:${finding.line}.`,
+      `Accede al almacenamiento local del navegador, donde los sitios guardan datos de tu sesión (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.input_or_keyboard_listener',
@@ -47,18 +47,18 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
     id: 'lectura_informacion',
     matches: (finding) => finding.discoveryType === 'listener_teclado',
     evidence: (finding) =>
-      `Puede observar texto escrito por el usuario en ${finding.filePath}:${finding.line}.`,
+      `Puede observar lo que escribes en el teclado mientras navegas (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.dom_selectors',
-    label: 'Selectores DOM sensibles',
+    label: 'Lectura del contenido visible de la página',
     id: 'lectura_informacion',
     matches: (finding) =>
       /querySelector|getElementById|getElementsByName|document\.body|document\.documentElement|textContent|innerText|\.value/i.test(
         finding.detail,
       ),
     evidence: (finding) =>
-      `Puede inspeccionar elementos o texto de página en ${finding.filePath}:${finding.line}.`,
+      `Puede leer el texto y contenido visible de las páginas que visitas (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.form_data',
@@ -69,18 +69,18 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
         finding.detail,
       ),
     evidence: (finding) =>
-      `Puede leer contenido de formularios en ${finding.filePath}:${finding.line}.`,
+      `Puede leer lo que escribes en formularios web, incluyendo campos de login (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.page_message_bridge',
-    label: 'Puente de mensajes desde la página',
+    label: 'Datos internos que se mueven entre partes de la extensión',
     id: 'lectura_informacion',
     matches: (finding) =>
       /window\.postMessage|chrome\.runtime\.onMessage|chrome\.runtime\.sendMessage|message sink/i.test(
         finding.detail,
       ),
     evidence: (finding) =>
-      `Mensajería puede mover datos leídos entre contextos en ${finding.filePath}:${finding.line}.`,
+      `Información leída de la página se transfiere hacia otras partes de la extensión con más permisos (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.clipboard_read',
@@ -88,31 +88,31 @@ export const lecturaInformacionStaticRules: UserRiskStaticRule[] = [
     id: 'lectura_informacion',
     matches: (finding) => CLIPBOARD_RE.test(finding.detail),
     evidence: (finding) =>
-      `Lee o intercepta el portapapeles en ${finding.filePath}:${finding.line}.`,
+      `Puede acceder a lo que tienes copiado en el portapapeles (Ctrl+C) (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.selection_api',
-    label: 'Lectura de selección del usuario',
+    label: 'Lectura de texto seleccionado',
     id: 'lectura_informacion',
     matches: (finding) => SELECTION_RE.test(finding.detail),
     evidence: (finding) =>
-      `Captura el texto seleccionado por el usuario en ${finding.filePath}:${finding.line}.`,
+      `Puede leer el texto que seleccionas con el cursor en cualquier página (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.iframe_content',
-    label: 'Lectura de contenido en iframes',
+    label: 'Lectura de contenido en marcos incrustados',
     id: 'lectura_informacion',
     matches: (finding) => IFRAME_CONTENT_RE.test(finding.detail),
     evidence: (finding) =>
-      `Accede a contenido dentro de iframes (contentDocument/contentWindow) en ${finding.filePath}:${finding.line}.`,
+      `Puede acceder al contenido de partes de la página cargadas desde otros sitios (marcos incrustados) (${finding.filePath}:${finding.line}).`,
   },
   {
     ruleId: 'read_info.screenshot_or_capture',
-    label: 'Captura de pantalla o pestaña',
+    label: 'Captura de pantalla',
     id: 'lectura_informacion',
     matches: (finding) => SCREENSHOT_RE.test(finding.detail),
     evidence: (finding) =>
-      `Puede capturar la pantalla o la pestaña visible en ${finding.filePath}:${finding.line}.`,
+      `Puede tomar capturas de pantalla de lo que ves en el navegador sin que lo notes (${finding.filePath}:${finding.line}).`,
   },
 ];
 
@@ -177,43 +177,44 @@ export const evaluateLecturaInformacion: UserRiskCategoryEvaluator = (
           ? 'capacidad'
           : 'no_detectado',
     networkFlow
-      ? 'Vimos datos de página o navegador llegando a una salida de red o mensajería.'
+      ? 'Detectamos que la extensión lee información de las páginas que visitas y la envía a un servidor externo.'
       : screenshot
-        ? 'La extensión puede capturar imágenes de la pantalla o la pestaña visible.'
+        ? 'La extensión puede tomar capturas de pantalla de tu navegador sin que lo veas.'
         : usesScriptingExecute && context.broadHost
-          ? 'La extensión inyecta scripts en cada página visitada — esos scripts pueden leer todo el DOM del sitio donde se ejecutan.'
+          ? 'La extensión inserta código propio dentro de cada página que visitas, lo que le permite leer todo su contenido.'
           : isSuspicious
-            ? 'La extensión puede leer cosas como cookies, almacenamiento, formularios, portapapeles o selección del usuario.'
+            ? 'La extensión puede leer datos de las páginas: cookies de sesión, formularios, portapapeles o texto seleccionado.'
             : hasOnlyDeclaration
-              ? 'La extensión declara host_permissions amplios pero su código no parece leer DOM ni datos del usuario.'
-              : 'No vimos señales fuertes de lectura de contenido de páginas.',
+              ? 'La extensión declara acceso amplio a sitios web, pero no vimos que lo use para leer datos de los usuarios.'
+              : 'No vimos señales de que esta extensión lea contenido de tus páginas.',
     [
-      networkFlow && 'Flujo de datos sensible detectado.',
+      networkFlow && 'Información leída de páginas viaja hacia servidores externos.',
       context.broadHost &&
         !isSuspicious &&
         !isCritical &&
-        'Permisos amplios de host declarados (sin lectura observada en código).',
+        'Tiene permiso para acceder a todos los sitios web, aunque no vimos que lea datos.',
       usesScriptingExecute &&
-        'Inyecta scripts en páginas con chrome.scripting.executeScript: lo inyectado puede leer todo el DOM.',
+        'Inserta código propio dentro de las páginas que visitas — ese código puede leer todo lo que hay en ellas.',
       usesDom &&
-        'El código lee elementos del DOM (document.body/forms/cookie, querySelector, innerText).',
-      cookieRead && 'Lectura de cookies detectada.',
-      storageRead && 'Lectura de localStorage/sessionStorage/chrome.storage.',
-      formAccess && 'Lee elementos de formularios (FormData / document.forms).',
-      clipboardRead && 'Lee el portapapeles del usuario.',
-      selectionRead && 'Captura el texto seleccionado por el usuario.',
-      screenshot && 'Puede capturar la pantalla o la pestaña visible.',
+        'Lee el contenido visible de las páginas (textos, formularios, elementos de la página).',
+      cookieRead && 'Accede a las cookies del sitio — ahí se guardan tus sesiones activas.',
+      storageRead && 'Lee datos guardados localmente en el navegador por los sitios que visitas.',
+      formAccess && 'Puede leer el contenido de formularios web.',
+      clipboardRead && 'Puede leer lo que tienes copiado en el portapapeles.',
+      selectionRead && 'Puede leer el texto que seleccionas con el cursor.',
+      screenshot && 'Puede tomar capturas de pantalla de lo que ves.',
       matchesSensitiveSite &&
-        'Sus content scripts apuntan a sitios sensibles (correo, drive, banca, mensajería).',
+        'Está configurada para ejecutarse en sitios sensibles como correo, banca o redes sociales.',
       hasDetail(context, IFRAME_CONTENT_RE) &&
-        'Accede a contenido dentro de iframes embebidos.',
+        'Puede acceder a secciones de páginas cargadas desde otros dominios (marcos incrustados).',
     ],
     [
       '¿Puede leer texto dentro de páginas web?',
       '¿Puede leer mensajes, correos o documentos abiertos en el navegador?',
       '¿Puede leer contenido escrito en formularios?',
       '¿Puede inspeccionar información sensible mostrada en pantalla?',
-      '¿Puede acceder al DOM completo de una página?',
+      '¿Puede acceder al contenido completo de una página?',
     ],
+    lecturaInformacionStaticRules,
   );
 };

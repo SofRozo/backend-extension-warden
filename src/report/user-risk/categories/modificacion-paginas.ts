@@ -187,31 +187,31 @@ export const evaluateModificacionPaginas: UserRiskCategoryEvaluator = (
           : 'no_detectado',
     isCritical
       ? usesScriptingExecute && context.broadHost
-        ? 'La extensión inyecta scripts arbitrarios en TODA página visitada vía chrome.scripting.executeScript. Puede modificar cualquier sitio sin pedir permiso al usuario.'
-        : 'La extensión combina señales fuertes de modificación de páginas (inyección de DOM más overlay o script remoto). Es un patrón típico de phishing o suplantación visual.'
+        ? 'La extensión inserta su propio código dentro de TODAS las páginas que visitas, lo que le permite cambiar su contenido, botones y formularios sin pedirte permiso.'
+        : 'La extensión combina capacidades peligrosas de modificación de páginas: puede sobreponer interfaces falsas o alterar formularios — patrón típico de phishing.'
       : isSuspicious
-        ? 'La extensión puede modificar páginas, insertar elementos o vigilar el DOM. El riesgo sube si lo hace en sitios sensibles o con código remoto.'
+        ? 'La extensión puede modificar el aspecto o contenido de las páginas web que visitas.'
         : hasOnlyDeclaration
-          ? 'La extensión declara permiso scripting pero su código no parece usarlo.'
-          : 'No vimos señales fuertes de modificación de páginas.',
+          ? 'La extensión tiene permiso para modificar páginas, pero no vimos que lo use activamente.'
+          : 'No vimos señales de que esta extensión modifique páginas web.',
     [
-      domInjection && 'Detectamos inyección o modificación de DOM/script.',
+      domInjection && 'Detectamos que modifica el contenido de páginas web.',
       usesScriptingExecute &&
         scriptingCall &&
-        `Inyecta scripts/CSS en páginas mediante ${scriptingCall.api} (${scriptingCall.filePath}:${scriptingCall.line}).`,
+        `Inserta código en páginas usando ${scriptingCall.api} (${scriptingCall.filePath}:${scriptingCall.line}).`,
       perms.has('scripting') &&
         !usesScriptingExecute &&
-        'Permiso scripting declarado pero sin llamadas observadas.',
-      remoteScript && 'Carga de script remoto en MV3.',
+        'Tiene permiso para insertar código en páginas, pero no vimos que lo use.',
+      remoteScript && 'Descarga y ejecuta código desde Internet dentro de las páginas que visitas.',
       overlaySignal &&
-        'Señales de overlay (position fixed/absolute con z-index alto): puede pintar UI sobre la página real.',
+        'Puede mostrar ventanas o capas superpuestas sobre la página real — una técnica usada para crear formularios falsos.',
       invisibleSignal &&
-        'Manipula estilos para ocultar elementos (display:none / visibility:hidden / opacity:0).',
+        'Puede ocultar elementos de la página haciéndolos invisibles.',
       observerSignal &&
-        'Usa MutationObserver o shadowRoot: puede observar/modificar la página sin que se note.',
-      formReplacement && 'Crea o reemplaza botones, formularios o enlaces.',
+        'Vigila silenciosamente los cambios que ocurren en la página mientras navegas.',
+      formReplacement && 'Puede crear, modificar o reemplazar botones, formularios o enlaces.',
       hasDetail(context, /history\.(push|replace)State/i) &&
-        'Reescribe la URL visible al usuario con la History API.',
+        'Puede cambiar la dirección web visible en tu barra de navegación sin que realmente cargues otra página.',
     ],
     [
       '¿Puede modificar el contenido de una página web?',
@@ -221,5 +221,6 @@ export const evaluateModificacionPaginas: UserRiskCategoryEvaluator = (
       '¿Puede alterar lo que veo en redes sociales o bancos?',
       '¿Puede superponer interfaces falsas sobre páginas reales?',
     ],
+    modificacionPaginasStaticRules,
   );
 };

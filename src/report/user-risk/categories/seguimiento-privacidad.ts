@@ -183,41 +183,41 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
           ? 'capacidad'
           : 'no_detectado',
     isCritical
-      ? 'La extensión combina recolección de identificadores/fingerprint con envío a red. Es el patrón típico de tracking comercial agresivo.'
+      ? 'La extensión recopila información que te identifica de forma única y la envía a servidores externos — patrón típico de rastreo comercial.'
       : analyticsSignal && networkFlow
-        ? 'La extensión contacta servicios de analítica/tracking conocidos.'
+        ? 'La extensión envía datos de tu actividad a servicios de análisis o rastreo externos.'
         : sensitiveDomains.length > 0
-          ? 'La extensión contacta dominios sensibles o de terceros relevantes para privacidad.'
+          ? 'La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios.'
           : usesNavigationApi
-            ? 'La extensión usa activamente APIs de navegación (tabs/webNavigation/history) para observar lo que haces.'
+            ? 'La extensión usa APIs del navegador para observar activamente qué páginas visitas.'
             : hasOnlyDeclaration
-              ? 'Declara permiso tabs/webNavigation pero su código no parece usarlo.'
-              : 'No vimos señales fuertes de rastreo.',
+              ? 'Tiene permiso para ver tus pestañas, pero no vimos que lo use para rastrearte.'
+              : 'No vimos señales de que esta extensión rastree tu actividad.',
     [
       sensitiveDomains.length > 0 &&
-        `Dominios sensibles contactados: ${sensitiveDomains
+        `Se comunica con estos sitios externos: ${sensitiveDomains
           .slice(0, 3)
           .map((d) => d.domain)
           .join(', ')}.`,
       analyticsSignal &&
-        'Referencias a librerías o endpoints de analytics/tracking (GA, GTM, Mixpanel, Segment, etc.).',
+        'Usa herramientas de análisis de comportamiento (Google Analytics, Mixpanel, Segment u otros).',
       fingerprintSignal &&
-        'Lee APIs de fingerprint del navegador (canvas, WebGL, AudioContext, navigator, screen).',
+        'Recopila características de tu navegador y dispositivo para identificarte de forma única.',
       persistentId &&
-        'Genera o referencia identificadores persistentes (UUID, clientId, deviceId).',
-      beacon && 'Usa navigator.sendBeacon o lee document.referrer.',
+        'Crea o usa un identificador único que permite reconocerte entre distintas sesiones.',
+      beacon && 'Envía datos de tu actividad al servidor en segundo plano, incluso cuando cierras páginas.',
       context.perms.has('tabs') &&
         !usesNavigationApi &&
-        'Permiso tabs declarado (sin uso observado).',
+        'Tiene permiso para ver tus pestañas, pero no vimos que lo use.',
       context.perms.has('tabs') &&
         usesNavigationApi &&
-        'Permiso tabs USADO en código (observa pestañas activamente).',
+        'Monitorea activamente las pestañas que tienes abiertas.',
       context.perms.has('webNavigation') &&
-        'Permiso webNavigation: observa transiciones entre páginas.',
+        'Puede registrar cada vez que cambias de página.',
       crossSite &&
-        'Acceso amplio a sitios: puede correlacionar entre dominios.',
+        'Puede correlacionar tu actividad en múltiples sitios web distintos.',
       hasFinding(context, 'lectura_storage_navegador') &&
-        'Lectura de almacenamiento para persistir información.',
+        'Guarda información sobre ti de forma persistente en el navegador.',
     ],
     [
       '¿Rastrea mi actividad de navegación?',
@@ -228,5 +228,6 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
       '¿Almacena identificadores persistentes?',
       '¿Puede seguirme entre múltiples sitios web?',
     ],
+    seguimientoPrivacidadStaticRules,
   );
 };

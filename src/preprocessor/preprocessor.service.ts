@@ -53,6 +53,7 @@ const PERMISSION_RISK_WEIGHTS: Record<
   contentSettings: { category: 'high', weight: 5, hostSensitive: false },
   webNavigation: { category: 'high', weight: 5, hostSensitive: false },
   webAuthenticationProxy: { category: 'high', weight: 5, hostSensitive: false },
+  webRequestAuthProvider: { category: 'high', weight: 5, hostSensitive: false },
   certificateProvider: { category: 'high', weight: 5, hostSensitive: false },
   platformKeys: { category: 'high', weight: 5, hostSensitive: false },
   activeTab: { category: 'medium', weight: 2, hostSensitive: false },
@@ -147,7 +148,7 @@ export class PreprocessorService {
       );
     }
 
-    const manifest = this.parseManifest(rawManifest);
+    const manifest = this.parseManifest(rawManifest, extractPath);
     const roleMap = this.buildRoleMap(manifest);
     const remoteCodeViolations: RemoteCodeViolation[] = [];
     const resources = this.inventoryResources(extractPath);
@@ -245,18 +246,19 @@ export class PreprocessorService {
         );
         const grepSignals = this.extractGrepSignals(rawCode);
         const extractedUrls = this.extractUrls(rawCode);
+        const strippedCode = this.stripComments(rawCode);
         files.push({
           ...this.emptyFile(relativePath, role, false),
           isMinified: true,
           originalLineCount: rawCode.split('\n').length,
           urls: extractedUrls.map((u) => u.url),
           extractedUrls,
-          domains: this.extractDomains(rawCode),
-          chromeApis: this.extractChromeApis(rawCode),
-          usesFetch: this.usesFetch(rawCode),
-          usesXHR: this.usesXHR(rawCode),
-          usesEval: this.usesEval(rawCode),
-          usesDomManipulation: this.usesDomManipulation(rawCode),
+          domains: this.extractDomains(strippedCode),
+          chromeApis: this.extractChromeApis(strippedCode),
+          usesFetch: this.usesFetch(strippedCode),
+          usesXHR: this.usesXHR(strippedCode),
+          usesEval: this.usesEval(strippedCode),
+          usesDomManipulation: this.usesDomManipulation(strippedCode),
           grepSignals,
           skippedAst: true,
         });
@@ -344,7 +346,48 @@ export class PreprocessorService {
 
   // ─── Manifest parsing ────────────────────────────────────────────────────────
 
-  private parseManifest(raw: Record<string, unknown>): ManifestInfo {
+  private resolveManifestLocale(
+    rawValue: string,
+    extractPath: string,
+    rawManifest?: Record<string, unknown>,
+  ): string {
+    if (!rawValue?.startsWith('__MSG_')) return rawValue;
+    const key = rawValue.replace(/^__MSG_/, '').replace(/__$/, '');
+
+    const localesDir = path.join(extractPath, '_locales');
+
+    // Build candidate locale list: en first, then default_locale, then any available locale.
+    const candidates: string[] = ['en'];
+    const defaultLocale = rawManifest?.default_locale as string | undefined;
+    if (defaultLocale && defaultLocale !== 'en') candidates.push(defaultLocale);
+
+    try {
+      const available = fs.readdirSync(localesDir);
+      for (const loc of available) {
+        if (!candidates.includes(loc)) candidates.push(loc);
+      }
+    } catch {
+      // _locales dir missing — fall through to fallback
+    }
+
+    for (const locale of candidates) {
+      try {
+        const msgPath = path.join(localesDir, locale, 'messages.json');
+        const messages = JSON.parse(
+          fs.readFileSync(msgPath, 'utf-8'),
+        ) as Record<string, { message?: string }>;
+        const resolved = messages[key]?.message;
+        if (resolved) return resolved;
+      } catch {
+        // try next locale
+      }
+    }
+
+    // Last resort: strip the __MSG_...__  wrapper so the agent never sees raw placeholders.
+    return key.replace(/_/g, ' ');
+  }
+
+  private parseManifest(raw: Record<string, unknown>, extractPath: string): ManifestInfo {
     const mv = (raw.manifest_version as number) ?? 2;
 
     const allPerms = (raw.permissions as string[]) ?? [];
@@ -423,10 +466,16 @@ export class PreprocessorService {
 
     return {
       manifestVersion: mv === 3 ? 3 : 2,
-      name: (raw.name as string) ?? '',
+      name: this.resolveManifestLocale((raw.name as string) ?? '', extractPath, raw),
       version: (raw.version as string) ?? '',
-      description: raw.description as string | undefined,
-      author: raw.author as string | undefined,
+      description: raw.description != null
+        ? this.resolveManifestLocale(raw.description as string, extractPath, raw)
+        : undefined,
+      author: typeof raw.author === 'string'
+        ? raw.author
+        : typeof (raw.author as Record<string, unknown>)?.name === 'string'
+          ? (raw.author as Record<string, unknown>).name as string
+          : undefined,
       apiPermissions,
       hostPermissions,
       optionalPermissions,
@@ -1068,7 +1117,14 @@ export class PreprocessorService {
     // ── Single-target patterns (line-by-line) ──
     const patterns: Array<{ re: RegExp; type: DependencyEdge['type'] }> = [
       {
-        re: /\bimport\s+(?:[^'"]+\s+from\s+)?['"]([^'"]+)['"]/g,
+        // import ... from "path"  — named, default, namespace, destructured imports
+        re: /\bimport\s+[^'"]+\s+from\s+['"]([^'"]+)['"]/g,
+        type: 'static_import',
+      },
+      {
+        // import "path"  — side-effect only imports (no binding, no 'from')
+        // e.g. import"../assets/modulepreload-polyfill.js"
+        re: /\bimport\s*['"]([^'"]+)['"]/g,
         type: 'static_import',
       },
       { re: /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g, type: 'dynamic_import' },

@@ -1,6 +1,7 @@
 import type {
   DynamicVerdictedFinding,
   FileRole,
+  HallazgoCodigo,
   PreprocessorOutput,
   UserRiskSummaryId,
   UserRiskSummaryItem,
@@ -41,6 +42,7 @@ export interface UserRiskContext {
   unusedPermissions: Set<string>;
   evidenceByCategory: Map<UserRiskSummaryId, string[]>;
   triggeredRulesByCategory: Map<UserRiskSummaryId, string[]>;
+  cwsCategory?: string | null;
 }
 
 /**
@@ -86,19 +88,51 @@ export function makeItem(
   resumen: string,
   evidencias: Array<string | false | undefined>,
   preguntas_responde: string[],
+  categoryRules?: UserRiskStaticRule[],
 ): UserRiskSummaryItem {
   const reglasActivadas = uniqueStrings(
     context.triggeredRulesByCategory.get(id) ?? [],
   );
-  // Coherence guard: si hay rules activadas (es decir, los static-rules de la
-  // categoría matchearon algún finding positivo), el estado mínimo es
-  // 'capacidad'. Sin esto un evaluador puede decir 'no_detectado' aunque la
-  // tarjeta muestre 5 evidencias — confunde al usuario. Si el evaluador ya
-  // dijo algo más fuerte (sospechoso/critico), no se toca.
   const coherentEstado: UserRiskStatus =
     estado === 'no_detectado' && reglasActivadas.length > 0
       ? 'capacidad'
       : estado;
+
+  // Collect code-level findings for this category by running the static rules
+  // against all positive findings and keeping only those that belong to `id`.
+  // Deduplicate by filePath+line+texto to avoid showing the same line twice.
+  const FILE_TYPE_LABEL: Record<string, string> = {
+    content_script: 'content script',
+    background: 'background',
+    service_worker: 'service worker',
+    popup: 'popup',
+    options_ui: 'página de opciones',
+    devtools: 'devtools page',
+    sandbox: 'sandbox page',
+    override_page: 'override page',
+    side_panel: 'side panel',
+    library: 'librería',
+    unknown: 'archivo',
+    manifest: 'manifest',
+  };
+  const seen = new Set<string>();
+  const hallazgos_codigo: HallazgoCodigo[] = [];
+  for (const finding of context.positives) {
+    for (const rule of (categoryRules ?? []).filter((r) => r.id === id)) {
+      if (!rule.matches(finding)) continue;
+      const texto = rule.evidence(finding);
+      const key = `${finding.filePath}:${finding.line}:${texto}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hallazgos_codigo.push({
+        filePath: finding.filePath,
+        line: finding.line,
+        fileType: FILE_TYPE_LABEL[finding.fileType] ?? finding.fileType,
+        texto,
+      });
+    }
+  }
+
   return {
     id,
     titulo,
@@ -110,6 +144,7 @@ export function makeItem(
     ]).slice(0, 5),
     reglas_activadas: reglasActivadas,
     preguntas_responde,
+    hallazgos_codigo: hallazgos_codigo.slice(0, 20),
   };
 }
 

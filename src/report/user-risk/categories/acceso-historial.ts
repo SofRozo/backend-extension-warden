@@ -108,33 +108,34 @@ export const evaluateAccesoHistorial: UserRiskCategoryEvaluator = (context) => {
           ? 'capacidad'
           : 'no_detectado',
     isCritical
-      ? 'La extensión lee historial/transiciones de navegación y los envía hacia una salida de red.'
+      ? 'La extensión lee tu historial de navegación o las páginas que visitas y los envía a un servidor externo.'
       : perms.has('history') || historyApi
-        ? 'Puede leer historial de navegación.'
+        ? 'Puede acceder a tu historial completo de navegación.'
         : webNavListener || tabsListener
-          ? 'Puede observar cada página que visitas escuchando eventos de pestañas/navegación.'
+          ? 'Puede ver cada página que visitas en tiempo real mientras navegas.'
           : perms.has('tabs')
-            ? 'Puede ver URLs y títulos de pestañas abiertas, aunque no necesariamente todo el historial.'
-            : 'No vimos permiso directo de historial.',
+            ? 'Puede ver la dirección y el título de las pestañas que tienes abiertas.'
+            : 'No vimos que esta extensión acceda a tu historial de navegación.',
     [
-      perms.has('history') && 'Permiso history.',
-      perms.has('tabs') && 'Permiso tabs.',
-      perms.has('webNavigation') && 'Permiso webNavigation.',
-      perms.has('bookmarks') && 'Permiso bookmarks.',
-      perms.has('topSites') && 'Permiso topSites.',
-      perms.has('sessions') && 'Permiso sessions.',
-      historyApi && 'Llama a chrome.history.search/getVisits.',
+      perms.has('history') && 'Tiene permiso para leer tu historial de navegación.',
+      perms.has('tabs') && 'Tiene permiso para ver tus pestañas abiertas.',
+      perms.has('webNavigation') && 'Tiene permiso para rastrear cada cambio de página.',
+      perms.has('bookmarks') && 'Tiene permiso para leer tus marcadores.',
+      perms.has('topSites') && 'Tiene permiso para ver los sitios que más visitas.',
+      perms.has('sessions') && 'Tiene permiso para ver sesiones recientes del navegador.',
+      historyApi && 'Consulta activamente tu historial de navegación.',
       tabsListener &&
-        'Escucha eventos de pestañas (onUpdated/onActivated): cada navegación es visible.',
+        'Se entera en tiempo real de cada página que abres o visitas.',
       webNavListener &&
-        'Escucha chrome.webNavigation: registra cada transición de URL.',
-      bookmarksApi && 'Lee marcadores, top sites o sesiones recientes.',
-      urlFlow && 'URLs/títulos fluyen hacia una salida de red.',
+        'Registra cada vez que cambias de página o URL.',
+      bookmarksApi && 'Lee tus marcadores, sitios favoritos o sesiones recientes.',
+      urlFlow && 'Las páginas que visitas o sus títulos viajan hacia servidores externos.',
     ],
     [
       '¿Puede leer mi historial de navegación?',
       '¿Almacena o transmite las páginas que visito?',
       '¿Analiza patrones de comportamiento basados en historial?',
     ],
+    accesoHistorialStaticRules,
   );
 };

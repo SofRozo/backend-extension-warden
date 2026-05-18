@@ -160,5 +160,6 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
       '¿Existen partes imposibles de auditar fácilmente?',
       '¿Usa técnicas anti-debugging?',
     ],
+    ofuscacionTransparenciaStaticRules,
   );
 };

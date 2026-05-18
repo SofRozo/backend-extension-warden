@@ -151,29 +151,29 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
           ? 'capacidad'
           : 'no_detectado',
     isCritical
-      ? 'Hay señales de credenciales o sesiones combinadas con envío de datos: patrón clásico de robo de credenciales.'
+      ? 'La extensión combina acceso a contraseñas o sesiones con envío de datos a servidores — patrón clásico de robo de credenciales.'
       : isPwdInterception
-        ? 'La extensión busca campos de contraseña y al mismo tiempo intercepta envíos de formulario.'
+        ? 'La extensión busca campos de contraseña e intercepta el envío de formularios — puede capturar lo que escribes antes de que llegue al sitio.'
         : cookieRead || context.perms.has('cookies')
-          ? 'La extensión puede acceder a cookies o sesiones; no vimos necesariamente robo confirmado.'
+          ? 'La extensión puede acceder a las cookies de los sitios que visitas, donde se guardan tus sesiones activas.'
           : isSuspicious
-            ? 'La extensión referencia credenciales o usa APIs de identidad. No es prueba de abuso, pero requiere justificación.'
+            ? 'La extensión hace referencia a contraseñas, tokens o APIs de autenticación en su código.'
             : storageSignal
-              ? 'Vimos acceso a almacenamiento donde podrían existir tokens o estado de sesión, pero no una captura fuerte de credenciales.'
-            : 'No vimos señales fuertes de captura de credenciales.',
+              ? 'Vimos acceso a almacenamiento donde podrían guardarse tokens o datos de sesión.'
+            : 'No vimos señales de que esta extensión capture contraseñas o credenciales.',
     [
-      credentialSignal && 'Referencias a contraseñas/tokens/frases sensibles.',
+      credentialSignal && 'El código hace referencia explícita a contraseñas, tokens o frases de recuperación.',
       passwordSelector &&
-        'Selectores apuntan explícitamente a campos type=password o autocomplete=password.',
+        'Busca activamente los campos de contraseña en las páginas que visitas.',
       tokenSignal &&
-        'Aparecen identificadores de token/JWT/Bearer/Authorization en el código.',
-      cookieRead && 'Lectura de cookies.',
-      context.perms.has('cookies') && 'Permiso cookies declarado.',
+        'El código contiene referencias a tokens de sesión o claves de autenticación.',
+      cookieRead && 'Puede leer las cookies del sitio — ahí se guardan tus sesiones activas.',
+      context.perms.has('cookies') && 'Tiene permiso para acceder a las cookies de los sitios.',
       formIntercept &&
-        'Escucha eventos submit o construye FormData: puede leer formularios antes del envío.',
+        'Puede capturar los datos de un formulario antes de que los envíes.',
       identityApi &&
-        'Llama a chrome.identity.getAuthToken / launchWebAuthFlow: puede obtener tokens OAuth/Google del usuario.',
-      credentialFlow && 'Flujo de credenciales o sesión hacia red o mensajería.',
+        'Usa la API de Chrome para obtener tokens de tu cuenta de Google sin que lo veas.',
+      credentialFlow && 'Datos de sesión o credenciales detectados viajando hacia servidores externos.',
     ],
     [
       '¿Puede capturar contraseñas?',
@@ -182,5 +182,6 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
       '¿Puede capturar tokens de autenticación?',
       '¿Puede acceder a cookies de sesión?',
     ],
+    capturaCredencialesStaticRules,
   );
 };

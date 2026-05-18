@@ -100,23 +100,23 @@ export const evaluateKeylogging: UserRiskCategoryEvaluator = (context) => {
     'Keylogging y captura de teclado',
     isCritical ? 'critico' : isSuspicious ? 'sospechoso' : 'no_detectado',
     isCritical
-      ? 'Detectamos captura de teclas o texto combinada con envío a red: patrón típico de keylogger.'
+      ? 'La extensión captura lo que escribes y lo envía a un servidor externo — comportamiento de keylogger.'
       : keylogger
-        ? 'Detectamos listeners de teclado o entrada. Es grave si se combina con envío de datos.'
+        ? 'La extensión escucha lo que escribes en el teclado. Si además envía datos, es muy peligroso.'
         : isSuspicious
-          ? 'La extensión escucha eventos de entrada (paste/copy, atajos o IME). Puede ser legítimo en gestores de texto o atajos, pero requiere justificación.'
-          : 'No vimos señales fuertes de registro de teclas.',
+          ? 'La extensión detecta eventos de escritura o pegado de texto. Puede ser legítimo en extensiones de texto, pero requiere justificación.'
+          : 'No vimos señales de que esta extensión registre lo que escribes.',
     [
-      keylogger && 'Listener de teclado/input detectado.',
+      keylogger && 'Está escuchando lo que escribes en el teclado.',
       hotkey &&
-        'Lee event.key/keyCode/ctrlKey: puede detectar combinaciones y atajos.',
+        'Detecta teclas específicas o combinaciones de teclas que presionas.',
       pasteCopy &&
-        'Escucha eventos de paste/copy/cut: puede capturar texto pegado o copiado.',
+        'Detecta cuando pegas (Ctrl+V) o copias (Ctrl+C) texto.',
       ime &&
-        'Escucha compositionstart/update/end: captura texto en idiomas con IME (chino, japonés, coreano).',
+        'Captura texto mientras lo escribes con teclados de composición (útil para chino, japonés, coreano).',
       submitCapture &&
-        'Escucha submit o beforeunload: puede leer formularios antes de enviarse.',
-      networkFlow && 'También hay flujo de datos hacia una salida.',
+        'Puede leer el contenido de un formulario en el momento en que lo envías.',
+      networkFlow && 'También detectamos envío de datos hacia servidores externos.',
     ],
     [
       '¿Puede registrar teclas que escribo?',
@@ -124,5 +124,6 @@ export const evaluateKeylogging: UserRiskCategoryEvaluator = (context) => {
       '¿Puede capturar texto antes de enviarlo?',
       '¿Puede detectar combinaciones de teclas o atajos?',
     ],
+    keyloggingStaticRules,
   );
 };
