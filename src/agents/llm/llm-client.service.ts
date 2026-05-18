@@ -13,7 +13,7 @@ export class LlmClientService {
     config: ConfigService,
     private readonly logger: StructuredLogger,
   ) {
-    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:4b';
+    this.modeloOllama = config.get<string>('MODELO_OLLAMA') ?? 'qwen3:8b';
     this.ollamaHost = (
       config.get<string>('OLLAMA_HOST') ?? 'http://host.docker.internal:11434'
     ).replace(/\/$/, '');
@@ -72,9 +72,9 @@ export class LlmClientService {
         think: false,
         ...(format === 'json' ? { format: 'json' } : {}),
         options: {
-          num_ctx: 12288,
+          num_ctx: 8192,
           temperature: 0,
-          num_predict: format === 'text' ? 450 : 1024,
+          num_predict: format === 'text' ? 900 : 1024,
         },
       },
       { timeout: this.timeoutMs },

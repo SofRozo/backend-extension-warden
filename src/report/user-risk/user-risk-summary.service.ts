@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import type {
-  DynamicVerdictedFinding,
   PreprocessorOutput,
   UserFacingVerdict,
   UserRiskSummaryId,
@@ -22,12 +21,8 @@ export class UserRiskSummaryService {
     preprocessed: PreprocessorOutput,
     staticFindings: VerdictedStaticFinding[],
     domainFindings: VerdictedDomainFinding[],
-    dynamicFindings: DynamicVerdictedFinding[],
   ): UserRiskSummaryItem[] {
     const positives = staticFindings.filter((f) => f.veredicto === 'positivo');
-    const suspiciousDynamic = dynamicFindings.filter(
-      (f) => f.veredicto === 'maliciosa' || f.veredicto === 'sospechosa',
-    );
     const perms = new Set([
       ...preprocessed.manifest.apiPermissions,
       ...preprocessed.manifest.optionalPermissions,
@@ -78,7 +73,6 @@ export class UserRiskSummaryService {
       preprocessed,
       positives,
       domainFindings,
-      dynamicFindings: suspiciousDynamic,
       perms,
       broadHost: broadHostPatternPositive || broadHostContentScript,
       hasContentScript: preprocessed.manifest.contentScripts.length > 0,
@@ -89,7 +83,6 @@ export class UserRiskSummaryService {
         preprocessed,
         positives,
         domainFindings,
-        suspiciousDynamic,
       ),
       triggeredRulesByCategory: this.collectTriggeredRules(positives),
       cwsCategory: preprocessed.cwsCategory ?? null,
@@ -98,22 +91,6 @@ export class UserRiskSummaryService {
     const summary = USER_RISK_CATEGORY_EVALUATORS.map((evaluate) =>
       evaluate(context),
     );
-
-    if (suspiciousDynamic.length > 0) {
-      summary.unshift({
-        id: 'seguimiento_privacidad',
-        titulo: 'Comportamiento observado en navegación',
-        estado: suspiciousDynamic.some((f) => f.veredicto === 'maliciosa')
-          ? 'critico'
-          : 'sospechoso',
-        resumen:
-          'Durante el análisis dinámico se observó comportamiento sospechoso o malicioso.',
-        evidencias: suspiciousDynamic.slice(0, 3).map((f) => f.razon),
-        preguntas_responde: [
-          '¿Qué hizo realmente la extensión durante la prueba?',
-        ],
-      });
-    }
 
     return this.orderSummary(summary);
   }
@@ -270,7 +247,6 @@ export class UserRiskSummaryService {
     preprocessed: PreprocessorOutput,
     staticFindings: VerdictedStaticFinding[],
     domainFindings: VerdictedDomainFinding[],
-    dynamicFindings: DynamicVerdictedFinding[],
   ): Map<UserRiskSummaryId, string[]> {
     const grouped = new Map<UserRiskSummaryId, string[]>();
     const add = (id: UserRiskSummaryId, text: string) => {
@@ -282,7 +258,6 @@ export class UserRiskSummaryService {
     this.collectManifestEvidence(preprocessed, add);
     this.collectStaticEvidence(staticFindings, add);
     this.collectDomainEvidence(domainFindings, add);
-    this.collectDynamicEvidence(dynamicFindings, add);
 
     for (const [key, values] of grouped) {
       grouped.set(key, uniqueStrings(values).slice(0, 5));
@@ -402,35 +377,38 @@ export class UserRiskSummaryService {
     add: (id: UserRiskSummaryId, text: string) => void,
   ): void {
     for (const domain of domainFindings) {
-      if (
-        domain.veredicto !== 'positivo' ||
-        domain.discoveryType !== 'url_en_codigo'
-      )
-        continue;
-      add(
-        'seguimiento_privacidad',
-        `Contacta ${domain.domain} (${domain.category}).`,
-      );
-    }
-  }
+      if (domain.veredicto !== 'positivo') continue;
 
-  private collectDynamicEvidence(
-    dynamicFindings: DynamicVerdictedFinding[],
-    add: (id: UserRiskSummaryId, text: string) => void,
-  ): void {
-    for (const dynamic of dynamicFindings) {
-      const text = `Análisis dinámico: ${dynamic.razon}`;
-      add('seguimiento_privacidad', text);
-      if (
-        /cookie|session|sesión|password|contraseña|token|credential/i.test(text)
-      ) {
-        add('captura_credenciales', text);
+      if (domain.discoveryType === 'url_en_codigo') {
+        add(
+          'seguimiento_privacidad',
+          `Contacta ${domain.domain} (${domain.category}).`,
+        );
+        // Sensitive domain categories surfaced in code also elevate general access
+        if (/financiero|identidad|llm|correo|redes|gob/.test(domain.category)) {
+          add(
+            'acceso_general_navegador',
+            `Código referencia dominio sensible: ${domain.domain} (${domain.category}).`,
+          );
+        }
       }
-      if (/tecla|keyboard|keylog|input/i.test(text)) {
-        add('keylogging', text);
-      }
-      if (/redirect|redirig|request|tráfico|traffic/i.test(text)) {
-        add('manipulacion_trafico', text);
+
+      if (domain.discoveryType === 'host_permission_manifest') {
+        // Broad host_permissions declared in manifest give unrestricted reach
+        add(
+          'acceso_general_navegador',
+          `Declara host_permission para ${domain.domain} — puede actuar en ese sitio automáticamente.`,
+        );
+        if (/financiero|identidad|llm|correo|redes|gob/.test(domain.category)) {
+          add(
+            'captura_credenciales',
+            `Tiene host_permission declarada para sitio sensible: ${domain.domain} (${domain.category}).`,
+          );
+          add(
+            'acceso_historial',
+            `Host permission para sitio sensible puede implicar lectura de URLs en ${domain.domain}.`,
+          );
+        }
       }
     }
   }

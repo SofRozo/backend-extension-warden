@@ -1,20 +1,14 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Development overlay — DEMO MODE on Windows / macOS native worker
-#
-# Why this exists:
-#   The base docker-compose.yml keeps Postgres/Redis on internal Docker networks
-#   only (RNF01 isolation). For the visual demo we need to run the Worker NATIVE
-#   on the host so Chromium can paint on the host display, which means the host
-#   must be able to reach Postgres+Redis. This file exposes those ports just for
-#   development.
+# Development overlay — exposes Postgres and Redis ports to the host so the
+# worker can be run natively (e.g. with ts-node / npm run start:dev).
 #
 # Usage:
 #   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis api
 #
-# Then run the worker locally with DEMO_MODE=true (see README / instructions).
+# Then run the worker locally:
+#   npm run start:dev (in a separate terminal)
 #
-# WARNING: do NOT use this file in production — it punches holes in the
-# isolation that the base compose was designed around.
+# WARNING: do NOT use this file in production.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 services:

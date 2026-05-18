@@ -1,18 +1,62 @@
 import { Injectable } from '@nestjs/common';
 import { StructuredLogger } from '../common/logger/logger.service.js';
-import {
+import type {
   AnalysisReport,
   AgentAnalysisResult,
   PreprocessorOutput,
   PreprocessingFinding,
   DomainFinding,
+  PermisNoUsado,
+  UserRiskSummaryItem,
   VerdictedStaticFinding,
   VerdictedDomainFinding,
-  DynamicVerdictedFinding,
-  DomainNavigationLog,
-  SandboxDomainObservation,
 } from '../common/interfaces/analysis.interfaces.js';
 import { UserRiskSummaryService } from './user-risk/user-risk-summary.service.js';
+
+/** Human-readable descriptions for Chrome API permissions, keyed by permission name.
+ *  Only permissions that warrant user explanation are included; unknown ones get a generic fallback. */
+const PERMISSION_DESCRIPTIONS: Record<string, { categoria: PermisNoUsado['categoria']; descripcion: string }> = {
+  // critical
+  tabCapture:               { categoria: 'critical', descripcion: 'Capturar el audio y video de cualquier pestaña del navegador en tiempo real.' },
+  pageCapture:              { categoria: 'critical', descripcion: 'Guardar páginas web completas (HTML, recursos) como archivos MHTML.' },
+  debugger:                 { categoria: 'critical', descripcion: 'Conectarse al protocolo de depuración de Chrome para inspeccionar y modificar cualquier página.' },
+  nativeMessaging:          { categoria: 'critical', descripcion: 'Comunicarse con programas instalados en tu computadora fuera del navegador.' },
+  proxy:                    { categoria: 'critical', descripcion: 'Redirigir todo el tráfico de red del navegador a través de un servidor externo.' },
+  vpnProvider:              { categoria: 'critical', descripcion: 'Crear y controlar conexiones VPN en el navegador.' },
+  // high
+  cookies:                  { categoria: 'high', descripcion: 'Leer, escribir y eliminar las cookies de cualquier sitio web, incluyendo tokens de sesión.' },
+  scripting:                { categoria: 'high', descripcion: 'Inyectar y ejecutar código JavaScript en cualquier página web que visites.' },
+  declarativeNetRequest:    { categoria: 'high', descripcion: 'Bloquear, redirigir o modificar las solicitudes de red del navegador.' },
+  webRequest:               { categoria: 'high', descripcion: 'Interceptar y observar todas las solicitudes de red en tiempo real.' },
+  webRequestBlocking:       { categoria: 'high', descripcion: 'Interceptar y bloquear solicitudes de red antes de que lleguen al servidor.' },
+  userScripts:              { categoria: 'high', descripcion: 'Ejecutar scripts de usuario arbitrarios en páginas web.' },
+  desktopCapture:           { categoria: 'high', descripcion: 'Capturar la pantalla completa, una ventana o una pestaña como stream de video.' },
+  history:                  { categoria: 'high', descripcion: 'Leer y modificar el historial completo de navegación.' },
+  downloads:                { categoria: 'high', descripcion: 'Iniciar, cancelar y monitorear todas las descargas del navegador.' },
+  'downloads.open':         { categoria: 'high', descripcion: 'Abrir archivos descargados desde el sistema de archivos local.' },
+  privacy:                  { categoria: 'high', descripcion: 'Modificar configuraciones de privacidad del navegador como DNT, WebRTC y relleno de formularios.' },
+  browsingData:             { categoria: 'high', descripcion: 'Eliminar historial, cookies, caché y otros datos de navegación almacenados.' },
+  contentSettings:          { categoria: 'high', descripcion: 'Controlar qué contenido pueden mostrar los sitios (JavaScript, cookies, cámaras, etc.).' },
+  webNavigation:            { categoria: 'high', descripcion: 'Monitorear en tiempo real cada navegación que realizas en el navegador.' },
+  management:               { categoria: 'high', descripcion: 'Ver, habilitar o deshabilitar otras extensiones instaladas en tu navegador.' },
+  // medium
+  tabs:                     { categoria: 'medium', descripcion: 'Acceder a las URLs, títulos e íconos de todas las pestañas abiertas.' },
+  activeTab:                { categoria: 'medium', descripcion: 'Acceder temporalmente a la pestaña activa cuando el usuario interactúa con la extensión.' },
+  bookmarks:                { categoria: 'medium', descripcion: 'Leer, crear y modificar todos tus marcadores guardados.' },
+  clipboardRead:            { categoria: 'medium', descripcion: 'Leer el contenido del portapapeles sin que el usuario lo sepa.' },
+  clipboardWrite:           { categoria: 'medium', descripcion: 'Escribir contenido en el portapapeles.' },
+  geolocation:              { categoria: 'medium', descripcion: 'Conocer tu ubicación geográfica.' },
+  notifications:            { categoria: 'medium', descripcion: 'Mostrar notificaciones en tu escritorio.' },
+  sessions:                 { categoria: 'medium', descripcion: 'Acceder a las pestañas y ventanas cerradas recientemente.' },
+  topSites:                 { categoria: 'medium', descripcion: 'Leer la lista de sitios más visitados del navegador.' },
+  // low
+  storage:                  { categoria: 'low', descripcion: 'Guardar datos localmente dentro del área de almacenamiento de la extensión.' },
+  identity:                 { categoria: 'low', descripcion: 'Obtener tokens de autenticación OAuth para servicios de Google.' },
+  alarms:                   { categoria: 'low', descripcion: 'Programar tareas periódicas o temporizadas.' },
+  contextMenus:             { categoria: 'low', descripcion: 'Añadir opciones al menú contextual (clic derecho) del navegador.' },
+  offscreen:                { categoria: 'low', descripcion: 'Crear documentos fuera de pantalla para procesar contenido en segundo plano.' },
+  sidePanel:                { categoria: 'low', descripcion: 'Mostrar una interfaz en el panel lateral del navegador.' },
+};
 
 const FILE_TYPE_LABEL: Record<string, string> = {
   content_script: 'content script',
@@ -64,14 +108,36 @@ export class ReportService {
   ) {}
 
   /**
-   * Builds the final report from:
-   *  - the deterministic static-analysis output (resultado1, resultado2_*)
-   *  - the agent results (Agent 1 = intent narrative, Agent 2 = dynamic verdict)
-   *  - the raw Stagehand observations (for the per-domain timeline)
-   *
+   * Runs the verdict + UserRiskSummary pipeline WITHOUT the agent.
+   * Call this BEFORE the LLM agent so the 13 evaluated categories can be
+   * included in the agent's evidence bundle. The result is passed back into
+   * generateReport() to avoid recomputing the same verdicts twice.
+   */
+  buildPreAgentSummary(preprocessed: PreprocessorOutput): {
+    resultado1: VerdictedStaticFinding[];
+    domainFindings: VerdictedDomainFinding[];
+    resumenUsuario: UserRiskSummaryItem[];
+  } {
+    const resultado1 = preprocessed.resultado1.map((f) =>
+      this.verdictStatic(f),
+    );
+    const domainFindings = [
+      ...preprocessed.resultado2_priority.map((f) => this.verdictDomain(f)),
+      ...preprocessed.resultado2_unknown.map((f) => this.verdictDomain(f)),
+    ];
+    const resumenUsuario = this.userRiskSummary.buildSummary(
+      preprocessed,
+      resultado1,
+      domainFindings,
+    );
+    return { resultado1, domainFindings, resumenUsuario };
+  }
+
+  /**
+   * Builds the final report from the deterministic static-analysis output
+   * (resultado1, resultado2_*) and the Agent 1 intent narrative.
    * Verdicts on static findings are derived from each finding's `confidence`
-   * (above 0.7 → "positivo"). This replaces the LLM-per-finding loop that the
-   * old Agent 2/Agent 3 used.
+   * (above 0.7 → "positivo").
    */
   generateReport(
     jobId: string,
@@ -85,12 +151,24 @@ export class ReportService {
     },
     preprocessed: PreprocessorOutput,
     agentAnalysis: AgentAnalysisResult,
-    domainObservations: SandboxDomainObservation[] = [],
     riskScore?: AnalysisReport['puntuacion_riesgo'],
+    preBuilt?: ReturnType<ReportService['buildPreAgentSummary']>,
   ): AnalysisReport {
-    const resultado1 = preprocessed.resultado1.map((f) =>
-      this.verdictStatic(f),
-    );
+    // Reuse pre-built verdicts+summary if the processor ran buildPreAgentSummary
+    // before the agent; otherwise compute them now (backwards-compat fallback).
+    const resultado1 =
+      preBuilt?.resultado1 ??
+      preprocessed.resultado1.map((f) => this.verdictStatic(f));
+    const domainFindings =
+      preBuilt?.domainFindings ??
+      [
+        ...preprocessed.resultado2_priority.map((f) => this.verdictDomain(f)),
+        ...preprocessed.resultado2_unknown.map((f) => this.verdictDomain(f)),
+      ];
+    const resumenUsuario =
+      preBuilt?.resumenUsuario ??
+      this.userRiskSummary.buildSummary(preprocessed, resultado1, domainFindings);
+
     const soloPositivos = resultado1.filter((f) => f.veredicto === 'positivo');
     const scoreReal = soloPositivos.reduce(
       (acc, f) => acc + ((f as any).scoreImpact ?? 0),
@@ -100,53 +178,27 @@ export class ReportService {
       scoreReal > 0
         ? {
             score: scoreReal,
-            level: (
-              scoreReal >= 50
-                ? 'CRITICAL'
-                : scoreReal >= 25
-                  ? 'HIGH'
-                  : scoreReal >= 10
-                    ? 'MEDIUM'
-                    : 'LOW'
-            ) as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+            level: (scoreReal >= 50
+              ? 'CRITICAL'
+              : scoreReal >= 25
+                ? 'HIGH'
+                : scoreReal >= 10
+                  ? 'MEDIUM'
+                  : 'LOW') as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
             reasons: riskScore?.reasons ?? [],
           }
         : undefined;
     if (puntuacionReal && agentAnalysis.ranSuccessfully && agentAnalysis.agent1) {
-      puntuacionReal.level = ({
-        bajo:    'LOW',
-        medio:   'MEDIUM',
-        alto:    'HIGH',
-        critico: 'CRITICAL',
-      } as const)[agentAnalysis.agent1.nivel_riesgo_inicial] ?? puntuacionReal.level;
+      puntuacionReal.level =
+        (
+          {
+            bajo: 'LOW',
+            medio: 'MEDIUM',
+            alto: 'HIGH',
+            critico: 'CRITICAL',
+          } as const
+        )[agentAnalysis.agent1.nivel_riesgo_inicial] ?? puntuacionReal.level;
     }
-    const priority = preprocessed.resultado2_priority.map((f) =>
-      this.verdictDomain(f),
-    );
-    const unknown = preprocessed.resultado2_unknown.map((f) =>
-      this.verdictDomain(f),
-    );
-    const dinamico = agentAnalysis.agent2 ?? [];
-
-    const navegacionDominios: DomainNavigationLog[] = domainObservations.map(
-      (o) => ({
-        domain: o.domain,
-        url: o.url,
-        navigatorUsed: o.navigatorUsed,
-        honeypotSessionUsed: o.honeypotSessionUsed,
-        agentSteps: o.agentSteps,
-        actionsPerformed: o.actionsPerformed,
-        error: o.error,
-      }),
-    );
-
-    const dominios = this.uniqueDomainsFromPriority(priority);
-    const resumenUsuario = this.userRiskSummary.buildSummary(
-      preprocessed,
-      resultado1,
-      [...priority, ...unknown],
-      dinamico,
-    );
     const agent1 = agentAnalysis.agent1;
     const verdictoDeterministico = this.derivarVerdictoDeterministico(resumenUsuario);
     const veredictoUsuario =
@@ -154,34 +206,35 @@ export class ReportService {
         ? {
             veredicto: agent1.veredicto_global ?? verdictoDeterministico.veredicto,
             nivel: agent1.nivel_riesgo_inicial ?? verdictoDeterministico.nivel,
-            resumen: agent1.explicacion?.slice(0, 300) ?? verdictoDeterministico.resumen,
+            resumen: this.buildVeredictResumen(resumenUsuario),
             razones: verdictoDeterministico.razones,
           }
         : verdictoDeterministico;
 
-    // Per-finding narratives are ALWAYS deterministic — they come from the
-    // static-analysis rules + the report formatter, never from the LLM agent.
-    // Agent 1 only contributes the holistic verdict + explanation (see
-    // `agente1.explicacion`), shown separately in the drawer header. This keeps
-    // the static analysis independent and reproducible.
     const hallazgosEstaticos = [
       ...this.buildStaticNarratives(
         resultado1.filter((f) => f.veredicto === 'positivo'),
       ),
       ...this.buildDomainNarratives(
-        [...priority, ...unknown].filter((f) => f.veredicto === 'positivo'),
+        domainFindings.filter((f) => f.veredicto === 'positivo'),
       ),
     ];
-    const hallazgosDinamicos = dinamico
-      .filter(
-        (f) => f.veredicto === 'maliciosa' || f.veredicto === 'sospechosa',
-      )
-      .map((f) => this.formatDynamic(f));
+
+    // Split domainFindings back into priority / unknown for the report structure
+    const prioritySet = new Set(
+      preprocessed.resultado2_priority.map((f) => `${f.domain}:${f.discoveryType}:${f.line}`),
+    );
+    const resultado2_priority = domainFindings.filter((f) =>
+      prioritySet.has(`${f.domain}:${f.discoveryType}:${f.line}`),
+    );
+    const resultado2_unknown = domainFindings.filter(
+      (f) => !prioritySet.has(`${f.domain}:${f.discoveryType}:${f.line}`),
+    );
 
     this.logger.logWithJob(
       jobId,
       'info',
-      `Report generated: ${hallazgosEstaticos.length} static (incl. domain references), ${hallazgosDinamicos.length} dynamic findings`,
+      `Report generated: ${hallazgosEstaticos.length} static findings`,
       'ReportService',
     );
 
@@ -195,23 +248,69 @@ export class ReportService {
       analysisTimestamp: new Date(),
       analysisDuration,
       agente1: agent1,
-      dominios_contactados_prioritarios: dominios,
       resumen_usuario: resumenUsuario,
       veredicto_usuario: veredictoUsuario,
       hallazgos_estaticos_positivos: hallazgosEstaticos,
-      hallazgos_dinamicos_positivos: hallazgosDinamicos,
+      permisos_no_usados: this.buildPermisosNoUsados(resultado1, preprocessed),
       estructura: {
         resultado1,
-        resultado2_priority: priority,
-        resultado2_unknown: unknown,
-        resultado_dinamico: dinamico,
+        resultado2_priority,
+        resultado2_unknown,
       },
-      navegacionDominios,
-      respuestas_usuario:
-        agent1?.respuestas_usuario ??
-        this.userRiskSummary.buildFallbackRespuestas(resumenUsuario),
       puntuacion_riesgo: puntuacionReal,
     };
+  }
+
+  private buildVeredictResumen(
+    resumen: AnalysisReport['resumen_usuario'],
+  ): string {
+    const criticos = resumen.filter((i) => i.estado === 'critico');
+    const sospechosos = resumen.filter((i) => i.estado === 'sospechoso');
+    const capacidades = resumen.filter((i) => i.estado === 'capacidad');
+
+    if (criticos.length === 0 && sospechosos.length === 0 && capacidades.length === 0) {
+      return 'No se detectaron señales de riesgo significativas en esta extensión.';
+    }
+
+    const partes: string[] = [];
+    if (criticos.length > 0) {
+      partes.push(`${criticos.length} señal(es) crítica(s): ${criticos.map((i) => i.titulo).join(', ')}`);
+    }
+    if (sospechosos.length > 0) {
+      partes.push(`${sospechosos.length} señal(es) sospechosa(s): ${sospechosos.map((i) => i.titulo).join(', ')}`);
+    }
+    if (capacidades.length > 0) {
+      partes.push(`${capacidades.length} capacidad(es) relevante(s): ${capacidades.map((i) => i.titulo).join(', ')}`);
+    }
+    return `Detectamos ${partes.join('; ')}.`;
+  }
+
+  private buildPermisosNoUsados(
+    resultado1: VerdictedStaticFinding[],
+    preprocessed: PreprocessorOutput,
+  ): PermisNoUsado[] {
+    // Collect only the permissions that the static-analysis service flagged as
+    // "declared but not observed in reachable code". This avoids us re-doing the
+    // used/unused computation here; we trust the static-analysis verdict.
+    const unusedFindings = resultado1.filter(
+      (f) => f.discoveryType === 'permiso_chrome_manifest_no_usado',
+    );
+
+    return unusedFindings.map((f): PermisNoUsado => {
+      const perm = f.detail; // e.g. "cookies", "history"
+      const known = PERMISSION_DESCRIPTIONS[perm];
+      // Pull the risk category from the manifest permissionRisk table when
+      // available (it already has the authoritative weight classification).
+      const riskEntry = preprocessed.manifest.permissionRisk.find(
+        (r) => r.permission === perm,
+      );
+      const categoria: PermisNoUsado['categoria'] =
+        riskEntry?.category ?? known?.categoria ?? 'medium';
+      const descripcion =
+        known?.descripcion ??
+        `Permiso "${perm}" declarado en el manifest pero no detectado en el código analizado.`;
+      return { permission: perm, categoria, descripcion };
+    });
   }
 
   private derivarVerdictoDeterministico(
@@ -275,15 +374,6 @@ export class ReportService {
     return (
       `En el ${fileType} (${f.filePath}, línea ${f.line}) encontramos el dominio ${f.domain}, ${origin}, ` +
       `clasificado como ${f.category}. ${f.razon}`
-    );
-  }
-
-  private formatDynamic(f: DynamicVerdictedFinding): string {
-    const fileType = FILE_TYPE_LABEL[f.fileType] ?? f.fileType;
-    const detail = `${f.domain} clasificado como ${f.category}`;
-    return (
-      `En el ${fileType} de la extensión, en la ruta ${f.filePath}, línea ${f.line}, ` +
-      `descubrimos que ${f.discoveryType} (${detail}), porque ${f.accion_hecha}, por tanto ${f.razon}`
     );
   }
 
@@ -372,28 +462,49 @@ export class ReportService {
   }
 
   private flowSourceKind(detail: string): string {
-    if (/password|credential|token|bearer|cookie|sessionStorage|localStorage|chrome\.storage/i.test(detail)) {
+    if (
+      /password|credential|token|bearer|cookie|sessionStorage|localStorage|chrome\.storage/i.test(
+        detail,
+      )
+    ) {
       return 'session-or-credential-data';
     }
-    if (/document\.querySelector|DOM selection|innerText|textContent|document\.body|document\.forms/i.test(detail)) {
+    if (
+      /document\.querySelector|DOM selection|innerText|textContent|document\.body|document\.forms/i.test(
+        detail,
+      )
+    ) {
       return 'page-dom-data';
     }
-    return this.normalizeTechnicalDetail(detail.split(' viaja hacia ')[0] ?? detail);
+    return this.normalizeTechnicalDetail(
+      detail.split(' viaja hacia ')[0] ?? detail,
+    );
   }
 
   private flowSinkKind(detail: string): string {
-    if (/fetch|XMLHttpRequest|sendBeacon|WebSocket|axios|servidor en Internet|network sink/i.test(detail)) {
+    if (
+      /fetch|XMLHttpRequest|sendBeacon|WebSocket|axios|servidor en Internet|network sink/i.test(
+        detail,
+      )
+    ) {
       return 'internet-network';
     }
-    if (/chrome\.runtime\.sendMessage|window\.postMessage|extension message|memoria oculta/i.test(detail)) {
+    if (
+      /chrome\.runtime\.sendMessage|window\.postMessage|extension message|memoria oculta/i.test(
+        detail,
+      )
+    ) {
       return 'extension-message';
     }
-    return this.normalizeTechnicalDetail(detail.split(' viaja hacia ')[1] ?? detail);
+    return this.normalizeTechnicalDetail(
+      detail.split(' viaja hacia ')[1] ?? detail,
+    );
   }
 
   private staticNarrativePriority(f: VerdictedStaticFinding): number {
     const typePriority: Partial<Record<string, number>> = {
       flujo_datos_a_red: 100,
+      navegacion_externa_sensible: 88,
       correlacion_riesgo: 95,
       interceptacion_api: 94,
       suplantacion_api_navegador: 93,
@@ -424,24 +535,19 @@ export class ReportService {
     );
   }
 
-  private uniqueDomainsFromPriority(
-    priority: VerdictedDomainFinding[],
-  ): string[] {
-    const set = new Set<string>();
-    for (const f of priority) {
-      if (f.discoveryType !== 'url_en_codigo') continue;
-      set.add(`https://${f.domain}`);
-    }
-    return [...set];
-  }
-
   private describeStaticFinding(f: VerdictedStaticFinding): string {
     const detail = this.normalizeTechnicalDetail(f.detail);
     if (f.discoveryType === 'flujo_datos_a_red') {
-      if (detail.includes('memoria oculta') || detail.includes('extension message')) {
+      if (
+        detail.includes('memoria oculta') ||
+        detail.includes('extension message')
+      ) {
         return `que la extensión está extrayendo información desde una página o almacenamiento del navegador y pasándola a otro contexto de la extensión (${detail}).`;
       }
       return `que la extensión está enviando información leída desde la página o el navegador hacia una salida de red (${detail}).`;
+    }
+    if (f.discoveryType === 'navegacion_externa_sensible') {
+      return `navegación o enlace externo con contexto sensible (${detail}); puede enviar ASIN, dominio, producto o parámetros de afiliado a un tercero cuando el usuario hace clic.`;
     }
     if (f.discoveryType === 'lectura_cookies') {
       return `acceso a cookies mediante ${detail}; esto puede exponer identificadores de sesión.`;
@@ -488,8 +594,14 @@ export class ReportService {
   private normalizeTechnicalDetail(detail: string): string {
     return detail
       .replace(/(?:\.value){2,}/g, '.value')
-      .replace(/sensitive API source chrome\.storage\.session\.get\.value/g, 'datos leídos desde chrome.storage.session')
-      .replace(/DOM selection via document\.querySelector/g, 'datos leídos del DOM con document.querySelector')
+      .replace(
+        /sensitive API source chrome\.storage\.session\.get\.value/g,
+        'datos leídos desde chrome.storage.session',
+      )
+      .replace(
+        /DOM selection via document\.querySelector/g,
+        'datos leídos del DOM con document.querySelector',
+      )
       .replace(/ viaja hacia /g, ' -> ');
   }
 

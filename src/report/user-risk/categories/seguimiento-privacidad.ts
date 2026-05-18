@@ -64,6 +64,15 @@ export const seguimientoPrivacidadStaticRules: UserRiskStaticRule[] = [
       `Combinación con envío/contacto de red en ${finding.filePath}:${finding.line}.`,
   },
   {
+    ruleId: 'privacy.external_context_navigation',
+    label: 'Navegación externa con contexto de página/producto',
+    id: 'seguimiento_privacidad',
+    matches: (finding) =>
+      finding.discoveryType === 'navegacion_externa_sensible',
+    evidence: (finding) =>
+      `Inyecta o abre un enlace externo que puede llevar contexto de la página/producto (${finding.filePath}:${finding.line}).`,
+  },
+  {
     ruleId: 'privacy.analytics_or_tracking',
     label: 'Analytics o tracking',
     id: 'seguimiento_privacidad',
@@ -150,6 +159,10 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
   const bisAdware = hasDetail(context, BIS_ADWARE_RE);
   const shopifyTracking = hasDetail(context, SHOPIFY_TRACKING_RE);
   const networkFlow = hasFinding(context, 'flujo_datos_a_red');
+  const sensitiveExternalNavigation = hasFinding(
+    context,
+    'navegacion_externa_sensible',
+  );
   const crossSite = context.broadHost;
 
   // Critico: fingerprinting + envío a red, o broadHost + analytics + flow
@@ -167,6 +180,7 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
     bisAdware ||
     shopifyTracking ||
     sensitiveDomains.length > 0 ||
+    sensitiveExternalNavigation ||
     usesNavigationApi;
   // Capacidad: solo permiso declarado, sin uso real.
   const hasOnlyDeclaration = hasNavigationPerm && !usesNavigationApi;
@@ -188,24 +202,29 @@ export const evaluateSeguimientoPrivacidad: UserRiskCategoryEvaluator = (
         ? 'La extensión envía datos de tu actividad a servicios de análisis o rastreo externos.'
         : sensitiveDomains.length > 0
           ? 'La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios.'
-          : usesNavigationApi
-            ? 'La extensión usa APIs del navegador para observar activamente qué páginas visitas.'
-            : hasOnlyDeclaration
-              ? 'Tiene permiso para ver tus pestañas, pero no vimos que lo use para rastrearte.'
-              : 'No vimos señales de que esta extensión rastree tu actividad.',
+          : sensitiveExternalNavigation
+            ? 'La extensión inyecta o abre enlaces externos que pueden transferir contexto de la página, producto, dominio o parámetros de afiliado a terceros.'
+            : usesNavigationApi
+              ? 'La extensión usa APIs del navegador para observar activamente qué páginas visitas.'
+              : hasOnlyDeclaration
+                ? 'Tiene permiso para ver tus pestañas, pero no vimos que lo use para rastrearte.'
+                : 'No vimos señales de que esta extensión rastree tu actividad.',
     [
       sensitiveDomains.length > 0 &&
         `Se comunica con estos sitios externos: ${sensitiveDomains
           .slice(0, 3)
           .map((d) => d.domain)
           .join(', ')}.`,
+      sensitiveExternalNavigation &&
+        'Crea enlaces o navegaciones hacia terceros con contexto de la página/producto; puede ser captación de leads o afiliación.',
       analyticsSignal &&
         'Usa herramientas de análisis de comportamiento (Google Analytics, Mixpanel, Segment u otros).',
       fingerprintSignal &&
         'Recopila características de tu navegador y dispositivo para identificarte de forma única.',
       persistentId &&
         'Crea o usa un identificador único que permite reconocerte entre distintas sesiones.',
-      beacon && 'Envía datos de tu actividad al servidor en segundo plano, incluso cuando cierras páginas.',
+      beacon &&
+        'Envía datos de tu actividad al servidor en segundo plano, incluso cuando cierras páginas.',
       context.perms.has('tabs') &&
         !usesNavigationApi &&
         'Tiene permiso para ver tus pestañas, pero no vimos que lo use.',

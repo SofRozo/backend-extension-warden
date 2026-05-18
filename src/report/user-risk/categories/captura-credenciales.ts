@@ -101,6 +101,16 @@ export const capturaCredencialesStaticRules: UserRiskStaticRule[] = [
     evidence: (finding) =>
       `Usa chrome.identity para obtener tokens de cuenta Google/OAuth en ${finding.filePath}:${finding.line}.`,
   },
+  {
+    ruleId: 'creds.cookies_permission',
+    label: 'Permiso cookies declarado',
+    id: 'captura_credenciales',
+    matches: (finding) =>
+      finding.discoveryType === 'permiso_chrome_manifest_riesgoso' &&
+      /\bcookies\b/i.test(finding.detail),
+    evidence: (finding) =>
+      `Permiso "cookies" declarado en manifest — puede acceder a sesiones activas en ${finding.filePath}:${finding.line}.`,
+  },
 ];
 
 export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (

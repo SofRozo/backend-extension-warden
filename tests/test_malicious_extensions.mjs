@@ -39,7 +39,7 @@ const DEFAULTS = {
   delay: 2,
 };
 const POLL_INTERVAL_MS = 10_000;
-const MAX_WAIT_MS      = 720_000; // 12 min — cubre runs lentos de LLM
+const MAX_WAIT_MS      = 1_320_000; // 22 min — cubre runs lentos de LLM con qwen3:8b
 
 // ── Argumentos CLI ───────────────────────────────────────────────────────────
 function parseArgs() {
@@ -120,7 +120,21 @@ async function getReport(baseUrl, jobId) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── Extraer métricas del reporte (API actual) ────────────────────────────────
+// ── Extraer métricas del reporte ─────────────────────────────────────────────
+//
+// Estructura actual del reporte (sin análisis dinámico):
+//   report.agente1                    — { proposito, explicacion, veredicto_global,
+//                                         nivel_riesgo_inicial, categoria,
+//                                         respuestas_usuario: { key: {valor, razon} } }
+//   report.veredicto_usuario          — { veredicto, nivel, resumen, razones[] }
+//   report.resumen_usuario            — [{ id, estado, ... }]
+//   report.puntuacion_riesgo          — { score, level, reasons[] }
+//   report.permisos_no_usados         — [{ permission, categoria, descripcion }]
+//   report.estructura.resultado1      — VerdictedStaticFinding[]
+//   report.estructura.resultado2_priority — VerdictedDomainFinding[]  (sensibles)
+//   report.estructura.resultado2_unknown  — VerdictedDomainFinding[]  (desconocidos)
+//   report.hallazgos_estaticos_positivos  — string[]
+//
 function buildRow(index, filename, upload, statusResp, report, elapsedS, error = '') {
   if (!report) {
     return {
@@ -139,16 +153,16 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
       nivel_usuario:                '',
       resumen_usuario:              '',
       razones_usuario:              '',
-      // Respuestas FAQ
-      faq_puede_capturar_contrasenas: '',
-      faq_puede_registrar_teclas:     '',
-      faq_puede_espiar_sin_saberlo:   '',
-      faq_puede_leer_formularios:     '',
-      faq_puede_modificar_paginas:    '',
-      faq_puede_interceptar_trafico:  '',
-      faq_puede_ver_paginas_visitadas:'',
-      faq_puede_ver_historial:        '',
-      faq_codigo_oculto_o_sospechoso: '',
+      // Respuestas FAQ (valor solamente para el resumen tabular)
+      faq_puede_capturar_contrasenas:      '',
+      faq_puede_registrar_teclas:          '',
+      faq_puede_espiar_sin_saberlo:        '',
+      faq_puede_leer_formularios:          '',
+      faq_puede_modificar_paginas:         '',
+      faq_puede_interceptar_trafico:       '',
+      faq_puede_ver_paginas_visitadas:     '',
+      faq_puede_ver_historial:             '',
+      faq_codigo_oculto_o_sospechoso:      '',
       faq_puede_afectar_otras_extensiones: '',
       // Risk score
       risk_score:                   '',
@@ -159,7 +173,7 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
       hallazgos_altos:              '',
       hallazgos_medios:             '',
       hallazgos_bajos:              '',
-      // 13 categorías de comportamiento (resumen_usuario)
+      // 13 categorías de comportamiento
       cat_acceso_general:           '',
       cat_modificacion_paginas:     '',
       cat_lectura_informacion:      '',
@@ -173,11 +187,14 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
       cat_mineria_recursos:         '',
       cat_fingerprinting_severo:    '',
       cat_ofuscacion_transparencia: '',
-      // Dominios y dinámica
+      // Dominios
       dominios_prioritarios:        '',
       dominios_desconocidos:        '',
-      dominios_contactados:         '',
-      stagehand_errores:            '',
+      dominios_sensibles_lista:     '',
+      // Permisos no usados
+      permisos_no_usados_total:     '',
+      permisos_no_usados_criticos:  '',
+      permisos_no_usados_lista:     '',
       // Tiempos
       duracion_analisis_s:          elapsedS.toFixed(1),
       error,
@@ -189,13 +206,19 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
   const resultado1 = estructura.resultado1          ?? [];
   const prio       = estructura.resultado2_priority ?? [];
   const unknown    = estructura.resultado2_unknown  ?? [];
-  const dinamico   = estructura.resultado_dinamico  ?? [];
-  const navDoms    = report.navegacionDominios       ?? [];
   const verdUsr    = report.veredicto_usuario        ?? {};
   const riskScore  = report.puntuacion_riesgo        ?? {};
   const resumenUsr = report.resumen_usuario          ?? [];
-  const faq        = report.respuestas_usuario       ?? {};
-  const domsCont   = report.dominios_contactados_prioritarios ?? [];
+  const permNoUsd  = report.permisos_no_usados       ?? [];
+
+  // respuestas_usuario ahora viven dentro de agente1 con forma {valor, razon}
+  const faq = agente1.respuestas_usuario ?? {};
+  const faqVal = key => {
+    const entry = faq[key];
+    if (!entry) return '';
+    // compatibilidad con JSONs viejos (cadena plana) y nueva estructura ({valor, razon})
+    return typeof entry === 'object' ? (entry.valor ?? '') : entry;
+  };
 
   // Hallazgos estáticos positivos
   const positivos = resultado1.filter(f => f.veredicto === 'positivo');
@@ -207,8 +230,16 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
     return item ? item.estado : 'no_detectado';
   };
 
-  // Stagehand errors
-  const stagehandErrors = navDoms.filter(n => n.error).length;
+  // Dominios sensibles (resultado2_priority): listar primeros 5 dominios
+  const domSensiblesList = prio
+    .map(f => f.domain)
+    .filter((d, i, arr) => arr.indexOf(d) === i)
+    .slice(0, 5)
+    .join(', ');
+
+  // Permisos no usados
+  const permNoUsdCriticos = permNoUsd.filter(p => p.categoria === 'critical' || p.categoria === 'high').length;
+  const permNoUsdLista    = permNoUsd.map(p => p.permission).slice(0, 8).join(', ');
 
   return {
     '#':                          index,
@@ -219,24 +250,24 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
     veredicto_agente:             agente1.veredicto_global        ?? '',
     nivel_riesgo_agente:          agente1.nivel_riesgo_inicial    ?? '',
     categoria_agente:             agente1.categoria               ?? '',
-    proposito:                    (agente1.proposito              ?? '').slice(0, 150),
+    proposito:                    (agente1.proposito              ?? '').slice(0, 200),
     explicacion:                  (agente1.explicacion            ?? '').slice(0, 300),
     // Veredicto usuario (combinación agente + determinista)
     veredicto_usuario:            verdUsr.veredicto  ?? '',
     nivel_usuario:                verdUsr.nivel      ?? '',
     resumen_usuario:              (verdUsr.resumen   ?? '').slice(0, 200),
     razones_usuario:              (verdUsr.razones   ?? []).join(' | ').slice(0, 300),
-    // Respuestas FAQ (respuestas_usuario)
-    faq_puede_capturar_contrasenas:      faq.puede_capturar_contrasenas      ?? '',
-    faq_puede_registrar_teclas:          faq.puede_registrar_teclas          ?? '',
-    faq_puede_espiar_sin_saberlo:        faq.puede_espiar_sin_saberlo        ?? '',
-    faq_puede_leer_formularios:          faq.puede_leer_formularios          ?? '',
-    faq_puede_modificar_paginas:         faq.puede_modificar_paginas         ?? '',
-    faq_puede_interceptar_trafico:       faq.puede_interceptar_trafico       ?? '',
-    faq_puede_ver_paginas_visitadas:     faq.puede_ver_paginas_visitadas     ?? '',
-    faq_puede_ver_historial:             faq.puede_ver_historial             ?? '',
-    faq_codigo_oculto_o_sospechoso:      faq.codigo_oculto_o_sospechoso      ?? '',
-    faq_puede_afectar_otras_extensiones: faq.puede_afectar_otras_extensiones ?? '',
+    // Respuestas FAQ — valor del agente (si / posible / no_detectado)
+    faq_puede_capturar_contrasenas:      faqVal('puede_capturar_contrasenas'),
+    faq_puede_registrar_teclas:          faqVal('puede_registrar_teclas'),
+    faq_puede_espiar_sin_saberlo:        faqVal('puede_espiar_sin_saberlo'),
+    faq_puede_leer_formularios:          faqVal('puede_leer_formularios'),
+    faq_puede_modificar_paginas:         faqVal('puede_modificar_paginas'),
+    faq_puede_interceptar_trafico:       faqVal('puede_interceptar_trafico'),
+    faq_puede_ver_paginas_visitadas:     faqVal('puede_ver_paginas_visitadas'),
+    faq_puede_ver_historial:             faqVal('puede_ver_historial'),
+    faq_codigo_oculto_o_sospechoso:      faqVal('codigo_oculto_o_sospechoso'),
+    faq_puede_afectar_otras_extensiones: faqVal('puede_afectar_otras_extensiones'),
     // Risk score
     risk_score:                   riskScore.score ?? '',
     risk_level:                   riskScore.level ?? '',
@@ -263,8 +294,11 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
     // Dominios
     dominios_prioritarios:        prio.length,
     dominios_desconocidos:        unknown.length,
-    dominios_contactados:         domsCont.slice(0, 5).join(', '),
-    stagehand_errores:            stagehandErrors,
+    dominios_sensibles_lista:     domSensiblesList,
+    // Permisos declarados pero no usados
+    permisos_no_usados_total:     permNoUsd.length,
+    permisos_no_usados_criticos:  permNoUsdCriticos,
+    permisos_no_usados_lista:     permNoUsdLista,
     // Tiempo
     duracion_analisis_s:          elapsedS.toFixed(1),
     error,
@@ -482,8 +516,24 @@ async function exportBatchExcel(ExcelJS, rows, outPath, batchLabel) {
   addRow('Altos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_altos)    || 0), 0));
   addRow('Medios totales',   completed.reduce((s, r) => s + (parseInt(r.hallazgos_medios)   || 0), 0));
   addRow('Bajos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_bajos)    || 0), 0));
+  addSep();
 
-  ws2.getColumn(1).width = 48;
+  addBold('PERMISOS DECLARADOS PERO NO USADOS', '');
+  addRow('Total de permisos no usados',
+    completed.reduce((s, r) => s + (parseInt(r.permisos_no_usados_total) || 0), 0));
+  addRow('Permisos no usados con riesgo alto/crítico',
+    completed.reduce((s, r) => s + (parseInt(r.permisos_no_usados_criticos) || 0), 0));
+  addRow('Extensiones con ≥1 permiso no usado',
+    completed.filter(r => (parseInt(r.permisos_no_usados_total) || 0) > 0).length);
+  addSep();
+
+  addBold('DOMINIOS DETECTADOS', '');
+  addRow('Total dominios sensibles (prioridad)',
+    completed.reduce((s, r) => s + (parseInt(r.dominios_prioritarios) || 0), 0));
+  addRow('Total dominios desconocidos',
+    completed.reduce((s, r) => s + (parseInt(r.dominios_desconocidos) || 0), 0));
+
+  ws2.getColumn(1).width = 52;
   ws2.getColumn(2).width = 32;
 
   await wb.xlsx.writeFile(outPath);
@@ -553,6 +603,7 @@ async function main() {
   console.log(`  Backend:        ${baseUrl}`);
   console.log(`  Extensiones:    ${crxFiles.length} de ${fs.readdirSync(cfg.dir).filter(f => f.endsWith('.crx')).length} disponibles`);
   console.log(`  Batch size:     ${cfg.batch}  |  Total batches: ${totalBatches}`);
+  console.log(`  Timeout/job:    ${MAX_WAIT_MS / 60_000} min`);
   console.log(`  Salida raíz:    ${cfg.out}`);
   console.log('═'.repeat(65));
 
@@ -587,7 +638,7 @@ async function main() {
       upload = await uploadExtension(baseUrl, fullPath);
       console.log(`jobId=${upload.jobId}`);
 
-      console.log(`  ⏳ Esperando análisis (máx ${MAX_WAIT_MS / 1000}s)...`);
+      console.log(`  ⏳ Esperando análisis (máx ${MAX_WAIT_MS / 60_000} min)...`);
       statusResp = await pollStatus(baseUrl, upload.jobId);
 
       if (statusResp.status === 'completed') {
@@ -603,11 +654,12 @@ async function main() {
           `  📊 Veredicto agente=${a1.veredicto_global ?? '?'}  ` +
           `Nivel=${a1.nivel_riesgo_inicial ?? '?'}  ` +
           `Veredicto usuario=${report.veredicto_usuario?.veredicto ?? '?'}  ` +
-          `Risk score=${report.puntuacion_riesgo?.score ?? '?'} (${report.puntuacion_riesgo?.level ?? '?'})`
+          `Risk score=${report.puntuacion_riesgo?.score ?? '?'} (${report.puntuacion_riesgo?.level ?? '?'})  ` +
+          `Permisos no usados=${report.permisos_no_usados?.length ?? 0}`
         );
       } else {
         console.log(`  ❌ Estado final: ${statusResp.status}`);
-        if (statusResp.status === 'timeout') error = `timeout tras ${MAX_WAIT_MS / 1000}s`;
+        if (statusResp.status === 'timeout') error = `timeout tras ${MAX_WAIT_MS / 60_000} min`;
         else error = `job ${statusResp.status}`;
       }
     } catch (e) {

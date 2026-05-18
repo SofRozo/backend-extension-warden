@@ -6,7 +6,6 @@ import { AnalysisJob } from '../analysis/entities/analysis-job.entity.js';
 import { DownloaderModule } from '../downloader/downloader.module.js';
 import { PreprocessorModule } from '../preprocessor/preprocessor.module.js';
 import { StaticAnalysisModule } from '../static-analysis/static-analysis.module.js';
-import { DynamicAnalysisModule } from '../dynamic-analysis/dynamic-analysis.module.js';
 import { ThreatIntelModule } from '../threat-intel/threat-intel.module.js';
 import { ReportModule } from '../report/report.module.js';
 import { AgentsModule } from '../agents/agents.module.js';
@@ -26,7 +25,6 @@ import { StructuredLogger } from '../common/logger/logger.service.js';
     DownloaderModule,
     PreprocessorModule,
     StaticAnalysisModule,
-    DynamicAnalysisModule,
     ThreatIntelModule,
     ReportModule,
     AgentsModule,

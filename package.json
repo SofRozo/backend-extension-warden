@@ -26,7 +26,6 @@
     "@babel/parser": "^7.29.2",
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^7.29.0",
-    "@browserbasehq/stagehand": "^3.3.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
@@ -97,7 +96,6 @@
     },
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1",
-      "^@browserbasehq/stagehand$": "<rootDir>/__mocks__/stagehand.ts",
       "^@ai-sdk/openai-compatible$": "<rootDir>/__mocks__/openai-compatible.ts"
     },
     "collectCoverageFrom": [

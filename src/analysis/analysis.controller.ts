@@ -26,7 +26,6 @@ const STATUS_PROGRESS: Record<AnalysisStatus, number> = {
   [AnalysisStatus.PREPROCESSING]: 25,
   [AnalysisStatus.AI_ANALYSIS]: 38,
   [AnalysisStatus.STATIC_ANALYSIS]: 50,
-  [AnalysisStatus.DYNAMIC_ANALYSIS]: 70,
   [AnalysisStatus.THREAT_INTEL]: 85,
   [AnalysisStatus.GENERATING_REPORT]: 92,
   [AnalysisStatus.COMPLETED]: 100,
@@ -46,14 +45,12 @@ export class AnalysisController {
     const job = await this.analysisService.createAnalysisJob(
       dto.extensionId,
       dto.demo === true,
-      dto.navigator,
       dto.packagePath,
     );
     return {
       jobId: job.id,
       status: job.status,
       queue: dto.demo === true ? 'analysis-demo' : 'analysis',
-      navigator: dto.navigator ?? 'default (env)',
       source: dto.packagePath ? 'packagePath' : 'chromeWebStore',
       message: 'Analysis job queued successfully',
     };
@@ -93,7 +90,6 @@ export class AnalysisController {
     const job = await this.analysisService.createAnalysisJob(
       localId,
       false,
-      undefined,
       packagePath,
     );
     return {

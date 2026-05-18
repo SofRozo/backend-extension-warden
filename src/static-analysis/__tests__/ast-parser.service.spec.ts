@@ -269,6 +269,38 @@ describe('AstParserService', () => {
     });
   });
 
+  describe('detectSensitiveExternalNavigations — privacy-relevant links', () => {
+    it('detects injected promotional navigation carrying ASIN and current domain', () => {
+      const code = `
+        function injectPromotion() {
+          const asin = 'B012345678';
+          const domain = window.location.hostname;
+          const url = \`https://app.10xprofit.io/search?asin=\${asin}&domain=\${domain}\`;
+          const button = document.createElement('button');
+          button.addEventListener('click', () => window.open(url, '_blank'));
+          document.body.appendChild(button);
+        }
+      `;
+      const findings = service.detectSensitiveExternalNavigations(
+        code,
+        'content.js',
+      );
+      expect(findings.length).toBeGreaterThan(0);
+      expect(findings[0].pattern).toBe('external_navigation');
+      expect(findings[0].description).toContain('app.10xprofit.io');
+      expect(findings[0].description).toMatch(/ASIN|domain|promotion/i);
+    });
+
+    it('ignores ordinary social/profile links without page or affiliate context', () => {
+      const code = `window.open('https://www.instagram.com/get_happy_dog/', '_blank');`;
+      const findings = service.detectSensitiveExternalNavigations(
+        code,
+        'popup.js',
+      );
+      expect(findings).toEqual([]);
+    });
+  });
+
   describe('detectDataFlow — stronger taint sources and message hops', () => {
     it('tracks password field values into fetch', () => {
       const code = `

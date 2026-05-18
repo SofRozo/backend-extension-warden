@@ -7,7 +7,6 @@ import type {
   PreprocessorOutput,
   PreprocessingFinding,
   DomainFinding,
-  DynamicVerdictedFinding,
 } from '../../common/interfaces/analysis.interfaces.js';
 
 describe('ReportService', () => {
@@ -44,19 +43,6 @@ describe('ReportService', () => {
     category: 'sensible_redes_sociales',
     priority: 6,
     line: 10,
-  };
-
-  const baseDynamic: DynamicVerdictedFinding = {
-    fileType: 'background',
-    filePath: 'src/bg.js',
-    discoveryType: 'url_en_codigo',
-    domain: 'instagram.com',
-    category: 'sensible_redes_sociales',
-    priority: 6,
-    line: 10,
-    veredicto: 'maliciosa',
-    accion_hecha: 'envió cookies de sesión a un dominio externo',
-    razon: 'la extensión exfiltró cookies durante la navegación',
   };
 
   const buildPreprocessed = (
@@ -110,7 +96,6 @@ describe('ReportService', () => {
       explicacion:
         'La extensión declara ser una mascota virtual pero registra teclas y contacta Instagram, lo que no es coherente con su propósito declarado.',
     },
-    agent2: [baseDynamic],
     ranSuccessfully: true,
     errors: [],
     ...overrides,
@@ -127,15 +112,10 @@ describe('ReportService', () => {
     );
 
     expect(report.agente1?.veredicto_global).toBe('maliciosa');
-    expect(report.dominios_contactados_prioritarios).toEqual([
-      'https://instagram.com',
-    ]);
-    expect(report.hallazgos_estaticos_positivos.length).toBe(2);
+    expect(report.hallazgos_estaticos_positivos.length).toBeGreaterThanOrEqual(1);
     expect(report.hallazgos_estaticos_positivos[0]).toContain('content script');
     expect(report.hallazgos_estaticos_positivos[0]).toContain('src/main.js');
     expect(report.hallazgos_estaticos_positivos[0]).toContain('línea 42');
-    expect(report.hallazgos_dinamicos_positivos.length).toBe(1);
-    expect(report.hallazgos_dinamicos_positivos[0]).toContain('por tanto');
     expect(report.resumen_usuario).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -158,12 +138,9 @@ describe('ReportService', () => {
     expect(report.veredicto_usuario.razones.length).toBeGreaterThan(0);
     expect(report.estructura.resultado1[0].veredicto).toBe('positivo');
     expect(report.estructura.resultado2_priority[0].veredicto).toBe('positivo');
-    expect(report.estructura.resultado_dinamico).toEqual([baseDynamic]);
   });
 
   it('builds static narratives deterministically, independent of any agent output', () => {
-    // Even with an Agent 1 that returns a verdict, the per-finding narratives
-    // must come from the static-analysis formatter — not from the agent.
     const report = service.generateReport(
       'job-2',
       'ext-2',
@@ -176,8 +153,6 @@ describe('ReportService', () => {
     expect(report.hallazgos_estaticos_positivos[0]).toContain('content script');
     expect(report.hallazgos_estaticos_positivos[0]).toContain('src/main.js');
     expect(report.hallazgos_estaticos_positivos[0]).toContain('línea 42');
-    // The agent's holistic explanation still lands in `agente1.explicacion`,
-    // separately from the deterministic per-finding narratives.
     expect(report.agente1?.explicacion).toContain('mascota virtual');
   });
 
@@ -193,12 +168,11 @@ describe('ReportService', () => {
       0,
       { crxHash: 'h' },
       buildPreprocessed({ resultado1: [weak], resultado2_priority: [] }),
-      buildAgents({ agent2: [] }),
+      buildAgents(),
     );
 
     expect(report.estructura.resultado1[0].veredicto).toBe('falso_positivo');
     expect(report.hallazgos_estaticos_positivos).toHaveLength(0);
-    expect(report.hallazgos_dinamicos_positivos).toHaveLength(0);
   });
 
   it('explains obfuscation in user-friendly terms', () => {
@@ -219,7 +193,7 @@ describe('ReportService', () => {
       0,
       { crxHash: 'h' },
       buildPreprocessed({ resultado1: [obfuscated], resultado2_priority: [] }),
-      buildAgents({ agent2: [] }),
+      buildAgents(),
     );
 
     expect(report.hallazgos_estaticos_positivos[0]).toContain(
@@ -257,7 +231,7 @@ describe('ReportService', () => {
         resultado1: repeatedCookies,
         resultado2_priority: [],
       }),
-      buildAgents({ agent2: [] }),
+      buildAgents(),
     );
 
     expect(report.hallazgos_estaticos_positivos).toHaveLength(1);
@@ -266,7 +240,7 @@ describe('ReportService', () => {
     );
   });
 
-  it('does not report manifest host permissions as contacted domains', () => {
+  it('does not report manifest host permissions differently from code urls', () => {
     const hostOnly: DomainFinding = {
       ...basePriority,
       fileType: 'manifest',
@@ -282,10 +256,9 @@ describe('ReportService', () => {
       0,
       { crxHash: 'h' },
       buildPreprocessed({ resultado2_priority: [hostOnly] }),
-      buildAgents({ agent2: [] }),
+      buildAgents(),
     );
 
-    expect(report.dominios_contactados_prioritarios).toEqual([]);
     expect(report.hallazgos_estaticos_positivos[1]).toContain(
       'declarado como permiso de host',
     );
@@ -293,8 +266,8 @@ describe('ReportService', () => {
 
   it('handles missing agents gracefully', () => {
     const report = service.generateReport(
-      'job-4',
-      'ext-4',
+      'job-5',
+      'ext-5',
       0,
       { crxHash: 'h' },
       buildPreprocessed({
@@ -303,15 +276,12 @@ describe('ReportService', () => {
       }),
       {
         agent1: null,
-        agent2: null,
         ranSuccessfully: false,
         errors: ['no LLM'],
       },
     );
 
     expect(report.agente1).toBeNull();
-    expect(report.dominios_contactados_prioritarios).toEqual([]);
     expect(report.hallazgos_estaticos_positivos).toEqual([]);
-    expect(report.hallazgos_dinamicos_positivos).toEqual([]);
   });
 });

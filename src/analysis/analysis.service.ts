@@ -22,7 +22,6 @@ export class AnalysisService {
   async createAnalysisJob(
     extensionId?: string,
     demo: boolean = false,
-    navigator?: 'stagehand' | 'intelligent_navigator',
     packagePath?: string,
   ): Promise<AnalysisJob> {
     const sourceId = extensionId ?? `local-${Date.now()}`;
@@ -42,7 +41,6 @@ export class AnalysisService {
         packagePath,
         jobId: savedJob.id,
         demo,
-        navigator,
       },
       {
         attempts: 2,
@@ -60,9 +58,7 @@ export class AnalysisService {
     this.logger.logWithJob(
       savedJob.id,
       'info',
-      `Job created and queued (queue=${targetQueue.name}` +
-        (navigator ? `, navigator=${navigator}` : '') +
-        `) for extension ${sourceId}`,
+      `Job created and queued (queue=${targetQueue.name}) for extension ${sourceId}`,
       'AnalysisService',
     );
 

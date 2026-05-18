@@ -1,5 +1,4 @@
 import type {
-  DynamicVerdictedFinding,
   FileRole,
   HallazgoCodigo,
   PreprocessorOutput,
@@ -30,7 +29,6 @@ export interface UserRiskContext {
   preprocessed: PreprocessorOutput;
   positives: VerdictedStaticFinding[];
   domainFindings: VerdictedDomainFinding[];
-  dynamicFindings: DynamicVerdictedFinding[];
   perms: Set<string>;
   broadHost: boolean;
   hasContentScript: boolean;

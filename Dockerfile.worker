@@ -9,28 +9,18 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# ─── Stage 2: Worker Sandbox con Playwright + Chromium ────────────────────────
-# node:24-slim + solo Chromium (~800MB menos que la imagen oficial que incluye Firefox+WebKit)
+# ─── Stage 2: Worker ──────────────────────────────────────────────────────────
 FROM node:24-slim AS production
 
 WORKDIR /app
 
-# Security: correr como usuario no-root
 RUN groupadd -r sandbox && useradd -r -g sandbox -s /bin/false sandboxuser
 
-# Copiar solo dependencias de producción
 COPY package*.json ./
 RUN npm install --omit=dev && npm cache clean --force
 
-# Instalar solo Chromium y sus dependencias de sistema (omite Firefox y WebKit)
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN npx playwright install --with-deps chromium \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
-
-# Copiar build compilado desde stage 1
 COPY --from=builder /app/dist ./dist
 
-# Directorios de trabajo efímeros (tmpfs en docker-compose, no persisten)
 RUN mkdir -p /tmp/ext-sandbox/crx /tmp/ext-sandbox/extracted \
     && chown -R sandboxuser:sandbox /tmp/ext-sandbox /app
 

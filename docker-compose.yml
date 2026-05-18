@@ -1,12 +1,9 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Ext-Sandbox — Docker Compose
 #
-# Network topology (RNF01 — critical isolation rule):
+# Network topology:
 #   api_net:     Container1 (API) ↔ Container2 (Redis + PostgreSQL)
-#   sandbox_net: Container3 (Worker) → Internet + Redis (read-only)
-#
-# Container3 (Worker) has NO direct visibility to Container1 or PostgreSQL.
-# A malicious extension that escapes the browser cannot reach the core system.
+#   sandbox_net: Container3 (Worker) → Internet + Redis/PostgreSQL
 # ═══════════════════════════════════════════════════════════════════════════════
 
 networks:
@@ -15,20 +12,12 @@ networks:
     internal: false          # API needs Internet to download .crx files
   sandbox_net:
     driver: bridge
-    internal: false          # Worker needs Internet for dynamic navigation
+    internal: false          # Worker needs Internet for CRX downloads and threat intel
     driver_opts:
       com.docker.network.bridge.enable_ip_masquerade: "true"
 
 volumes:
   postgres_data:
-    driver: local
-  honeypot_states:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/data/honeypot/states
-  sandbox_screenshots:
     driver: local
   ext_uploads:
     driver: local
@@ -119,17 +108,12 @@ services:
       URLSCAN_API_KEY: ${URLSCAN_API_KEY:-}
       ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
       STATIC_TIMEOUT_MS: ${STATIC_TIMEOUT_MS:-60000}
-      DYNAMIC_TIMEOUT_MS: ${DYNAMIC_TIMEOUT_MS:-180000}
       MAX_CONCURRENT_WORKERS: ${MAX_CONCURRENT_WORKERS:-10}
-      HONEYPOT_ENCRYPTION_KEY: ${HONEYPOT_ENCRYPTION_KEY:-}
-      STORAGE_STATE_PATH: /data/honeypot/states
       USAR_OLLAMA: ${USAR_OLLAMA:-true}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:4b}
+      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:8b}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
-      - honeypot_states:/data/honeypot/states
-      - sandbox_screenshots:/tmp/ext-sandbox/screenshots:ro
       - ext_uploads:/tmp/ext-sandbox/uploads
     depends_on:
       postgres:
@@ -176,33 +160,23 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-extsandbox_secret}
       DB_NAME: ${DB_NAME:-extsandbox}
       STATIC_TIMEOUT_MS: ${STATIC_TIMEOUT_MS:-60000}
-      DYNAMIC_TIMEOUT_MS: ${DYNAMIC_TIMEOUT_MS:-180000}
       THREAT_INTEL_TIMEOUT_MS: ${THREAT_INTEL_TIMEOUT_MS:-10000}
       THREAT_INTEL_CACHE_TTL: ${THREAT_INTEL_CACHE_TTL:-86400}
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
       URLSCAN_API_KEY: ${URLSCAN_API_KEY:-}
       ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
-      HONEYPOT_ENCRYPTION_KEY: ${HONEYPOT_ENCRYPTION_KEY:-}
-      STORAGE_STATE_PATH: /data/honeypot/states
-      DEMO_STORAGE_STATE_PATH: /data/honeypot/states
-      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       USAR_OLLAMA: ${USAR_OLLAMA:-true}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:4b}
+      MODELO_OLLAMA: ${MODELO_OLLAMA:-qwen3:8b}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
-      ANALYSIS_USE_STAGEHAND: ${ANALYSIS_USE_STAGEHAND:-true}
       AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-1200000}
     volumes:
-      # No bind mounts to host (RNF01)
-      # Ephemeral temp space only
       - type: tmpfs
         target: /tmp/ext-sandbox
         tmpfs:
           size: 536870912   # 512MB
           mode: 0777
-      - sandbox_screenshots:/tmp/ext-sandbox/screenshots
       - ext_uploads:/tmp/ext-sandbox/uploads:ro
-      - honeypot_states:/data/honeypot/states:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -210,14 +184,10 @@ services:
         condition: service_healthy
     security_opt:
       - no-new-privileges:true
-      - seccomp:./seccomp/chrome.json   # Restrict syscalls for browser sandbox
-    # cgroups resource limits
     deploy:
       resources:
         limits:
           cpus: "2.0"
-          memory: 1536M
+          memory: 1024M
         reservations:
           memory: 256M
-    # SHM size needed by Chromium (512MB is enough for headless)
-    shm_size: 512m

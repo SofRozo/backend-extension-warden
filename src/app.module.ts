@@ -8,12 +8,9 @@ import { APP_GUARD } from '@nestjs/core';
 import configuration from './config/configuration.js';
 import { AnalysisModule } from './analysis/analysis.module.js';
 import { HealthModule } from './health/health.module.js';
-import { PlatformStateModule } from './platform-state/platform-state.module.js';
 import { AnalysisJob } from './analysis/entities/analysis-job.entity.js';
-import { PlatformState } from './analysis/entities/platform-state.entity.js';
 import { RetentionService } from './database/retention.service.js';
 import { StructuredLogger } from './common/logger/logger.service.js';
-import { EncryptionService } from './common/crypto/encryption.service.js';
 
 @Module({
   imports: [
@@ -21,7 +18,6 @@ import { EncryptionService } from './common/crypto/encryption.service.js';
       isGlobal: true,
       load: [configuration],
     }),
-    // §11: Schedule module for data retention cron jobs + §9.1 honeypot renewal
     ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -33,7 +29,7 @@ import { EncryptionService } from './common/crypto/encryption.service.js';
         username: config.get<string>('database.username'),
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
-        entities: [AnalysisJob, PlatformState],
+        entities: [AnalysisJob],
         synchronize: true, // Set to false in production; use migrations
         logging: false,
       }),
@@ -66,12 +62,10 @@ import { EncryptionService } from './common/crypto/encryption.service.js';
     TypeOrmModule.forFeature([AnalysisJob]),
     AnalysisModule,
     HealthModule,
-    PlatformStateModule,
   ],
   providers: [
     RetentionService,
     StructuredLogger,
-    EncryptionService,
     // RNF03: Aplicar rate limiting globalmente a todos los endpoints
     {
       provide: APP_GUARD,

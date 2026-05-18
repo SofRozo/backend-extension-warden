@@ -232,12 +232,77 @@ const LLM_PLATFORMS: Record<string, string> = {
   'poe.com': 'Poe',
 };
 
+// ─── Entity resolution — groups regional variants under one brand ─────────────
+//
+// Used to de-duplicate: amazon.co.uk, amazon.de, amazon.co.jp, etc. all belong
+// to the same "Amazon" entity. Regex patterns are tested against the
+// `dNoWww` form of the domain.
+
+export interface EntityClassification {
+  entity: string;
+  category: DomainCategory;
+  /** Human-readable description of why the entity is notable. */
+  description: string;
+}
+
+const ENTITY_PATTERNS: Array<{
+  regex: RegExp;
+  entity: string;
+  category: DomainCategory;
+  description: string;
+}> = [
+  {
+    regex: /^amazon\.(com|co\.uk|co\.jp|de|fr|es|it|in|ca|com\.mx|com\.br|com\.au|sg|ae|nl|se|pl|com\.tr|eg|sa)$/i,
+    entity: 'Amazon',
+    category: 'infraestructura_tecnica',
+    description: 'Amazon e-commerce platform (regional variant)',
+  },
+  {
+    regex: /^(smile\.amazon|sellercentral\.amazon|images-amazon|media-amazon|ssl-images-amazon|completion\.amazon|ecx\.images-amazon|assoc-amazon)\.(com|co\.uk|co\.jp|de|fr|es|it|in|ca)$/i,
+    entity: 'Amazon',
+    category: 'infraestructura_tecnica',
+    description: 'Amazon infrastructure subdomain',
+  },
+  {
+    regex: /^(aax|aax-eu|aax-fe)\.amazon-adsystem\.com$/i,
+    entity: 'Amazon Ads',
+    category: 'sensible_data_broker',
+    description: 'Amazon advertising / tracking system',
+  },
+  {
+    regex: /^(www\.)?google\.(com|co\.uk|co\.jp|de|fr|es|it|ca|com\.au|com\.br|com\.mx|co\.in|com\.ar)$/i,
+    entity: 'Google',
+    category: 'infraestructura_tecnica',
+    description: 'Google search engine (regional variant)',
+  },
+  {
+    regex: /^(www\.)?facebook\.(com|co\.uk|de|fr|es)$|^(www\.)?instagram\.com$|^fbcdn\.net$|^cdninstagram\.com$/i,
+    entity: 'Meta',
+    category: 'sensible_redes_sociales',
+    description: 'Meta platform (Facebook / Instagram)',
+  },
+  {
+    regex: /^10xprofit\.io$|^app\.10xprofit\.io$/i,
+    entity: '10xProfit',
+    category: 'sensible_data_broker',
+    description: 'Lead generation / commerce data third-party',
+  },
+  {
+    regex: /^ecomstal\.(com|io|net)$/i,
+    entity: 'EcomStal',
+    category: 'sensible_data_broker',
+    description: 'E-commerce analytics / lead generation third-party',
+  },
+];
+
 // ─── Public result type ───────────────────────────────────────────────────────
 
 export interface DeterministicResult {
   /** null means "unknown — not in any curated list" */
   category: DomainCategory | null;
   platform?: string;
+  /** Set when domain matched an entity regex (multi-regional brand). */
+  entity?: string;
 }
 
 const RESIDENTIAL_PROXY_NETWORKS = new Set([
@@ -255,6 +320,69 @@ const RESIDENTIAL_PROXY_NETWORKS = new Set([
 
 @Injectable()
 export class DomainClassifierService {
+  /**
+   * Extracts the registrable domain (eTLD+1) from a hostname.
+   * This is the generalizable grouping key for unknown domains:
+   *   api.evil.io  → evil.io
+   *   cdn.evil.io  → evil.io
+   *   sub.co.uk    → sub.co.uk   (single-label SLD, returned as-is)
+   *
+   * Handles common two-label eTLDs (co.uk, com.br, org.au, etc.) without
+   * requiring an external public-suffix-list library.
+   */
+  registrableDomain(domain: string): string {
+    const d = domain.toLowerCase().replace(/^www\./, '');
+    const parts = d.split('.');
+    if (parts.length <= 2) return d;
+
+    // Common two-label eTLDs: co.uk, com.au, com.br, co.jp, org.uk, net.au…
+    const TWO_LABEL_ETLD = /^(co|com|org|net|gov|edu|ac|sch|me|ne|or)\.[a-z]{2}$/;
+    const lastTwo = parts.slice(-2).join('.');
+    if (TWO_LABEL_ETLD.test(lastTwo)) {
+      // e.g. api.amazon.co.uk → parts = [api, amazon, co, uk] → take last 3
+      return parts.slice(-3).join('.');
+    }
+    // Standard: take last two parts  (api.evil.io → evil.io)
+    return parts.slice(-2).join('.');
+  }
+
+  /**
+   * Resolves any domain to a grouping entity. Always returns a value — never null.
+   *
+   * Priority:
+   *  1. Curated ENTITY_PATTERNS — for complex multi-regional brands (Amazon,
+   *     Meta, Google) whose subdomains would otherwise produce many separate entries.
+   *  2. Dynamic fallback — extracts the registrable domain (eTLD+1) so the LLM
+   *     receives "mixpanel.com" instead of "api.mixpanel.com", and groups all
+   *     subdomains of an unknown third-party automatically.
+   *
+   * Examples:
+   *   amazon.co.uk          → { entity: "Amazon",        category: "infraestructura_tecnica" }
+   *   api.mixpanel.com      → { entity: "mixpanel.com",  category: "desconocido" }
+   *   mixpanel.com          → { entity: "mixpanel.com",  category: "desconocido" }
+   *   data.happydog-app.net → { entity: "happydog-app.net", category: "desconocido" }
+   *   super-ads-2026.net    → { entity: "super-ads-2026.net", category: "desconocido" }
+   */
+  resolveEntity(domain: string): EntityClassification {
+    const dNoWww = domain.toLowerCase().replace(/^www\./, '');
+
+    // 1. Curated patterns (Amazon, Meta, 10xProfit, etc.)
+    for (const p of ENTITY_PATTERNS) {
+      if (p.regex.test(dNoWww)) {
+        return { entity: p.entity, category: p.category, description: p.description };
+      }
+    }
+
+    // 2. Dynamic fallback — always extract the registrable domain (eTLD+1).
+    //    The LLM uses its world-knowledge to reason about what the entity is.
+    const rootDomain = this.registrableDomain(dNoWww);
+    return {
+      entity: rootDomain,
+      category: 'desconocido',
+      description: 'Uncategorized third-party domain',
+    };
+  }
+
   classify(
     domain: string,
     extensionName: string,
@@ -316,6 +444,17 @@ export class DomainClassifierService {
       RESIDENTIAL_PROXY_NETWORKS.has(hostOnly)
     ) {
       return { category: 'sensible_data_broker' };
+    }
+
+    // Entity regex fallback — catches regional variants and known third-parties
+    // not in the exact-match sets above.
+    const entityMatch = this.resolveEntity(domain);
+    if (entityMatch) {
+      return {
+        category: entityMatch.category,
+        platform: entityMatch.entity,
+        entity: entityMatch.entity,
+      };
     }
 
     return { category: null };

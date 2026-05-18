@@ -4,7 +4,6 @@ import {
   IsNotEmpty,
   IsBoolean,
   IsOptional,
-  IsIn,
   ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
@@ -40,23 +39,4 @@ export class AnalyzeRequestDto {
   )
   demo?: boolean;
 
-  /**
-   * Which dynamic-analysis navigator to use for this specific job.
-   * - 'stagehand'            → Stagehand (LLM + Playwright agent)
-   * - 'intelligent_navigator' → IntelligentNavigator (custom rule-based agent)
-   *
-   * When omitted, falls back to the server-level default set by the env var
-   * ANALYSIS_USE_STAGEHAND (true → stagehand, false → intelligent_navigator).
-   *
-   * Usage from terminal:
-   *   curl -X POST http://localhost:3000/analyze \
-   *     -H 'Content-Type: application/json' \
-   *     -d '{"extensionId":"...","navigator":"stagehand"}'
-   */
-  @IsOptional()
-  @IsString()
-  @IsIn(['stagehand', 'intelligent_navigator'], {
-    message: 'navigator must be either "stagehand" or "intelligent_navigator"',
-  })
-  navigator?: 'stagehand' | 'intelligent_navigator';
 }

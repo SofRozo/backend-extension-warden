@@ -218,6 +218,136 @@ export class AstParserService {
     return out;
   }
 
+  /**
+   * Detects user-triggered outbound navigations that still matter for privacy.
+   *
+   * We intentionally keep these separate from `extractContactedDomains()`:
+   * `window.open()` / anchor `href` are not automatic extension beacons. But
+   * when a content script injects a third-party URL containing ASINs, affiliate
+   * tags, current-domain data, or product context, the user should see it in the
+   * audit because a click transfers that context to the third party.
+   */
+  detectSensitiveExternalNavigations(
+    code: string,
+    filename: string,
+  ): StaticFinding[] {
+    const findings: StaticFinding[] = [];
+    const seen = new Set<string>();
+    const ast = this.parse(code, filename);
+    if (!ast) return findings;
+
+    const stringConstants = this.collectStringConstants(ast);
+
+    const emit = (raw: string | null, node: t.Node) => {
+      if (!raw) return;
+      const host = this.extractHostFromString(raw);
+      if (!host) return;
+      const snippet = this.snippetForNode(code, node) ?? '';
+      const reason = this.externalNavigationRiskReason(host, raw, snippet);
+      if (!reason) return;
+      const line = node.loc?.start.line ?? 0;
+      const key = `${host}:${line}:${reason}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      findings.push({
+        category: FindingCategory.PRIVACY_RISK,
+        pattern: 'external_navigation',
+        description: `External navigation to ${host} carries privacy-relevant context (${reason})`,
+        severity: /asin|affiliate|domain|product|page/i.test(reason)
+          ? RiskLevel.HIGH
+          : RiskLevel.MEDIUM,
+        location: {
+          file: filename,
+          line,
+          column: node.loc?.start.column ?? 0,
+        },
+        codeSnippet: snippet,
+        confidence: 0.84,
+      });
+    };
+
+    const valueFromObjectUrlProperty = (
+      obj: t.ObjectExpression,
+    ): string | null => {
+      for (const prop of obj.properties) {
+        if (!t.isObjectProperty(prop) || prop.computed) continue;
+        const key = t.isIdentifier(prop.key)
+          ? prop.key.name
+          : t.isStringLiteral(prop.key)
+            ? prop.key.value
+            : null;
+        if (key !== 'url' || !t.isExpression(prop.value)) continue;
+        return this.resolveStringExpression(prop.value, stringConstants);
+      }
+      return null;
+    };
+
+    try {
+      traverse(ast, {
+        CallExpression: (nodePath) => {
+          const callee = this.getCalleeName(nodePath.node.callee);
+          if (!callee) return;
+          const first = nodePath.node.arguments[0];
+
+          if (/^(window\.)?open$/.test(callee)) {
+            if (first && t.isExpression(first)) {
+              const resolved = this.resolveStringExpression(
+                first,
+                stringConstants,
+              );
+              emit(
+                resolved ??
+                  (t.isIdentifier(first)
+                    ? this.findAssignedUrlForIdentifier(code, first.name)
+                    : null),
+                nodePath.node,
+              );
+            }
+            return;
+          }
+
+          if (/^chrome\.(tabs|windows)\.create$/.test(callee)) {
+            if (first && t.isObjectExpression(first)) {
+              emit(valueFromObjectUrlProperty(first), nodePath.node);
+            } else if (first && t.isExpression(first)) {
+              const resolved = this.resolveStringExpression(
+                first,
+                stringConstants,
+              );
+              emit(
+                resolved ??
+                  (t.isIdentifier(first)
+                    ? this.findAssignedUrlForIdentifier(code, first.name)
+                    : null),
+                nodePath.node,
+              );
+            }
+          }
+        },
+        AssignmentExpression: (nodePath) => {
+          if (!t.isMemberExpression(nodePath.node.left)) return;
+          const leftName = this.getCalleeName(nodePath.node.left);
+          if (!leftName) return;
+          const navigates =
+            /(^|\.)(href|location)$/.test(leftName) ||
+            /^(window\.)?location\.(assign|replace)$/.test(leftName);
+          if (!navigates) return;
+          emit(
+            this.resolveStringExpression(nodePath.node.right, stringConstants),
+            nodePath.node,
+          );
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `AST detectSensitiveExternalNavigations error for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
+        'AstParserService',
+      );
+    }
+
+    return findings;
+  }
+
   /** Parses a string that may be a full URL or a bare host and returns the host.
    *  Supports http(s), ws(s) and bare hosts. Returns null for relative paths or
    *  empty/junk input. */
@@ -1403,6 +1533,52 @@ export class AstParserService {
     return value.length > AstParserService.MAX_RESOLVED_STRING_LENGTH
       ? value.slice(0, AstParserService.MAX_RESOLVED_STRING_LENGTH)
       : value;
+  }
+
+  private findAssignedUrlForIdentifier(
+    code: string,
+    name: string,
+  ): string | null {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const assignment = new RegExp(
+      `(?:const|let|var)\\s+${escaped}\\s*=\\s*([\\s\\S]{0,800}?);`,
+    ).exec(code);
+    if (!assignment) return null;
+    const url = /https?:\/\/[^\s`'"\)]+/i.exec(assignment[1]);
+    return url?.[0] ?? null;
+  }
+
+  private externalNavigationRiskReason(
+    host: string,
+    rawUrl: string,
+    snippet: string,
+  ): string | null {
+    const haystack = `${host} ${rawUrl} ${snippet}`.toLowerCase();
+    const reasons: string[] = [];
+
+    if (/\basin\b|product[-_ ]?id|productid|dp\//i.test(haystack)) {
+      reasons.push('ASIN/product identifier');
+    }
+    if (
+      /location\.(hostname|host|href|origin)|document\.location|window\.location|\bdomain\b/i.test(
+        haystack,
+      )
+    ) {
+      reasons.push('current page/domain');
+    }
+    if (
+      /[?&](tag|ascsubtag|affiliate|affid|ref|utm_[a-z]+)=|affiliate|referral/i.test(
+        haystack,
+      )
+    ) {
+      reasons.push('affiliate/referral parameters');
+    }
+    if (/promo|promotion|lead|10xprofit|ecomstal/i.test(haystack)) {
+      reasons.push('promotion/lead-generation domain');
+    }
+
+    if (reasons.length === 0) return null;
+    return reasons.join(', ');
   }
 
   private credentialLiteralKeyword(text: string): string | null {

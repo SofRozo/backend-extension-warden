@@ -10,6 +10,7 @@ import {
   PreprocessingFinding,
   StaticDiscoveryType,
   DomainFinding,
+  DetectedEntity,
 } from '../common/interfaces/analysis.interfaces.js';
 import { RiskLevel } from '../common/enums/risk-level.enum.js';
 
@@ -210,6 +211,33 @@ export class StaticAnalysisService {
             );
           }
         }
+
+        // 2c-bis. Outbound navigations that carry commerce/page identifiers.
+        // These are not automatic network contacts, so they do not belong in
+        // resultado2 as "contacted domains". They are still privacy-relevant:
+        // a content script can inject a button/link that sends ASIN, current
+        // domain, affiliate tag, or product context to a third party once the
+        // user clicks it.
+        const navigations = this.astParser.detectSensitiveExternalNavigations(
+          file.cleanCode,
+          file.path,
+        );
+        for (const f of navigations) {
+          result1.push(
+            this.enrichFinding({
+              fileType: roleByPath.get(f.location.file) ?? file.role,
+              filePath: f.location.file,
+              discoveryType: 'navegacion_externa_sensible',
+              detail: f.description,
+              line: f.location.line,
+              codeSnippet: f.codeSnippet,
+              confidence: f.confidence ?? 0.84,
+              category: f.category,
+              severity: this.normalizeSeverity(f.severity),
+              why: f.description,
+            }),
+          );
+        }
       } catch (err) {
         this.logger.logWithJob(
           jobId,
@@ -270,7 +298,12 @@ export class StaticAnalysisService {
       // for heavily minified ad-injection payloads it is the only signal we have.
       // The finding is annotated as url_en_codigo so the downstream classifier
       // can treat it as such.
-      if ((file.skippedAst || file.isMinified) && (file.contactedDomains ?? []).length === 0 && file.domains.length > 0 && (file.usesFetch || file.usesXHR)) {
+      if (
+        (file.skippedAst || file.isMinified) &&
+        (file.contactedDomains ?? []).length === 0 &&
+        file.domains.length > 0 &&
+        (file.usesFetch || file.usesXHR)
+      ) {
         for (const d of file.domains) {
           const det = this.domainClassifier.classify(
             d.domain,
@@ -400,6 +433,7 @@ export class StaticAnalysisService {
     preprocessed.resultado1 = this.dedupeStaticFindings(contextualised);
     preprocessed.resultado2_priority = this.dedupeDomainFindings(priority);
     preprocessed.resultado2_unknown = this.dedupeDomainFindings(unknown);
+    preprocessed.entidades_detectadas = this.buildEntitySummary(preprocessed);
     preprocessed.riskScore = this.scoreRisk(
       preprocessed,
       preprocessed.resultado1,
@@ -466,6 +500,7 @@ export class StaticAnalysisService {
       return 'funcion_javascript_riesgosa';
     }
     if (pattern === 'data_flow') return 'flujo_datos_a_red';
+    if (pattern === 'external_navigation') return 'navegacion_externa_sensible';
     if (
       pattern === 'xhr_prototype_hook' ||
       pattern === 'fetch_hook' ||
@@ -580,6 +615,7 @@ export class StaticAnalysisService {
     finding: PreprocessingFinding,
   ): 'low' | 'medium' | 'high' | 'critical' {
     if (finding.discoveryType === 'flujo_datos_a_red') return 'critical';
+    if (finding.discoveryType === 'navegacion_externa_sensible') return 'high';
     if (finding.discoveryType === 'interceptacion_api') return 'critical';
     if (
       finding.discoveryType === 'codigo_ofuscado' ||
@@ -613,6 +649,8 @@ export class StaticAnalysisService {
     )
       return 'normalization';
     if (finding.discoveryType === 'flujo_datos_a_red') return 'taint';
+    if (finding.discoveryType === 'navegacion_externa_sensible')
+      return 'privacy_navigation';
     if (finding.discoveryType === 'correlacion_riesgo') return 'correlation';
     return 'static';
   }
@@ -628,6 +666,8 @@ export class StaticAnalysisService {
         'The code uses a JavaScript primitive commonly involved in execution, messaging, or exfiltration.',
       flujo_datos_a_red:
         'AST taint analysis found sensitive source data reaching a network or messaging sink.',
+      navegacion_externa_sensible:
+        'The extension creates an external navigation carrying page, product, affiliate, or domain context to a third party.',
       codigo_ofuscado:
         'The code contains obfuscation or aggressive minification signals that reduce auditability.',
       archivo_minificado:
@@ -661,6 +701,7 @@ export class StaticAnalysisService {
 
   private defaultConfidence(finding: PreprocessingFinding): number {
     if (finding.discoveryType === 'flujo_datos_a_red') return 0.9;
+    if (finding.discoveryType === 'navegacion_externa_sensible') return 0.84;
     if (finding.discoveryType === 'script_remoto_mv3') return 0.95;
     if (finding.discoveryType === 'interceptacion_api') return 0.93;
     if (finding.discoveryType === 'suplantacion_api_navegador') return 0.9;
@@ -676,6 +717,7 @@ export class StaticAnalysisService {
     severity: string,
   ): number {
     if (finding.discoveryType === 'flujo_datos_a_red') return 10;
+    if (finding.discoveryType === 'navegacion_externa_sensible') return 6;
     if (finding.discoveryType === 'interceptacion_api') return 9;
     if (finding.discoveryType === 'suplantacion_api_navegador') return 5;
     if (finding.detail.includes('<all_urls>')) return 2;
@@ -724,6 +766,8 @@ export class StaticAnalysisService {
     for (const f of findings) {
       if (NET_SINK_RE.test(f.detail)) paths.add(f.filePath);
       if (f.discoveryType === 'flujo_datos_a_red') paths.add(f.filePath);
+      if (f.discoveryType === 'navegacion_externa_sensible')
+        paths.add(f.filePath);
     }
     for (const file of preprocessed.files) {
       if (file.usesFetch || file.usesXHR) paths.add(file.path);
@@ -1677,8 +1721,14 @@ export class StaticAnalysisService {
         platform: 'Snapchat',
         signals: ['snapchat.com', 'sc-cdn.net', 'snap.com'],
       },
-      { platform: 'Reddit', signals: ['reddit.com', 'redd.it', 'redditmedia.com'] },
-      { platform: 'Twitch', signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'] },
+      {
+        platform: 'Reddit',
+        signals: ['reddit.com', 'redd.it', 'redditmedia.com'],
+      },
+      {
+        platform: 'Twitch',
+        signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'],
+      },
     ];
 
     if (apiHookFindings.length > 0) {
@@ -1731,6 +1781,78 @@ export class StaticAnalysisService {
     }
 
     return correlated;
+  }
+
+  /**
+   * Collapses all domain findings (code + manifest) into a grouped entity
+   * summary for Agent 1. Regional variants of the same brand (e.g. all
+   * amazon.* TLDs) become one entry so the LLM reasons about "Amazon (22
+   * subdomains)" rather than a flat list of nearly-identical hostnames.
+   */
+  private buildEntitySummary(
+    preprocessed: PreprocessorOutput,
+  ): DetectedEntity[] {
+    type Row = {
+      categoria: string;
+      subdomains: Set<string>;
+      metodos: Set<string>;
+    };
+    const map = new Map<string, Row>();
+
+    const upsert = (
+      entity: string,
+      categoria: string,
+      domain: string,
+      method: string,
+    ) => {
+      let row = map.get(entity);
+      if (!row) {
+        row = { categoria, subdomains: new Set(), metodos: new Set() };
+        map.set(entity, row);
+      }
+      row.subdomains.add(domain);
+      row.metodos.add(method);
+    };
+
+    // Domains from code and manifest findings
+    const allDomainFindings = [
+      ...preprocessed.resultado2_priority,
+      ...preprocessed.resultado2_unknown,
+    ];
+    for (const f of allDomainFindings) {
+      const resolved = this.domainClassifier.resolveEntity(f.domain);
+      const method = f.discoveryType === 'host_permission_manifest'
+        ? 'host_permissions'
+        : 'url_en_codigo';
+      upsert(resolved.entity, String(resolved.category), f.domain, method);
+    }
+
+    // Navigation findings indicate dom_href_injection usage
+    for (const f of preprocessed.resultado1) {
+      if (f.discoveryType !== 'navegacion_externa_sensible') continue;
+      const urlMatch = /https?:\/\/([a-zA-Z0-9][-a-zA-Z0-9.]+)/i.exec(f.detail);
+      if (!urlMatch) continue;
+      const host = urlMatch[1].toLowerCase();
+      const resolved = this.domainClassifier.resolveEntity(host);
+      upsert(resolved.entity, String(resolved.category), host, 'dom_href_injection');
+    }
+
+    // Content script matches from manifest
+    for (const cs of preprocessed.manifest.contentScripts) {
+      for (const match of cs.matches) {
+        const hostname = this.extractHostFromPattern(match);
+        if (!hostname) continue;
+        const resolved = this.domainClassifier.resolveEntity(hostname);
+        upsert(resolved.entity, String(resolved.category), hostname, 'content_scripts');
+      }
+    }
+
+    return Array.from(map.entries()).map(([entidad, row]) => ({
+      entidad,
+      categoria: row.categoria,
+      cantidad_subdominios: row.subdomains.size,
+      metodos_uso: Array.from(row.metodos),
+    }));
   }
 
   private scoreRisk(

@@ -1,35 +1,10 @@
 // ─── Agent 1 — Holistic analyst ──────────────────────────────────────────────
 
 /**
- * Agent 1 is now the ONLY LLM agent in the static phase. It analyses the whole
- * extension on its own — receives the manifest, the deterministic static
- * findings, the priority/unknown domain lists, and (when available) the
- * dynamic Stagehand observations + Agent 2 verdicts — and produces a verdict
- * with a written explanation.
- *
- * Agent 1 produces the HOLISTIC summary only: intent + verdict + explanation.
- * The per-finding narratives (`hallazgos_estaticos_positivos` and
- * `hallazgos_dinamicos_positivos`) are NOT Agent 1's job — they are produced
- * deterministically by the static-analysis layer and the report formatter so
- * the report is meaningful even when no LLM is configured.
- *
- * Field semantics:
- *  - proposito                                    → high-level intent (first
- *    sentence of the narrative report)
- *  - categoria                                    → Chrome Web Store category
- *    (propagated from preprocessed.cwsCategory; falls back to 'otro' for
- *    locally-uploaded extensions that don't have a CWS listing)
- *  - nivel_riesgo_inicial                         → preserved for the frontend
- *    Agent1Summary block
- *  - veredicto_global                             → holistic verdict
- *    (maliciosa | sospechosa | benigna)
- *  - explicacion                                  → 2-4 sentence paragraph the
- *    user reads in the drawer header
- *  - hallazgos_propios                            → items the agent discovered
- *    by reading the source code directly. These COMPLEMENT (do not replace)
- *    the deterministic static findings; the agent catches novel/contextual
- *    patterns the rules don't know about (encoded strings decoding to URLs,
- *    suspicious conditional logic, anti-analysis tricks, timer/date gates, etc.).
+ * Agent 1 is the sole LLM agent. Receives manifest, deterministic static
+ * findings, domain lists, and entity summary; produces a holistic verdict
+ * with a written explanation. Per-finding narratives are produced
+ * deterministically by the report formatter.
  */
 export interface Agent1Output {
   proposito: string;
@@ -45,7 +20,7 @@ export interface Agent1Output {
     razones: string[];
   };
   hallazgos_propios?: AgentFinding[];
-  respuestas_usuario?: Record<string, 'si' | 'no_detectado' | 'posible'>;
+  respuestas_usuario?: Record<string, { valor: 'si' | 'no_detectado' | 'posible'; razon: string }>;
 }
 
 /**
@@ -65,11 +40,5 @@ export interface AgentFinding {
 }
 
 // ─── Re-exports ──────────────────────────────────────────────────────────────
-// DomainCategory now lives in common/interfaces/analysis.interfaces.ts because
-// classification is deterministic and consumed by the static-analysis layer.
-// We re-export here so existing imports keep working.
 
-export type {
-  DomainCategory,
-  SandboxDomainObservation,
-} from '../../common/interfaces/analysis.interfaces.js';
+export type { DomainCategory } from '../../common/interfaces/analysis.interfaces.js';

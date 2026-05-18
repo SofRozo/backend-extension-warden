@@ -94,6 +94,22 @@ export const ofuscacionTransparenciaStaticRules: UserRiskStaticRule[] = [
     evidence: (finding) =>
       `Señal de anti-debugging/anti-análisis en ${finding.filePath}:${finding.line}.`,
   },
+  {
+    ruleId: 'transparency.orphan_file',
+    label: 'Archivo huérfano (no referenciado)',
+    id: 'ofuscacion_transparencia',
+    matches: (finding) => finding.discoveryType === 'archivo_huerfano',
+    evidence: (finding) =>
+      `Archivo no referenciado en el manifest ni importado: ${finding.filePath} — puede ser código oculto.`,
+  },
+  {
+    ruleId: 'transparency.grep_large_file',
+    label: 'Señal grep en archivo grande (sin AST)',
+    id: 'ofuscacion_transparencia',
+    matches: (finding) => finding.discoveryType === 'grep_signal_large_file',
+    evidence: (finding) =>
+      `Señal de riesgo en archivo muy grande (análisis superficial): ${finding.filePath}:${finding.line}.`,
+  },
 ];
 
 export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
@@ -107,6 +123,8 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
   const hexIdents = hasDetail(context, HEX_IDENT_RE);
   const packer = hasDetail(context, PACKER_RE);
   const antiDebug = hasDetail(context, ANTI_DEBUG_RE);
+  const orphanFile = hasFinding(context, 'archivo_huerfano');
+  const grepLargeFile = hasFinding(context, 'grep_signal_large_file');
 
   // Critico: anti-debugging + ofuscación, o packer + ejecución dinámica
   const isCritical =
@@ -119,7 +137,8 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
     hexIdents ||
     packer ||
     (encoders && dynamicExec) ||
-    antiDebug;
+    antiDebug ||
+    orphanFile;
 
   return makeItem(
     context,
@@ -129,7 +148,7 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
       ? 'critico'
       : isSuspicious
         ? 'sospechoso'
-        : minified
+        : minified || grepLargeFile
           ? 'capacidad'
           : 'no_detectado',
     isCritical
@@ -138,9 +157,13 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
         ? 'Hay código difícil de auditar. Minificar es normal; ocultar cadenas, reconstruir código o esconder llamadas sensibles es una mala señal.'
         : hexIdents || (encoders && dynamicExec)
           ? 'El código presenta patrones típicos de ofuscación (identificadores _0x, decodificadores + eval).'
-          : minified
-            ? 'Hay archivos minificados. Esto suele ser normal en producción, pero reduce legibilidad.'
-            : 'No vimos señales fuertes de ofuscación.',
+          : orphanFile
+            ? 'Se encontraron archivos que no están referenciados en el manifest ni importados por otro script — podrían ser payloads ocultos.'
+            : minified
+              ? 'Hay archivos minificados. Esto suele ser normal en producción, pero reduce legibilidad.'
+              : grepLargeFile
+                ? 'Hay señales de riesgo en archivos muy grandes que no pudieron analizarse completamente.'
+                : 'No vimos señales fuertes de ofuscación.',
     [
       obfuscation && 'Ofuscación/agresiva minificación detectada.',
       minified && 'Archivos minificados detectados.',
@@ -153,6 +176,10 @@ export const evaluateOfuscacionTransparencia: UserRiskCategoryEvaluator = (
         'Ejecuta código construido dinámicamente (eval/new Function/setTimeout-string).',
       antiDebug &&
         'Señales de anti-debugging (uso de debugger, detección de DevTools, console.clear, performance.now).',
+      orphanFile &&
+        'Se detectaron archivos no referenciados en el manifest ni importados — pueden ser payloads ocultos.',
+      grepLargeFile &&
+        'Señales de riesgo en archivos muy grandes que no pudieron analizarse en profundidad (solo grep superficial).',
     ],
     [
       '¿El código está ofuscado?',
