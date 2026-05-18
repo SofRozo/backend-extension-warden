@@ -124,65 +124,84 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function buildRow(index, filename, upload, statusResp, report, elapsedS, error = '') {
   if (!report) {
     return {
-      '#':                       index,
-      archivo:                   filename,
-      job_id:                    upload?.jobId ?? '',
-      estado_job:                statusResp?.status ?? 'unknown',
+      '#':                          index,
+      archivo:                      filename,
+      job_id:                       upload?.jobId ?? '',
+      estado_job:                   statusResp?.status ?? 'unknown',
       // Agente 1
-      veredicto_agente:          '',
-      nivel_riesgo_agente:       '',
-      categoria_agente:          '',
-      proposito:                 '',
-      explicacion:               '',
-      // Veredicto usuario (determinista)
-      veredicto_usuario:         '',
-      nivel_usuario:             '',
-      resumen_usuario:           '',
-      razones_usuario:           '',
+      veredicto_agente:             '',
+      nivel_riesgo_agente:          '',
+      categoria_agente:             '',
+      proposito:                    '',
+      explicacion:                  '',
+      // Veredicto usuario (determinista + agente)
+      veredicto_usuario:            '',
+      nivel_usuario:                '',
+      resumen_usuario:              '',
+      razones_usuario:              '',
+      // Respuestas FAQ
+      faq_puede_capturar_contrasenas: '',
+      faq_puede_registrar_teclas:     '',
+      faq_puede_espiar_sin_saberlo:   '',
+      faq_puede_leer_formularios:     '',
+      faq_puede_modificar_paginas:    '',
+      faq_puede_interceptar_trafico:  '',
+      faq_puede_ver_paginas_visitadas:'',
+      faq_puede_ver_historial:        '',
+      faq_codigo_oculto_o_sospechoso: '',
+      faq_puede_afectar_otras_extensiones: '',
       // Risk score
-      risk_score:                '',
-      risk_level:                '',
+      risk_score:                   '',
+      risk_level:                   '',
       // Hallazgos estáticos
-      hallazgos_positivos_total: '',
-      hallazgos_criticos:        '',
-      hallazgos_altos:           '',
-      hallazgos_medios:          '',
-      hallazgos_bajos:           '',
-      // Categorías de comportamiento (resumen_usuario)
-      acceso_general:            '',
-      modificacion_paginas:      '',
-      lectura_informacion:       '',
-      captura_credenciales:      '',
-      keylogging:                '',
-      seguimiento_privacidad:    '',
-      manipulacion_trafico:      '',
-      abuso_management:          '',
+      hallazgos_positivos_total:    '',
+      hallazgos_criticos:           '',
+      hallazgos_altos:              '',
+      hallazgos_medios:             '',
+      hallazgos_bajos:              '',
+      // 13 categorías de comportamiento (resumen_usuario)
+      cat_acceso_general:           '',
+      cat_modificacion_paginas:     '',
+      cat_lectura_informacion:      '',
+      cat_captura_credenciales:     '',
+      cat_keylogging:               '',
+      cat_seguimiento_privacidad:   '',
+      cat_manipulacion_trafico:     '',
+      cat_acceso_historial:         '',
+      cat_descargas_archivos:       '',
+      cat_abuso_management:         '',
+      cat_mineria_recursos:         '',
+      cat_fingerprinting_severo:    '',
+      cat_ofuscacion_transparencia: '',
       // Dominios y dinámica
-      dominios_prioritarios:     '',
-      dominios_desconocidos:     '',
-      stagehand_errores:         '',
+      dominios_prioritarios:        '',
+      dominios_desconocidos:        '',
+      dominios_contactados:         '',
+      stagehand_errores:            '',
       // Tiempos
-      duracion_analisis_s:       elapsedS.toFixed(1),
+      duracion_analisis_s:          elapsedS.toFixed(1),
       error,
     };
   }
 
-  const agente1   = report.agente1   ?? {};
+  const agente1    = report.agente1    ?? {};
   const estructura = report.estructura ?? {};
-  const resultado1 = estructura.resultado1 ?? [];
+  const resultado1 = estructura.resultado1          ?? [];
   const prio       = estructura.resultado2_priority ?? [];
   const unknown    = estructura.resultado2_unknown  ?? [];
   const dinamico   = estructura.resultado_dinamico  ?? [];
-  const navDoms    = report.navegacionDominios ?? [];
-  const verdUsuario = report.veredicto_usuario ?? {};
-  const riskScore  = report.puntuacion_riesgo  ?? {};
-  const resumenUsr = report.resumen_usuario    ?? [];
+  const navDoms    = report.navegacionDominios       ?? [];
+  const verdUsr    = report.veredicto_usuario        ?? {};
+  const riskScore  = report.puntuacion_riesgo        ?? {};
+  const resumenUsr = report.resumen_usuario          ?? [];
+  const faq        = report.respuestas_usuario       ?? {};
+  const domsCont   = report.dominios_contactados_prioritarios ?? [];
 
   // Hallazgos estáticos positivos
   const positivos = resultado1.filter(f => f.veredicto === 'positivo');
   const bySev     = sev => positivos.filter(f => f.severity === sev).length;
 
-  // Estado por categoría de comportamiento (resumen_usuario)
+  // Estado por categoría (las 13 del resumen_usuario)
   const catStatus = id => {
     const item = resumenUsr.find(c => c.id === id);
     return item ? item.estado : 'no_detectado';
@@ -192,45 +211,62 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
   const stagehandErrors = navDoms.filter(n => n.error).length;
 
   return {
-    '#':                       index,
-    archivo:                   filename,
-    job_id:                    upload?.jobId ?? '',
-    estado_job:                statusResp?.status ?? 'unknown',
+    '#':                          index,
+    archivo:                      filename,
+    job_id:                       upload?.jobId ?? '',
+    estado_job:                   statusResp?.status ?? 'unknown',
     // Agente 1
-    veredicto_agente:          agente1.veredicto_global ?? '',
-    nivel_riesgo_agente:       agente1.nivel_riesgo_inicial ?? '',
-    categoria_agente:          agente1.categoria ?? '',
-    proposito:                 (agente1.proposito ?? '').slice(0, 150),
-    explicacion:               (agente1.explicacion ?? '').slice(0, 300),
-    // Veredicto determinista (UserRiskSummaryService)
-    veredicto_usuario:         verdUsuario.veredicto ?? '',
-    nivel_usuario:             verdUsuario.nivel     ?? '',
-    resumen_usuario:           (verdUsuario.resumen  ?? '').slice(0, 200),
-    razones_usuario:           (verdUsuario.razones  ?? []).join(' | ').slice(0, 300),
+    veredicto_agente:             agente1.veredicto_global        ?? '',
+    nivel_riesgo_agente:          agente1.nivel_riesgo_inicial    ?? '',
+    categoria_agente:             agente1.categoria               ?? '',
+    proposito:                    (agente1.proposito              ?? '').slice(0, 150),
+    explicacion:                  (agente1.explicacion            ?? '').slice(0, 300),
+    // Veredicto usuario (combinación agente + determinista)
+    veredicto_usuario:            verdUsr.veredicto  ?? '',
+    nivel_usuario:                verdUsr.nivel      ?? '',
+    resumen_usuario:              (verdUsr.resumen   ?? '').slice(0, 200),
+    razones_usuario:              (verdUsr.razones   ?? []).join(' | ').slice(0, 300),
+    // Respuestas FAQ (respuestas_usuario)
+    faq_puede_capturar_contrasenas:      faq.puede_capturar_contrasenas      ?? '',
+    faq_puede_registrar_teclas:          faq.puede_registrar_teclas          ?? '',
+    faq_puede_espiar_sin_saberlo:        faq.puede_espiar_sin_saberlo        ?? '',
+    faq_puede_leer_formularios:          faq.puede_leer_formularios          ?? '',
+    faq_puede_modificar_paginas:         faq.puede_modificar_paginas         ?? '',
+    faq_puede_interceptar_trafico:       faq.puede_interceptar_trafico       ?? '',
+    faq_puede_ver_paginas_visitadas:     faq.puede_ver_paginas_visitadas     ?? '',
+    faq_puede_ver_historial:             faq.puede_ver_historial             ?? '',
+    faq_codigo_oculto_o_sospechoso:      faq.codigo_oculto_o_sospechoso      ?? '',
+    faq_puede_afectar_otras_extensiones: faq.puede_afectar_otras_extensiones ?? '',
     // Risk score
-    risk_score:                riskScore.score ?? '',
-    risk_level:                riskScore.level ?? '',
+    risk_score:                   riskScore.score ?? '',
+    risk_level:                   riskScore.level ?? '',
     // Hallazgos estáticos (solo positivos)
-    hallazgos_positivos_total: positivos.length,
-    hallazgos_criticos:        bySev('critical'),
-    hallazgos_altos:           bySev('high'),
-    hallazgos_medios:          bySev('medium'),
-    hallazgos_bajos:           bySev('low'),
-    // 10 categorías de comportamiento
-    acceso_general:            catStatus('acceso_general_navegador'),
-    modificacion_paginas:      catStatus('modificacion_paginas'),
-    lectura_informacion:       catStatus('lectura_informacion'),
-    captura_credenciales:      catStatus('captura_credenciales'),
-    keylogging:                catStatus('keylogging'),
-    seguimiento_privacidad:    catStatus('seguimiento_privacidad'),
-    manipulacion_trafico:      catStatus('manipulacion_trafico'),
-    abuso_management:          catStatus('abuso_management'),
+    hallazgos_positivos_total:    positivos.length,
+    hallazgos_criticos:           bySev('critical'),
+    hallazgos_altos:              bySev('high'),
+    hallazgos_medios:             bySev('medium'),
+    hallazgos_bajos:              bySev('low'),
+    // 13 categorías de comportamiento
+    cat_acceso_general:           catStatus('acceso_general_navegador'),
+    cat_modificacion_paginas:     catStatus('modificacion_paginas'),
+    cat_lectura_informacion:      catStatus('lectura_informacion'),
+    cat_captura_credenciales:     catStatus('captura_credenciales'),
+    cat_keylogging:               catStatus('keylogging'),
+    cat_seguimiento_privacidad:   catStatus('seguimiento_privacidad'),
+    cat_manipulacion_trafico:     catStatus('manipulacion_trafico'),
+    cat_acceso_historial:         catStatus('acceso_historial'),
+    cat_descargas_archivos:       catStatus('descargas_archivos'),
+    cat_abuso_management:         catStatus('abuso_management'),
+    cat_mineria_recursos:         catStatus('mineria_recursos'),
+    cat_fingerprinting_severo:    catStatus('fingerprinting_severo'),
+    cat_ofuscacion_transparencia: catStatus('ofuscacion_transparencia'),
     // Dominios
-    dominios_prioritarios:     prio.length,
-    dominios_desconocidos:     unknown.length,
-    stagehand_errores:         stagehandErrors,
+    dominios_prioritarios:        prio.length,
+    dominios_desconocidos:        unknown.length,
+    dominios_contactados:         domsCont.slice(0, 5).join(', '),
+    stagehand_errores:            stagehandErrors,
     // Tiempo
-    duracion_analisis_s:       elapsedS.toFixed(1),
+    duracion_analisis_s:          elapsedS.toFixed(1),
     error,
   };
 }
@@ -238,7 +274,6 @@ function buildRow(index, filename, upload, statusResp, report, elapsedS, error =
 // ── Excel (un archivo por batch) ─────────────────────────────────────────────
 async function loadExcelJS() {
   try {
-    // Intenta desde node_modules del backend
     const mod = await import('../node_modules/exceljs/dist/es5/index.nodejs.js');
     return mod.default ?? mod;
   } catch {
@@ -272,12 +307,16 @@ async function exportBatchExcel(ExcelJS, rows, outPath, batchLabel) {
     alto:           'FFFF9933',
     high:           'FFFF9933',
     sospechosa:     'FFFFEB9C',
+    sospechoso:     'FFFFEB9C',
     medio:          'FFFFD966',
     medium:         'FFFFD966',
+    capacidad:      'FFDCE6F1',
     benigna:        'FFC6EFCE',
     bajo:           'FFC6EFCE',
     low:            'FFC6EFCE',
     no_detectado:   'FFF2F2F2',
+    si:             'FFFFC7CE',
+    posible:        'FFFFEB9C',
   };
 
   // Cabecera
@@ -291,20 +330,40 @@ async function exportBatchExcel(ExcelJS, rows, outPath, batchLabel) {
 
   // Filas de datos
   for (const row of rows) {
-    const r     = ws.addRow(keys.map(k => row[k]));
-    // Color por veredicto_agente
+    const r = ws.addRow(keys.map(k => row[k]));
+
+    // Color veredicto_agente
     const vCol  = keys.indexOf('veredicto_agente');
     const vVal  = String(row.veredicto_agente ?? '').toLowerCase();
-    const color = STATUS_COLORS[vVal];
-    if (color && vCol >= 0) {
-      r.getCell(vCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+    if (STATUS_COLORS[vVal] && vCol >= 0) {
+      r.getCell(vCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_COLORS[vVal] } };
     }
-    // Color por veredicto_usuario
+
+    // Color veredicto_usuario
     const vuCol = keys.indexOf('veredicto_usuario');
     const vuVal = String(row.veredicto_usuario ?? '').toLowerCase();
-    const vuColor = STATUS_COLORS[vuVal];
-    if (vuColor && vuCol >= 0) {
-      r.getCell(vuCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vuColor } };
+    if (STATUS_COLORS[vuVal] && vuCol >= 0) {
+      r.getCell(vuCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_COLORS[vuVal] } };
+    }
+
+    // Color columnas de categoría (cat_*)
+    for (const key of keys) {
+      if (!key.startsWith('cat_')) continue;
+      const colIdx = keys.indexOf(key);
+      const val    = String(row[key] ?? '').toLowerCase();
+      if (STATUS_COLORS[val] && colIdx >= 0) {
+        r.getCell(colIdx + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_COLORS[val] } };
+      }
+    }
+
+    // Color columnas FAQ (faq_*)
+    for (const key of keys) {
+      if (!key.startsWith('faq_')) continue;
+      const colIdx = keys.indexOf(key);
+      const val    = String(row[key] ?? '').toLowerCase();
+      if (STATUS_COLORS[val] && colIdx >= 0) {
+        r.getCell(colIdx + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_COLORS[val] } };
+      }
     }
   }
 
@@ -325,10 +384,11 @@ async function exportBatchExcel(ExcelJS, rows, outPath, batchLabel) {
   const completed = rows.filter(r => r.estado_job === 'completed');
   const failed    = rows.length - completed.length;
 
-  const countV = v => completed.filter(r => String(r.veredicto_agente).toLowerCase() === v).length;
-  const countU = v => completed.filter(r => String(r.veredicto_usuario).toLowerCase() === v).length;
-  const countN = n => completed.filter(r => String(r.nivel_riesgo_agente).toLowerCase() === n).length;
+  const countV   = v => completed.filter(r => String(r.veredicto_agente).toLowerCase()  === v).length;
+  const countU   = v => completed.filter(r => String(r.veredicto_usuario).toLowerCase() === v).length;
+  const countN   = n => completed.filter(r => String(r.nivel_riesgo_agente).toLowerCase() === n).length;
   const countCat = (col, estado) => completed.filter(r => r[col] === estado).length;
+  const countFaq = (col, val)    => completed.filter(r => r[col] === val).length;
 
   const avgDur = completed.length
     ? (completed.reduce((s, r) => s + parseFloat(r.duracion_analisis_s || 0), 0) / completed.length).toFixed(1)
@@ -345,54 +405,86 @@ async function exportBatchExcel(ExcelJS, rows, outPath, batchLabel) {
   addBold('Lote', batchLabel);
   addBold('Fecha', new Date().toLocaleString('es-CO'));
   addSep();
+
   addBold('GENERAL', '');
-  addRow('Total extensiones',                   rows.length);
-  addRow('Análisis completados',                completed.length);
-  addRow('Fallidos / Timeout / Error',          failed);
-  addRow('Duración promedio (s)',               avgDur);
+  addRow('Total extensiones',                  rows.length);
+  addRow('Análisis completados',               completed.length);
+  addRow('Fallidos / Timeout / Error',         failed);
+  addRow('Duración promedio (s)',              avgDur);
   addSep();
+
   addBold('VEREDICTO AGENTE IA', '');
-  addRow('Maliciosa',   countV('maliciosa'));
-  addRow('Sospechosa',  countV('sospechosa'));
-  addRow('Benigna',     countV('benigna'));
+  addRow('Maliciosa',     countV('maliciosa'));
+  addRow('Sospechosa',    countV('sospechosa'));
+  addRow('Benigna',       countV('benigna'));
   addRow('Sin veredicto', completed.filter(r => !r.veredicto_agente).length);
   addSep();
-  addBold('VEREDICTO DETERMINISTA (usuario)', '');
-  addRow('Maliciosa',   countU('maliciosa'));
-  addRow('Sospechosa',  countU('sospechosa'));
-  addRow('Benigna',     countU('benigna'));
+
+  addBold('VEREDICTO USUARIO (agente + determinista)', '');
+  addRow('Maliciosa',  countU('maliciosa'));
+  addRow('Sospechosa', countU('sospechosa'));
+  addRow('Benigna',    countU('benigna'));
   addSep();
+
   addBold('NIVEL DE RIESGO (Agente)', '');
   addRow('Crítico', countN('critico'));
   addRow('Alto',    countN('alto'));
   addRow('Medio',   countN('medio'));
   addRow('Bajo',    countN('bajo'));
   addSep();
-  addBold('CATEGORÍAS DE COMPORTAMIENTO (critico/sospechoso)', '');
+
+  addBold('CATEGORÍAS DE COMPORTAMIENTO', '');
   const cats = [
-    ['acceso_general',         'Acceso general al navegador'],
-    ['modificacion_paginas',   'Modificación de páginas'],
-    ['lectura_informacion',    'Lectura de información'],
-    ['captura_credenciales',   'Captura de credenciales'],
-    ['keylogging',             'Keylogging'],
-    ['seguimiento_privacidad', 'Seguimiento y privacidad'],
-    ['manipulacion_trafico',   'Manipulación de tráfico'],
-    ['abuso_management',       'Abuso de Management API'],
+    ['cat_acceso_general',           'Acceso general al navegador'],
+    ['cat_modificacion_paginas',     'Modificación de páginas'],
+    ['cat_lectura_informacion',      'Lectura de información'],
+    ['cat_captura_credenciales',     'Captura de credenciales'],
+    ['cat_keylogging',               'Keylogging'],
+    ['cat_seguimiento_privacidad',   'Seguimiento y privacidad'],
+    ['cat_manipulacion_trafico',     'Manipulación de tráfico'],
+    ['cat_acceso_historial',         'Acceso a historial'],
+    ['cat_descargas_archivos',       'Descargas / archivos'],
+    ['cat_abuso_management',         'Abuso de Management API'],
+    ['cat_mineria_recursos',         'Minería de recursos (cryptojacking)'],
+    ['cat_fingerprinting_severo',    'Fingerprinting severo'],
+    ['cat_ofuscacion_transparencia', 'Ofuscación / transparencia'],
   ];
   for (const [col, label] of cats) {
     const crit = countCat(col, 'critico');
     const susp = countCat(col, 'sospechoso');
-    addRow(label, `critico: ${crit}  sospechoso: ${susp}`);
+    const cap  = countCat(col, 'capacidad');
+    addRow(label, `critico: ${crit}  sospechoso: ${susp}  capacidad: ${cap}`);
   }
   addSep();
+
+  addBold('RESPUESTAS FAQ (si / posible / no_detectado)', '');
+  const faqs = [
+    ['faq_puede_capturar_contrasenas',      '¿Puede capturar contraseñas?'],
+    ['faq_puede_registrar_teclas',          '¿Puede registrar teclas?'],
+    ['faq_puede_espiar_sin_saberlo',        '¿Puede espiar sin saberlo?'],
+    ['faq_puede_leer_formularios',          '¿Puede leer formularios?'],
+    ['faq_puede_modificar_paginas',         '¿Puede modificar páginas?'],
+    ['faq_puede_interceptar_trafico',       '¿Puede interceptar tráfico?'],
+    ['faq_puede_ver_paginas_visitadas',     '¿Puede ver páginas visitadas?'],
+    ['faq_puede_ver_historial',             '¿Puede ver historial?'],
+    ['faq_codigo_oculto_o_sospechoso',      '¿Código oculto o sospechoso?'],
+    ['faq_puede_afectar_otras_extensiones', '¿Puede afectar otras extensiones?'],
+  ];
+  for (const [col, label] of faqs) {
+    const si      = countFaq(col, 'si');
+    const posible = countFaq(col, 'posible');
+    addRow(label, `si: ${si}  posible: ${posible}`);
+  }
+  addSep();
+
   addBold('HALLAZGOS ESTÁTICOS (positivos)', '');
   addRow('Críticos totales', completed.reduce((s, r) => s + (parseInt(r.hallazgos_criticos) || 0), 0));
-  addRow('Altos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_altos) || 0), 0));
-  addRow('Medios totales',   completed.reduce((s, r) => s + (parseInt(r.hallazgos_medios) || 0), 0));
-  addRow('Bajos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_bajos) || 0), 0));
+  addRow('Altos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_altos)    || 0), 0));
+  addRow('Medios totales',   completed.reduce((s, r) => s + (parseInt(r.hallazgos_medios)   || 0), 0));
+  addRow('Bajos totales',    completed.reduce((s, r) => s + (parseInt(r.hallazgos_bajos)    || 0), 0));
 
-  ws2.getColumn(1).width = 45;
-  ws2.getColumn(2).width = 30;
+  ws2.getColumn(1).width = 48;
+  ws2.getColumn(2).width = 32;
 
   await wb.xlsx.writeFile(outPath);
   console.log(`  📊 Excel → ${path.basename(outPath)}`);
@@ -472,8 +564,8 @@ async function main() {
   }
   console.log('OK\n');
 
-  const ExcelJS  = await loadExcelJS();
-  const allRows  = [];
+  const ExcelJS = await loadExcelJS();
+  const allRows = [];
 
   for (let i = 0; i < crxFiles.length; i++) {
     const { fullPath, name } = crxFiles[i];
@@ -507,8 +599,12 @@ async function main() {
         console.log(`  💾 JSON → ${path.relative(cfg.out, jsonPath)}`);
 
         const a1 = report.agente1 ?? {};
-        console.log(`  📊 Veredicto agente=${a1.veredicto_global ?? '?'}  Nivel=${a1.nivel_riesgo_inicial ?? '?'}  ` +
-                    `Veredicto usuario=${report.veredicto_usuario?.veredicto ?? '?'}`);
+        console.log(
+          `  📊 Veredicto agente=${a1.veredicto_global ?? '?'}  ` +
+          `Nivel=${a1.nivel_riesgo_inicial ?? '?'}  ` +
+          `Veredicto usuario=${report.veredicto_usuario?.veredicto ?? '?'}  ` +
+          `Risk score=${report.puntuacion_riesgo?.score ?? '?'} (${report.puntuacion_riesgo?.level ?? '?'})`
+        );
       } else {
         console.log(`  ❌ Estado final: ${statusResp.status}`);
         if (statusResp.status === 'timeout') error = `timeout tras ${MAX_WAIT_MS / 1000}s`;
@@ -528,8 +624,8 @@ async function main() {
     const isLastOverall = i === crxFiles.length - 1;
 
     if (isLastInBatch || isLastOverall) {
-      const batchRows  = allRows.slice((batchNum - 1) * cfg.batch, batchNum * cfg.batch);
-      const excelPath  = path.join(batchDir, `resultados-batch-${String(batchNum).padStart(2, '0')}.xlsx`);
+      const batchRows = allRows.slice((batchNum - 1) * cfg.batch, batchNum * cfg.batch);
+      const excelPath = path.join(batchDir, `resultados-batch-${String(batchNum).padStart(2, '0')}.xlsx`);
       printSummary(batchRows, batchLabel);
       await exportBatchExcel(ExcelJS, batchRows, excelPath, batchLabel);
     }
