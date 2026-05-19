@@ -1,0 +1,1228 @@
+{
+  "jobId": "d079121a-2118-4ca6-809f-49414051ee1b",
+  "agente1": {
+    "categoria": "Accessibility",
+    "proposito": "Extensión que automatiza búsquedas en Bing para ganar puntos en Microsoft Rewards y simular dispositivos móviles.",
+    "explicacion": "La extensión Rewards Search Automator tiene como propósito principal automatizar búsquedas en Bing para acumular puntos en Microsoft Rewards y simular dispositivos móviles. Sin embargo, el análisis revela que la extensión realiza acciones que van más allá de su función declarada. Por ejemplo, intercepta y analiza contenido de páginas web, incluyendo datos de anuncios, lo que podría permitirle identificar patrones de publicidad. Además, tiene permisos para leer el historial de navegación, acceder a pestañas abiertas y manipular cabeceras de tráfico, lo cual podría usarse para rastrear tu actividad. También hay señales de anti-debugging y ofuscación de código, lo que sugiere que el desarrollador intenta ocultar ciertas funcionalidades. Estos comportamientos no son necesarios para la función principal de la extensión y podrían representar un riesgo para tu privacidad.\n\nRecomendación: Desinstala esta extensión y evita usarla si no estás seguro de su propósito real, ya que podría estar recopilando datos de tu navegación sin que lo sepas.",
+    "veredicto_global": "sospechosa",
+    "respuestas_usuario": {
+      "puede_ver_historial": {
+        "razon": "Tiene permiso para leer historial de navegación",
+        "valor": "si"
+      },
+      "puede_leer_formularios": {
+        "razon": "No se encontró acceso directo a campos de formulario en el código",
+        "valor": "no_detectado"
+      },
+      "puede_registrar_teclas": {
+        "razon": "No se detectaron listeners de teclado",
+        "valor": "no_detectado"
+      },
+      "puede_modificar_paginas": {
+        "razon": "Referencias a anuncios que podrían sustituirse en queries.js",
+        "valor": "posible"
+      },
+      "puede_espiar_sin_saberlo": {
+        "razon": "Intercepta contenido de páginas web, incluyendo datos de anuncios",
+        "valor": "si"
+      },
+      "puede_interceptar_trafico": {
+        "razon": "Manipula cabeceras HTTP y tiene permisos de red",
+        "valor": "si"
+      },
+      "codigo_oculto_o_sospechoso": {
+        "razon": "Señales de anti-debugging y ofuscación de código detectadas",
+        "valor": "si"
+      },
+      "puede_capturar_contrasenas": {
+        "razon": "No se detectaron patrones de captura de credenciales",
+        "valor": "no_detectado"
+      },
+      "puede_ver_paginas_visitadas": {
+        "razon": "Tiene permiso para leer historial y pestañas abiertas",
+        "valor": "si"
+      },
+      "puede_afectar_otras_extensiones": {
+        "razon": "No se encontró uso de APIs de gestión de extensiones",
+        "valor": "no_detectado"
+      }
+    },
+    "nivel_riesgo_inicial": "alto"
+  },
+  "crxHash": "ed0b99100a51a9faac90ccd7f874812cb9993347df8dae076f34f884929984f2",
+  "estructura": {
+    "resultado1": [
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 36,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "tabs (medium, weight=2, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 38,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "alarms (medium, weight=2, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 39,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "browsingData (high, weight=5, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.3,
+        "scoreImpact": 5,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 40,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "webNavigation (high, weight=5, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.3,
+        "scoreImpact": 5,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 41,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "history (high, weight=5, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.3,
+        "scoreImpact": 3,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 42,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "debugger (critical, weight=10, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "scoreImpact": 10,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 45,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "<all_urls> (critical, weight=10, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "js/loading.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "js/valid.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 36,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "HTMLCanvasElement.prototype.toDataURL",
+        "category": "fingerprinting",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 37,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "HTMLCanvasElement.prototype.toDataURL",
+        "category": "fingerprinting",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "HTMLCanvasElement.prototype.toDataURL = function (type) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 40,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "ctx.getImageData",
+        "category": "fingerprinting",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "const imageData = ctx.getImageData(0, 0, this.width, this.height);",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 301,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "fetch(\"https://rewards.bing.com/api/getuserinfo\")",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 350,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.set(data, () => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 360,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get(keys, (items) => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads active tab URL to build browsing history profile",
+        "line": 382,
+        "razon": "Reads active tab URL to build browsing history profile",
+        "detail": "tab.url",
+        "category": "privacy_risk",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "tab.url.includes(pro),",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 385,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.tabs.update(proTab.id, { active: true });",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Creates alarms for background execution",
+        "line": 585,
+        "razon": "Creates alarms for background execution",
+        "detail": "chrome.alarms.create",
+        "category": "persistence",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.alarms.create(\"schedule\", {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Creates alarms for background execution",
+        "line": 604,
+        "razon": "Creates alarms for background execution",
+        "detail": "chrome.alarms.create",
+        "category": "persistence",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.alarms.create(\"schedule\", {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 635,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 645,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 676,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 686,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 787,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 828,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 850,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "js/popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await chrome.runtime.sendMessage({",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses setInterval with potential long periods",
+        "line": 105,
+        "razon": "Uses setInterval with potential long periods",
+        "detail": "setInterval",
+        "category": "persistence",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const intervalId = setInterval(() => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads active tab URL to build browsing history profile",
+        "line": 142,
+        "razon": "Reads active tab URL to build browsing history profile",
+        "detail": "tab.url",
+        "category": "privacy_risk",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "return tab.url || false;",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 205,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 239,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 497,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 637,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 795,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1442,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses setInterval with potential long periods",
+        "line": 1449,
+        "razon": "Uses setInterval with potential long periods",
+        "detail": "setInterval",
+        "category": "persistence",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "alive = setInterval(async () => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1454,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, { highlighted: true });",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1496,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1514,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1556,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1618,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1785,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "line": 1831,
+        "razon": "Modifies current tab URL — potential forced redirect or affiliate hijacking",
+        "detail": "chrome.tabs.update",
+        "category": "injection",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.tabs.update(tabId, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Creates alarms for background execution",
+        "line": 1926,
+        "razon": "Creates alarms for background execution",
+        "detail": "chrome.alarms.create",
+        "category": "persistence",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.alarms.create(\"schedule\", {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Creates alarms for background execution",
+        "line": 2041,
+        "razon": "Creates alarms for background execution",
+        "detail": "chrome.alarms.create",
+        "category": "persistence",
+        "filePath": "js/service.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "await chrome.alarms.create(\"clear\", {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 27,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "js/utils.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.set(data, () => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 37,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "js/utils.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(keys, (items) => {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 122,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "js/utils.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const res = await fetch(gumroad_api + \"/verify\", {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 1,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "debugger permission + network sink — Chrome DevTools Protocol abuse risk",
+        "category": "correlation",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.88,
+        "scoreImpact": 8,
+        "discoveryType": "correlacion_riesgo"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 1,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "history permission + network sink in same file (js/content.js) — full browsing history exfiltration risk",
+        "category": "correlation",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.87,
+        "scoreImpact": 3,
+        "discoveryType": "correlacion_riesgo"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 1,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "cookies/<all_urls> permission + suspicious external domain + network sink — possible exfiltration path even without observed cookie read",
+        "category": "correlation",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.85,
+        "scoreImpact": 2,
+        "discoveryType": "correlacion_riesgo"
+      },
+      {
+        "why": "Señal detectada por análisis regex en archivo grande (AST omitido): [HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses",
+        "line": 1,
+        "razon": "Señal detectada por análisis regex en archivo grande (AST omitido): [HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses",
+        "detail": "[HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses",
+        "category": "static",
+        "filePath": "js/queries.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "positivo",
+        "confidence": 0.85,
+        "codeSnippet": "ponsons\",\"sponsor\",\"sponsored\",\"sponsorial\",\"sponsoring\",\"sponsors\",\"sponsorship\",\"sponso",
+        "scoreImpact": 5,
+        "discoveryType": "grep_signal_large_file"
+      }
+    ],
+    "resultado2_unknown": [
+      {
+        "line": 301,
+        "razon": "Dominio desconocido referenciado por la extensión (aparece en código)",
+        "domain": "rewards.bing.com",
+        "category": "desconocido",
+        "filePath": "js/content.js",
+        "fileType": "content_script",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "url_en_codigo"
+      },
+      {
+        "line": 122,
+        "razon": "Dominio desconocido referenciado por la extensión (aparece en código)",
+        "domain": "api.gumroad.com",
+        "category": "desconocido",
+        "filePath": "js/utils.js",
+        "fileType": "unknown",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "url_en_codigo"
+      }
+    ],
+    "resultado2_priority": []
+  },
+  "extensionId": "upload-1779155952147-eanofdhdfbcalhflpbdipkjjkoimeeod",
+  "extensionName": "Rewards Search Automator",
+  "extensionAuthor": "buildwithkt.dev",
+  "resumen_usuario": [
+    {
+      "id": "seguimiento_privacidad",
+      "estado": "sospechoso",
+      "titulo": "Seguimiento y privacidad",
+      "resumen": "La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios.",
+      "evidencias": [
+        "Se comunica con estos sitios externos: rewards.bing.com, api.gumroad.com.",
+        "Recopila características de tu navegador y dispositivo para identificarte de forma única.",
+        "Monitorea activamente las pestañas que tienes abiertas.",
+        "Puede registrar cada vez que cambias de página.",
+        "Puede observar navegación activa mediante pestañas."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 40,
+          "texto": "Lectura de APIs típicas de fingerprinting (canvas, WebGL, audio, navigator, screen) en js/content.js:40.",
+          "filePath": "js/content.js",
+          "fileType": "content script",
+          "codeSnippet": "const imageData = ctx.getImageData(0, 0, this.width, this.height);"
+        },
+        {
+          "line": 1,
+          "texto": "Combinación con envío/contacto de red en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "privacy.fingerprinting",
+        "privacy.network_correlation"
+      ],
+      "preguntas_responde": [
+        "¿Rastrea mi actividad de navegación?",
+        "¿Crea perfiles sobre mis hábitos?",
+        "¿Comparte mis datos con terceros?",
+        "¿Recolecta métricas de uso?",
+        "¿Utiliza analytics ocultos?",
+        "¿Almacena identificadores persistentes?",
+        "¿Puede seguirme entre múltiples sitios web?"
+      ]
+    },
+    {
+      "id": "fingerprinting_severo",
+      "estado": "sospechoso",
+      "titulo": "Fingerprinting severo",
+      "resumen": "Lee píxeles de canvas ocultos. Es la técnica de fingerprinting más común para identificar GPUs y stacks de fuentes.",
+      "evidencias": [
+        "Canvas fingerprinting: renderiza texto/formas ocultos y lee los píxeles resultantes.",
+        "Lee píxeles de un canvas oculto para generar huella digital de GPU/fuentes en js/content.js:36.",
+        "Lee píxeles de un canvas oculto para generar huella digital de GPU/fuentes en js/content.js:37.",
+        "Lee píxeles de un canvas oculto para generar huella digital de GPU/fuentes en js/content.js:40."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 36,
+          "texto": "Lee píxeles de un canvas oculto para generar huella digital de GPU/fuentes en js/content.js:36.",
+          "filePath": "js/content.js",
+          "fileType": "content script",
+          "codeSnippet": "const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;"
+        },
+        {
+          "line": 37,
+          "texto": "Lee píxeles de un canvas oculto para generar huella digital de GPU/fuentes en js/content.js:37.",
+          "filePath": "js/content.js",
+          "fileType": "content script",
+          "codeSnippet": "HTMLCanvasElement.prototype.toDataURL = function (type) {"
+        },
+        {
+          "line": 40,
+          "texto": "Lee píxeles de un canvas oculto para generar huella digital de GPU/fuentes en js/content.js:40.",
+          "filePath": "js/content.js",
+          "fileType": "content script",
+          "codeSnippet": "const imageData = ctx.getImageData(0, 0, this.width, this.height);"
+        }
+      ],
+      "reglas_activadas": [
+        "fp.canvas"
+      ],
+      "preguntas_responde": [
+        "¿Puede identificarme de forma única sin cookies?",
+        "¿Puede rastrearme entre diferentes sitios web?",
+        "¿Crea un perfil permanente de mi dispositivo?",
+        "¿Vende o comparte mi huella digital con terceros?",
+        "¿Viola mi privacidad incluso en modo incógnito?"
+      ]
+    },
+    {
+      "id": "acceso_general_navegador",
+      "estado": "sospechoso",
+      "titulo": "Acceso general al navegador",
+      "resumen": "La extensión accede activamente a información de tus pestañas y páginas — no solo lo declara, sino que lo usa en su código.",
+      "evidencias": [
+        "Monitorea activamente las pestañas que abres y los sitios que visitas.",
+        "Se ejecuta automáticamente en las páginas que visitas.",
+        "Puede abrir nuevas pestañas o redirigirte a otras páginas desde código.",
+        "Puede operar en muchos o todos los sitios web por permisos de host.",
+        "Tiene content scripts que pueden ejecutarse automáticamente al visitar páginas."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver todas las páginas que visito?",
+        "¿Puede actuar en bancos o correos?",
+        "¿Realmente necesita acceso a todos los sitios web?",
+        "¿Puede ejecutarse automáticamente sin que yo haga clic?"
+      ]
+    },
+    {
+      "id": "acceso_historial",
+      "estado": "sospechoso",
+      "titulo": "Historial de navegación",
+      "resumen": "Puede acceder a tu historial completo de navegación.",
+      "evidencias": [
+        "Tiene permiso para leer tu historial de navegación.",
+        "Tiene permiso para ver tus pestañas abiertas.",
+        "Tiene permiso para rastrear cada cambio de página.",
+        "Puede ver URL y título de pestañas abiertas.",
+        "Permiso history permite leer historial de navegación."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer mi historial de navegación?",
+        "¿Almacena o transmite las páginas que visito?",
+        "¿Analiza patrones de comportamiento basados en historial?"
+      ]
+    },
+    {
+      "id": "ofuscacion_transparencia",
+      "estado": "sospechoso",
+      "titulo": "Ofuscación y transparencia",
+      "resumen": "Hay señales de riesgo en archivos muy grandes que no pudieron analizarse completamente.",
+      "evidencias": [
+        "Señales de anti-debugging (uso de debugger, detección de DevTools, console.clear, performance.now).",
+        "Señales de riesgo en archivos muy grandes que no pudieron analizarse en profundidad (solo grep superficial).",
+        "Señal de anti-debugging/anti-análisis en manifest.json:1.",
+        "Señal de riesgo en archivo muy grande (análisis superficial): js/queries.js:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 1,
+          "texto": "Señal de anti-debugging/anti-análisis en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        },
+        {
+          "line": 1,
+          "texto": "Señal de riesgo en archivo muy grande (análisis superficial): js/queries.js:1.",
+          "filePath": "js/queries.js",
+          "fileType": "archivo",
+          "codeSnippet": "ponsons\",\"sponsor\",\"sponsored\",\"sponsorial\",\"sponsoring\",\"sponsors\",\"sponsorship\",\"sponso"
+        }
+      ],
+      "reglas_activadas": [
+        "transparency.anti_debugging",
+        "transparency.grep_large_file"
+      ],
+      "preguntas_responde": [
+        "¿El código está ofuscado?",
+        "¿El comportamiento de la extensión es entendible?",
+        "¿Existen partes imposibles de auditar fácilmente?",
+        "¿Usa técnicas anti-debugging?"
+      ]
+    },
+    {
+      "id": "captura_credenciales",
+      "estado": "capacidad",
+      "titulo": "Contraseñas, tokens y sesiones",
+      "resumen": "Vimos acceso a almacenamiento donde podrían guardarse tokens o datos de sesión.",
+      "evidencias": [
+        "Señal de tokens o estado de sesión en almacenamiento en js/content.js:350.",
+        "Señal de tokens o estado de sesión en almacenamiento en js/content.js:360.",
+        "Combinación de señales sobre credenciales/sesión en manifest.json:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 350,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en js/content.js:350.",
+          "filePath": "js/content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.set(data, () => {"
+        },
+        {
+          "line": 360,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en js/content.js:360.",
+          "filePath": "js/content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get(keys, (items) => {"
+        },
+        {
+          "line": 1,
+          "texto": "Combinación de señales sobre credenciales/sesión en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "creds.auth_storage",
+        "creds.correlation_session_exfil"
+      ],
+      "preguntas_responde": [
+        "¿Puede capturar contraseñas?",
+        "¿Puede leer usuarios y sesiones activas?",
+        "¿Puede interceptar formularios antes de ser enviados?",
+        "¿Puede capturar tokens de autenticación?",
+        "¿Puede acceder a cookies de sesión?"
+      ]
+    },
+    {
+      "id": "manipulacion_trafico",
+      "estado": "capacidad",
+      "titulo": "Manipulación de tráfico",
+      "resumen": "No vimos permisos fuertes de manipulación de tráfico.",
+      "evidencias": [
+        "Reescribe cabeceras HTTP (Authorization, Cookie, Referer...).",
+        "Manipula cabeceras de petición/respuesta (Authorization, Cookie, Referer...) en manifest.json:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 1,
+          "texto": "Manipula cabeceras de petición/respuesta (Authorization, Cookie, Referer...) en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "traffic.header_rewrite"
+      ],
+      "preguntas_responde": [
+        "¿Puede interceptar solicitudes web?",
+        "¿Puede modificar respuestas HTTP?",
+        "¿Puede redirigirme a otras páginas?",
+        "¿Puede alterar descargas o recursos cargados?",
+        "¿Puede vigilar mi tráfico de red en todas las páginas?"
+      ]
+    },
+    {
+      "id": "modificacion_paginas",
+      "estado": "capacidad",
+      "titulo": "Modificación de páginas",
+      "resumen": "No vimos señales de que esta extensión modifique páginas web.",
+      "evidencias": [
+        "Combinación relacionada con modificación de páginas en manifest.json:1.",
+        "Referencias a anuncios/resultados que podrían sustituirse en js/queries.js:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 1,
+          "texto": "Combinación relacionada con modificación de páginas en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        },
+        {
+          "line": 1,
+          "texto": "Referencias a anuncios/resultados que podrían sustituirse en js/queries.js:1.",
+          "filePath": "js/queries.js",
+          "fileType": "archivo",
+          "codeSnippet": "ponsons\",\"sponsor\",\"sponsored\",\"sponsorial\",\"sponsoring\",\"sponsors\",\"sponsorship\",\"sponso"
+        }
+      ],
+      "reglas_activadas": [
+        "page_mod.correlation_dom_script",
+        "page_mod.ad_or_search_replacement"
+      ],
+      "preguntas_responde": [
+        "¿Puede modificar el contenido de una página web?",
+        "¿Puede insertar elementos invisibles dentro de sitios?",
+        "¿Puede cambiar botones, formularios o enlaces?",
+        "¿Puede reemplazar anuncios o resultados de búsqueda?",
+        "¿Puede alterar lo que veo en redes sociales o bancos?",
+        "¿Puede superponer interfaces falsas sobre páginas reales?"
+      ]
+    },
+    {
+      "id": "keylogging",
+      "estado": "no_detectado",
+      "titulo": "Keylogging y captura de teclado",
+      "resumen": "No vimos señales de que esta extensión registre lo que escribes.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede registrar teclas que escribo?",
+        "¿Escucha todos los eventos del teclado?",
+        "¿Puede capturar texto antes de enviarlo?",
+        "¿Puede detectar combinaciones de teclas o atajos?"
+      ]
+    },
+    {
+      "id": "lectura_informacion",
+      "estado": "no_detectado",
+      "titulo": "Lectura de información en páginas",
+      "resumen": "No vimos señales de que esta extensión lea contenido de tus páginas.",
+      "evidencias": [
+        "Los content scripts pueden leer o inspeccionar el DOM de las páginas donde corren."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer texto dentro de páginas web?",
+        "¿Puede leer mensajes, correos o documentos abiertos en el navegador?",
+        "¿Puede leer contenido escrito en formularios?",
+        "¿Puede inspeccionar información sensible mostrada en pantalla?",
+        "¿Puede acceder al contenido completo de una página?"
+      ]
+    },
+    {
+      "id": "abuso_management",
+      "estado": "no_detectado",
+      "titulo": "Abuso de APIs de administración",
+      "resumen": "No se detectó uso de APIs de administración de extensiones.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver qué otras extensiones tengo instaladas?",
+        "¿Puede desactivar mi bloqueador de anuncios o antivirus?",
+        "¿Puede desinstalarse a sí misma para borrar evidencia?",
+        "¿Puede deshabilitar extensiones de seguridad antes de operar?"
+      ]
+    },
+    {
+      "id": "mineria_recursos",
+      "estado": "no_detectado",
+      "titulo": "Minería de recursos / Cryptojacking",
+      "resumen": "No se detectaron señales de minería de recursos.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede usar mi CPU para minar criptomonedas?",
+        "¿Puede ralentizar mi computador con cómputo oculto?",
+        "¿Carga código binario externo que no puedo inspeccionar?",
+        "¿Opera en segundo plano cuando no la estoy usando?"
+      ]
+    },
+    {
+      "id": "descargas_archivos",
+      "estado": "no_detectado",
+      "titulo": "Descargas y archivos",
+      "resumen": "No vimos permiso fuerte para gestionar descargas.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede descargar archivos automáticamente?",
+        "¿Puede generar archivos en mi equipo?",
+        "¿Puede abrir o modificar descargas?",
+        "¿Puede actuar como un downloader de malware?"
+      ]
+    }
+  ],
+  "analysisDuration": 350592,
+  "extensionVersion": "1.6.5",
+  "analysisTimestamp": "2026-05-19T02:05:02.753Z",
+  "puntuacion_riesgo": {
+    "level": "HIGH",
+    "score": 30,
+    "reasons": [
+      "correlacion_riesgo: debugger permission + network sink — Chrome DevTools Protocol abuse risk",
+      "grep_signal_large_file: [HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses"
+    ]
+  },
+  "veredicto_usuario": {
+    "nivel": "alto",
+    "razones": [
+      "Seguimiento y privacidad: La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios. Evidencia: Se comunica con estos sitios externos: rewards.bing.com, api.gumroad.com.",
+      "Fingerprinting severo: Lee píxeles de canvas ocultos. Es la técnica de fingerprinting más común para identificar GPUs y stacks de fuentes. Evidencia: Canvas fingerprinting: renderiza texto/formas ocultos y lee los píxeles resultantes.",
+      "Acceso general al navegador: La extensión accede activamente a información de tus pestañas y páginas — no solo lo declara, sino que lo usa en su código. Evidencia: Monitorea activamente las pestañas que abres y los sitios que visitas.",
+      "Historial de navegación: Puede acceder a tu historial completo de navegación. Evidencia: Tiene permiso para leer tu historial de navegación.",
+      "Ofuscación y transparencia: Hay señales de riesgo en archivos muy grandes que no pudieron analizarse completamente. Evidencia: Señales de anti-debugging (uso de debugger, detección de DevTools, console.clear, performance.now)."
+    ],
+    "resumen": "Detectamos 5 señal(es) sospechosa(s): Seguimiento y privacidad, Fingerprinting severo, Acceso general al navegador, Historial de navegación, Ofuscación y transparencia; 3 capacidad(es) relevante(s): Contraseñas, tokens y sesiones, Manipulación de tráfico, Modificación de páginas.",
+    "veredicto": "sospechosa"
+  },
+  "permisos_no_usados": [],
+  "hallazgos_estaticos_positivos": [
+    "En el manifest (manifest.json, línea 1) detectamos una combinación de señales que aumenta el riesgo: debugger permission + network sink — Chrome DevTools Protocol abuse risk. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 88%.",
+    "En el manifest (manifest.json, línea 1) detectamos una combinación de señales que aumenta el riesgo: history permission + network sink in same file (js/content.js) — full browsing history exfiltration risk. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 87%.",
+    "En el manifest (manifest.json, línea 1) detectamos una combinación de señales que aumenta el riesgo: cookies/<all_urls> permission + suspicious external domain + network sink — possible exfiltration path even without observed cookie read. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 85%.",
+    "En el content script (js/content.js, línea 36) detectamos uso de una función sensible (HTMLCanvasElement.prototype.toDataURL); el riesgo depende de los datos que procesa y del destino. Motivo: Canvas pixel read — potential fingerprinting or screen capture Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%. Encontramos 1 ocurrencia(s) similar(es), agrupadas para que el reporte sea legible.",
+    "En el content script (js/content.js, línea 40) detectamos uso de una función sensible (ctx.getImageData); el riesgo depende de los datos que procesa y del destino. Motivo: Canvas pixel read — potential fingerprinting or screen capture Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%.",
+    "En el content script (js/content.js, línea 301) detectamos uso de una función sensible (fetch); el riesgo depende de los datos que procesa y del destino. Motivo: Communicates with external servers Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%.",
+    "En el content script (js/content.js, línea 350) detectamos uso de una función sensible (chrome.storage.local.set); el riesgo depende de los datos que procesa y del destino. Motivo: Uses chrome.storage for local persistence Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%.",
+    "En el content script (js/content.js, línea 360) detectamos uso de una función sensible (chrome.storage.local.get); el riesgo depende de los datos que procesa y del destino. Motivo: Uses chrome.storage for local persistence Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%.",
+    "En el archivo (js/queries.js, línea 1) detectamos grep_signal_large_file ([HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses). Motivo: Señal detectada por análisis regex en archivo grande (AST omitido): [HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses Contexto: Este archivo está suelto dentro de la extensión y no sabemos en qué momento exacto se ejecuta. Confianza: 85%.",
+    "En el content script (js/content.js, línea 301) encontramos el dominio rewards.bing.com, contactado por el código, clasificado como desconocido. Dominio desconocido referenciado por la extensión (aparece en código)",
+    "En el archivo (js/utils.js, línea 122) encontramos el dominio api.gumroad.com, contactado por el código, clasificado como desconocido. Dominio desconocido referenciado por la extensión (aparece en código)"
+  ]
+}

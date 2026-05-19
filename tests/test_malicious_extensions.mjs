@@ -19,6 +19,7 @@
  *   --count  Total de extensiones     (default: 50)
  *   --batch  Extensiones por batch    (default: 10)
  *   --delay  Segundos entre envíos    (default: 2)
+ *   --skip   Extensiones a saltar     (default: 0)  — útil para procesar la segunda mitad
  *
  * Requiere Node 18+.  exceljs ya está en el package.json del backend.
  */
@@ -37,6 +38,7 @@ const DEFAULTS = {
   count: 50,
   batch: 10,
   delay: 2,
+  skip:  0,
 };
 const POLL_INTERVAL_MS = 10_000;
 const MAX_WAIT_MS      = 1_320_000; // 22 min — cubre runs lentos de LLM con qwen3:8b
@@ -53,6 +55,7 @@ function parseArgs() {
       case '--count': cfg.count = parseInt(args[++i], 10); break;
       case '--batch': cfg.batch = parseInt(args[++i], 10); break;
       case '--delay': cfg.delay = parseFloat(args[++i]); break;
+      case '--skip':  cfg.skip  = parseInt(args[++i], 10); break;
     }
   }
   return cfg;
@@ -586,7 +589,7 @@ async function main() {
   const crxFiles = fs.readdirSync(cfg.dir)
     .filter(f => f.toLowerCase().endsWith('.crx'))
     .sort()
-    .slice(0, cfg.count)
+    .slice(cfg.skip, cfg.skip + cfg.count)
     .map(f => ({ fullPath: path.join(cfg.dir, f), name: f }));
 
   if (crxFiles.length === 0) {
