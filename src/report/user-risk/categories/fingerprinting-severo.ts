@@ -100,9 +100,7 @@ export const evaluateFingerprintingSevero: UserRiskCategoryEvaluator = (
   // Critico: librería de FP conocida, o 2+ técnicas de fingerprint + envío a red,
   // o 3+ técnicas de fingerprint (identificación sistemática T1082)
   const isCritical =
-    fpLib ||
-    (techniqueCount >= 2 && networkFlow) ||
-    techniqueCount >= 3;
+    fpLib || (techniqueCount >= 2 && networkFlow) || techniqueCount >= 3;
 
   // Sospechoso: al menos una técnica activa de fingerprint, o 2+ técnicas sin red
   const isSuspicious = techniqueCount >= 1 || fontEnum;

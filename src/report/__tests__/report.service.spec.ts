@@ -112,7 +112,9 @@ describe('ReportService', () => {
     );
 
     expect(report.agente1?.veredicto_global).toBe('maliciosa');
-    expect(report.hallazgos_estaticos_positivos.length).toBeGreaterThanOrEqual(1);
+    expect(report.hallazgos_estaticos_positivos.length).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(report.hallazgos_estaticos_positivos[0]).toContain('content script');
     expect(report.hallazgos_estaticos_positivos[0]).toContain('src/main.js');
     expect(report.hallazgos_estaticos_positivos[0]).toContain('línea 42');

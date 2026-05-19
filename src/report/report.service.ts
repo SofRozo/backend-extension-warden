@@ -15,47 +15,183 @@ import { UserRiskSummaryService } from './user-risk/user-risk-summary.service.js
 
 /** Human-readable descriptions for Chrome API permissions, keyed by permission name.
  *  Only permissions that warrant user explanation are included; unknown ones get a generic fallback. */
-const PERMISSION_DESCRIPTIONS: Record<string, { categoria: PermisNoUsado['categoria']; descripcion: string }> = {
+const PERMISSION_DESCRIPTIONS: Record<
+  string,
+  { categoria: PermisNoUsado['categoria']; descripcion: string }
+> = {
   // critical
-  tabCapture:               { categoria: 'critical', descripcion: 'Capturar el audio y video de cualquier pestaña del navegador en tiempo real.' },
-  pageCapture:              { categoria: 'critical', descripcion: 'Guardar páginas web completas (HTML, recursos) como archivos MHTML.' },
-  debugger:                 { categoria: 'critical', descripcion: 'Conectarse al protocolo de depuración de Chrome para inspeccionar y modificar cualquier página.' },
-  nativeMessaging:          { categoria: 'critical', descripcion: 'Comunicarse con programas instalados en tu computadora fuera del navegador.' },
-  proxy:                    { categoria: 'critical', descripcion: 'Redirigir todo el tráfico de red del navegador a través de un servidor externo.' },
-  vpnProvider:              { categoria: 'critical', descripcion: 'Crear y controlar conexiones VPN en el navegador.' },
+  tabCapture: {
+    categoria: 'critical',
+    descripcion:
+      'Capturar el audio y video de cualquier pestaña del navegador en tiempo real.',
+  },
+  pageCapture: {
+    categoria: 'critical',
+    descripcion:
+      'Guardar páginas web completas (HTML, recursos) como archivos MHTML.',
+  },
+  debugger: {
+    categoria: 'critical',
+    descripcion:
+      'Conectarse al protocolo de depuración de Chrome para inspeccionar y modificar cualquier página.',
+  },
+  nativeMessaging: {
+    categoria: 'critical',
+    descripcion:
+      'Comunicarse con programas instalados en tu computadora fuera del navegador.',
+  },
+  proxy: {
+    categoria: 'critical',
+    descripcion:
+      'Redirigir todo el tráfico de red del navegador a través de un servidor externo.',
+  },
+  vpnProvider: {
+    categoria: 'critical',
+    descripcion: 'Crear y controlar conexiones VPN en el navegador.',
+  },
   // high
-  cookies:                  { categoria: 'high', descripcion: 'Leer, escribir y eliminar las cookies de cualquier sitio web, incluyendo tokens de sesión.' },
-  scripting:                { categoria: 'high', descripcion: 'Inyectar y ejecutar código JavaScript en cualquier página web que visites.' },
-  declarativeNetRequest:    { categoria: 'high', descripcion: 'Bloquear, redirigir o modificar las solicitudes de red del navegador.' },
-  webRequest:               { categoria: 'high', descripcion: 'Interceptar y observar todas las solicitudes de red en tiempo real.' },
-  webRequestBlocking:       { categoria: 'high', descripcion: 'Interceptar y bloquear solicitudes de red antes de que lleguen al servidor.' },
-  userScripts:              { categoria: 'high', descripcion: 'Ejecutar scripts de usuario arbitrarios en páginas web.' },
-  desktopCapture:           { categoria: 'high', descripcion: 'Capturar la pantalla completa, una ventana o una pestaña como stream de video.' },
-  history:                  { categoria: 'high', descripcion: 'Leer y modificar el historial completo de navegación.' },
-  downloads:                { categoria: 'high', descripcion: 'Iniciar, cancelar y monitorear todas las descargas del navegador.' },
-  'downloads.open':         { categoria: 'high', descripcion: 'Abrir archivos descargados desde el sistema de archivos local.' },
-  privacy:                  { categoria: 'high', descripcion: 'Modificar configuraciones de privacidad del navegador como DNT, WebRTC y relleno de formularios.' },
-  browsingData:             { categoria: 'high', descripcion: 'Eliminar historial, cookies, caché y otros datos de navegación almacenados.' },
-  contentSettings:          { categoria: 'high', descripcion: 'Controlar qué contenido pueden mostrar los sitios (JavaScript, cookies, cámaras, etc.).' },
-  webNavigation:            { categoria: 'high', descripcion: 'Monitorear en tiempo real cada navegación que realizas en el navegador.' },
-  management:               { categoria: 'high', descripcion: 'Ver, habilitar o deshabilitar otras extensiones instaladas en tu navegador.' },
+  cookies: {
+    categoria: 'high',
+    descripcion:
+      'Leer, escribir y eliminar las cookies de cualquier sitio web, incluyendo tokens de sesión.',
+  },
+  scripting: {
+    categoria: 'high',
+    descripcion:
+      'Inyectar y ejecutar código JavaScript en cualquier página web que visites.',
+  },
+  declarativeNetRequest: {
+    categoria: 'high',
+    descripcion:
+      'Bloquear, redirigir o modificar las solicitudes de red del navegador.',
+  },
+  webRequest: {
+    categoria: 'high',
+    descripcion:
+      'Interceptar y observar todas las solicitudes de red en tiempo real.',
+  },
+  webRequestBlocking: {
+    categoria: 'high',
+    descripcion:
+      'Interceptar y bloquear solicitudes de red antes de que lleguen al servidor.',
+  },
+  userScripts: {
+    categoria: 'high',
+    descripcion: 'Ejecutar scripts de usuario arbitrarios en páginas web.',
+  },
+  desktopCapture: {
+    categoria: 'high',
+    descripcion:
+      'Capturar la pantalla completa, una ventana o una pestaña como stream de video.',
+  },
+  history: {
+    categoria: 'high',
+    descripcion: 'Leer y modificar el historial completo de navegación.',
+  },
+  downloads: {
+    categoria: 'high',
+    descripcion:
+      'Iniciar, cancelar y monitorear todas las descargas del navegador.',
+  },
+  'downloads.open': {
+    categoria: 'high',
+    descripcion:
+      'Abrir archivos descargados desde el sistema de archivos local.',
+  },
+  privacy: {
+    categoria: 'high',
+    descripcion:
+      'Modificar configuraciones de privacidad del navegador como DNT, WebRTC y relleno de formularios.',
+  },
+  browsingData: {
+    categoria: 'high',
+    descripcion:
+      'Eliminar historial, cookies, caché y otros datos de navegación almacenados.',
+  },
+  contentSettings: {
+    categoria: 'high',
+    descripcion:
+      'Controlar qué contenido pueden mostrar los sitios (JavaScript, cookies, cámaras, etc.).',
+  },
+  webNavigation: {
+    categoria: 'high',
+    descripcion:
+      'Monitorear en tiempo real cada navegación que realizas en el navegador.',
+  },
+  management: {
+    categoria: 'high',
+    descripcion:
+      'Ver, habilitar o deshabilitar otras extensiones instaladas en tu navegador.',
+  },
   // medium
-  tabs:                     { categoria: 'medium', descripcion: 'Acceder a las URLs, títulos e íconos de todas las pestañas abiertas.' },
-  activeTab:                { categoria: 'medium', descripcion: 'Acceder temporalmente a la pestaña activa cuando el usuario interactúa con la extensión.' },
-  bookmarks:                { categoria: 'medium', descripcion: 'Leer, crear y modificar todos tus marcadores guardados.' },
-  clipboardRead:            { categoria: 'medium', descripcion: 'Leer el contenido del portapapeles sin que el usuario lo sepa.' },
-  clipboardWrite:           { categoria: 'medium', descripcion: 'Escribir contenido en el portapapeles.' },
-  geolocation:              { categoria: 'medium', descripcion: 'Conocer tu ubicación geográfica.' },
-  notifications:            { categoria: 'medium', descripcion: 'Mostrar notificaciones en tu escritorio.' },
-  sessions:                 { categoria: 'medium', descripcion: 'Acceder a las pestañas y ventanas cerradas recientemente.' },
-  topSites:                 { categoria: 'medium', descripcion: 'Leer la lista de sitios más visitados del navegador.' },
+  tabs: {
+    categoria: 'medium',
+    descripcion:
+      'Acceder a las URLs, títulos e íconos de todas las pestañas abiertas.',
+  },
+  activeTab: {
+    categoria: 'medium',
+    descripcion:
+      'Acceder temporalmente a la pestaña activa cuando el usuario interactúa con la extensión.',
+  },
+  bookmarks: {
+    categoria: 'medium',
+    descripcion: 'Leer, crear y modificar todos tus marcadores guardados.',
+  },
+  clipboardRead: {
+    categoria: 'medium',
+    descripcion:
+      'Leer el contenido del portapapeles sin que el usuario lo sepa.',
+  },
+  clipboardWrite: {
+    categoria: 'medium',
+    descripcion: 'Escribir contenido en el portapapeles.',
+  },
+  geolocation: {
+    categoria: 'medium',
+    descripcion: 'Conocer tu ubicación geográfica.',
+  },
+  notifications: {
+    categoria: 'medium',
+    descripcion: 'Mostrar notificaciones en tu escritorio.',
+  },
+  sessions: {
+    categoria: 'medium',
+    descripcion: 'Acceder a las pestañas y ventanas cerradas recientemente.',
+  },
+  topSites: {
+    categoria: 'medium',
+    descripcion: 'Leer la lista de sitios más visitados del navegador.',
+  },
   // low
-  storage:                  { categoria: 'low', descripcion: 'Guardar datos localmente dentro del área de almacenamiento de la extensión.' },
-  identity:                 { categoria: 'low', descripcion: 'Obtener tokens de autenticación OAuth para servicios de Google.' },
-  alarms:                   { categoria: 'low', descripcion: 'Programar tareas periódicas o temporizadas.' },
-  contextMenus:             { categoria: 'low', descripcion: 'Añadir opciones al menú contextual (clic derecho) del navegador.' },
-  offscreen:                { categoria: 'low', descripcion: 'Crear documentos fuera de pantalla para procesar contenido en segundo plano.' },
-  sidePanel:                { categoria: 'low', descripcion: 'Mostrar una interfaz en el panel lateral del navegador.' },
+  storage: {
+    categoria: 'low',
+    descripcion:
+      'Guardar datos localmente dentro del área de almacenamiento de la extensión.',
+  },
+  identity: {
+    categoria: 'low',
+    descripcion:
+      'Obtener tokens de autenticación OAuth para servicios de Google.',
+  },
+  alarms: {
+    categoria: 'low',
+    descripcion: 'Programar tareas periódicas o temporizadas.',
+  },
+  contextMenus: {
+    categoria: 'low',
+    descripcion:
+      'Añadir opciones al menú contextual (clic derecho) del navegador.',
+  },
+  offscreen: {
+    categoria: 'low',
+    descripcion:
+      'Crear documentos fuera de pantalla para procesar contenido en segundo plano.',
+  },
+  sidePanel: {
+    categoria: 'low',
+    descripcion: 'Mostrar una interfaz en el panel lateral del navegador.',
+  },
 };
 
 const FILE_TYPE_LABEL: Record<string, string> = {
@@ -159,15 +295,17 @@ export class ReportService {
     const resultado1 =
       preBuilt?.resultado1 ??
       preprocessed.resultado1.map((f) => this.verdictStatic(f));
-    const domainFindings =
-      preBuilt?.domainFindings ??
-      [
-        ...preprocessed.resultado2_priority.map((f) => this.verdictDomain(f)),
-        ...preprocessed.resultado2_unknown.map((f) => this.verdictDomain(f)),
-      ];
+    const domainFindings = preBuilt?.domainFindings ?? [
+      ...preprocessed.resultado2_priority.map((f) => this.verdictDomain(f)),
+      ...preprocessed.resultado2_unknown.map((f) => this.verdictDomain(f)),
+    ];
     const resumenUsuario =
       preBuilt?.resumenUsuario ??
-      this.userRiskSummary.buildSummary(preprocessed, resultado1, domainFindings);
+      this.userRiskSummary.buildSummary(
+        preprocessed,
+        resultado1,
+        domainFindings,
+      );
 
     const soloPositivos = resultado1.filter((f) => f.veredicto === 'positivo');
     const scoreReal = soloPositivos.reduce(
@@ -178,17 +316,23 @@ export class ReportService {
       scoreReal > 0
         ? {
             score: scoreReal,
-            level: (scoreReal >= 50
-              ? 'CRITICAL'
-              : scoreReal >= 25
-                ? 'HIGH'
-                : scoreReal >= 10
-                  ? 'MEDIUM'
-                  : 'LOW') as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+            level: (
+              scoreReal >= 50
+                ? 'CRITICAL'
+                : scoreReal >= 25
+                  ? 'HIGH'
+                  : scoreReal >= 10
+                    ? 'MEDIUM'
+                    : 'LOW'
+            ) as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
             reasons: riskScore?.reasons ?? [],
           }
         : undefined;
-    if (puntuacionReal && agentAnalysis.ranSuccessfully && agentAnalysis.agent1) {
+    if (
+      puntuacionReal &&
+      agentAnalysis.ranSuccessfully &&
+      agentAnalysis.agent1
+    ) {
       puntuacionReal.level =
         (
           {
@@ -200,11 +344,13 @@ export class ReportService {
         )[agentAnalysis.agent1.nivel_riesgo_inicial] ?? puntuacionReal.level;
     }
     const agent1 = agentAnalysis.agent1;
-    const verdictoDeterministico = this.derivarVerdictoDeterministico(resumenUsuario);
+    const verdictoDeterministico =
+      this.derivarVerdictoDeterministico(resumenUsuario);
     const veredictoUsuario =
       agentAnalysis.ranSuccessfully && agent1
         ? {
-            veredicto: agent1.veredicto_global ?? verdictoDeterministico.veredicto,
+            veredicto:
+              agent1.veredicto_global ?? verdictoDeterministico.veredicto,
             nivel: agent1.nivel_riesgo_inicial ?? verdictoDeterministico.nivel,
             resumen: this.buildVeredictResumen(resumenUsuario),
             razones: verdictoDeterministico.razones,
@@ -222,7 +368,9 @@ export class ReportService {
 
     // Split domainFindings back into priority / unknown for the report structure
     const prioritySet = new Set(
-      preprocessed.resultado2_priority.map((f) => `${f.domain}:${f.discoveryType}:${f.line}`),
+      preprocessed.resultado2_priority.map(
+        (f) => `${f.domain}:${f.discoveryType}:${f.line}`,
+      ),
     );
     const resultado2_priority = domainFindings.filter((f) =>
       prioritySet.has(`${f.domain}:${f.discoveryType}:${f.line}`),
@@ -268,19 +416,29 @@ export class ReportService {
     const sospechosos = resumen.filter((i) => i.estado === 'sospechoso');
     const capacidades = resumen.filter((i) => i.estado === 'capacidad');
 
-    if (criticos.length === 0 && sospechosos.length === 0 && capacidades.length === 0) {
+    if (
+      criticos.length === 0 &&
+      sospechosos.length === 0 &&
+      capacidades.length === 0
+    ) {
       return 'No se detectaron señales de riesgo significativas en esta extensión.';
     }
 
     const partes: string[] = [];
     if (criticos.length > 0) {
-      partes.push(`${criticos.length} señal(es) crítica(s): ${criticos.map((i) => i.titulo).join(', ')}`);
+      partes.push(
+        `${criticos.length} señal(es) crítica(s): ${criticos.map((i) => i.titulo).join(', ')}`,
+      );
     }
     if (sospechosos.length > 0) {
-      partes.push(`${sospechosos.length} señal(es) sospechosa(s): ${sospechosos.map((i) => i.titulo).join(', ')}`);
+      partes.push(
+        `${sospechosos.length} señal(es) sospechosa(s): ${sospechosos.map((i) => i.titulo).join(', ')}`,
+      );
     }
     if (capacidades.length > 0) {
-      partes.push(`${capacidades.length} capacidad(es) relevante(s): ${capacidades.map((i) => i.titulo).join(', ')}`);
+      partes.push(
+        `${capacidades.length} capacidad(es) relevante(s): ${capacidades.map((i) => i.titulo).join(', ')}`,
+      );
     }
     return `Detectamos ${partes.join('; ')}.`;
   }

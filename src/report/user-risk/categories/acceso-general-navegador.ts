@@ -143,7 +143,8 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
             ? 'La extensión declara acceso a sitios sensibles como bancos, correos o redes sociales.'
             : 'No vimos que esta extensión tenga acceso amplio a todos los sitios.',
     [
-      broadHost && 'Tiene permiso para operar en todos los sitios web que visitas.',
+      broadHost &&
+        'Tiene permiso para operar en todos los sitios web que visitas.',
       usesScriptingExecute &&
         scriptingCall &&
         `Inserta código en páginas activamente (${scriptingCall.filePath}:${scriptingCall.line}).`,
@@ -155,7 +156,8 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
       perms.has('tabs') &&
         !usesTabObservation &&
         'Tiene permiso para ver tus pestañas, pero no vimos que lo use.',
-      hasContentScript && 'Se ejecuta automáticamente en las páginas que visitas.',
+      hasContentScript &&
+        'Se ejecuta automáticamente en las páginas que visitas.',
       autoRunScripts &&
         'Comienza a ejecutarse en cuanto cargas una página, antes de que termines de leerla.',
       hasBackground &&
@@ -165,7 +167,8 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
         'Está configurada para actuar en sitios sensibles: bancos, correo, redes sociales o billeteras digitales.',
       invisibleBackgroundExecution &&
         'No tiene una ventana visible: opera en segundo plano sin que puedas "apagarla" directamente.',
-      usesTabOpen && 'Puede abrir nuevas pestañas o redirigirte a otras páginas desde código.',
+      usesTabOpen &&
+        'Puede abrir nuevas pestañas o redirigirte a otras páginas desde código.',
     ],
     [
       '¿Puede ver todas las páginas que visito?',

@@ -97,10 +97,15 @@ export class AnalysisProcessor extends WorkerHost {
       await this.updateJobStatus(jobId, AnalysisStatus.AI_ANALYSIS);
       let agentAnalysis: AgentAnalysisResult;
       try {
-        const agentTimeoutMs =
-          Number(this.config.get<number>('AGENT_TIMEOUT_MS') ?? 900_000);
+        const agentTimeoutMs = Number(
+          this.config.get<number>('AGENT_TIMEOUT_MS') ?? 900_000,
+        );
         agentAnalysis = await this.withTimeout(
-          this.agentsOrchestrator.run(preprocessed, jobId, preBuilt.resumenUsuario),
+          this.agentsOrchestrator.run(
+            preprocessed,
+            jobId,
+            preBuilt.resumenUsuario,
+          ),
           agentTimeoutMs,
           'AI analysis timeout exceeded',
         );

@@ -340,18 +340,14 @@ export class DownloaderService {
             ) {
               // Follow one redirect
               https
-                .get(
-                  res.headers.location,
-                  { timeout: 6000 },
-                  (r2) => {
-                    const chunks: Buffer[] = [];
-                    r2.on('data', (c: Buffer) => chunks.push(c));
-                    r2.on('end', () =>
-                      resolve(Buffer.concat(chunks).toString('utf-8')),
-                    );
-                    r2.on('error', reject);
-                  },
-                )
+                .get(res.headers.location, { timeout: 6000 }, (r2) => {
+                  const chunks: Buffer[] = [];
+                  r2.on('data', (c: Buffer) => chunks.push(c));
+                  r2.on('end', () =>
+                    resolve(Buffer.concat(chunks).toString('utf-8')),
+                  );
+                  r2.on('error', reject);
+                })
                 .on('error', reject);
               return;
             }

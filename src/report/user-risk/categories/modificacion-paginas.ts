@@ -202,14 +202,16 @@ export const evaluateModificacionPaginas: UserRiskCategoryEvaluator = (
       perms.has('scripting') &&
         !usesScriptingExecute &&
         'Tiene permiso para insertar código en páginas, pero no vimos que lo use.',
-      remoteScript && 'Descarga y ejecuta código desde Internet dentro de las páginas que visitas.',
+      remoteScript &&
+        'Descarga y ejecuta código desde Internet dentro de las páginas que visitas.',
       overlaySignal &&
         'Puede mostrar ventanas o capas superpuestas sobre la página real — una técnica usada para crear formularios falsos.',
       invisibleSignal &&
         'Puede ocultar elementos de la página haciéndolos invisibles.',
       observerSignal &&
         'Vigila silenciosamente los cambios que ocurren en la página mientras navegas.',
-      formReplacement && 'Puede crear, modificar o reemplazar botones, formularios o enlaces.',
+      formReplacement &&
+        'Puede crear, modificar o reemplazar botones, formularios o enlaces.',
       hasDetail(context, /history\.(push|replace)State/i) &&
         'Puede cambiar la dirección web visible en tu barra de navegación sin que realmente cargues otra página.',
     ],

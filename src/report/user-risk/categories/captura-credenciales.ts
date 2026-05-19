@@ -170,20 +170,24 @@ export const evaluateCapturaCredenciales: UserRiskCategoryEvaluator = (
             ? 'La extensión hace referencia a contraseñas, tokens o APIs de autenticación en su código.'
             : storageSignal
               ? 'Vimos acceso a almacenamiento donde podrían guardarse tokens o datos de sesión.'
-            : 'No vimos señales de que esta extensión capture contraseñas o credenciales.',
+              : 'No vimos señales de que esta extensión capture contraseñas o credenciales.',
     [
-      credentialSignal && 'El código hace referencia explícita a contraseñas, tokens o frases de recuperación.',
+      credentialSignal &&
+        'El código hace referencia explícita a contraseñas, tokens o frases de recuperación.',
       passwordSelector &&
         'Busca activamente los campos de contraseña en las páginas que visitas.',
       tokenSignal &&
         'El código contiene referencias a tokens de sesión o claves de autenticación.',
-      cookieRead && 'Puede leer las cookies del sitio — ahí se guardan tus sesiones activas.',
-      context.perms.has('cookies') && 'Tiene permiso para acceder a las cookies de los sitios.',
+      cookieRead &&
+        'Puede leer las cookies del sitio — ahí se guardan tus sesiones activas.',
+      context.perms.has('cookies') &&
+        'Tiene permiso para acceder a las cookies de los sitios.',
       formIntercept &&
         'Puede capturar los datos de un formulario antes de que los envíes.',
       identityApi &&
         'Usa la API de Chrome para obtener tokens de tu cuenta de Google sin que lo veas.',
-      credentialFlow && 'Datos de sesión o credenciales detectados viajando hacia servidores externos.',
+      credentialFlow &&
+        'Datos de sesión o credenciales detectados viajando hacia servidores externos.',
     ],
     [
       '¿Puede capturar contraseñas?',

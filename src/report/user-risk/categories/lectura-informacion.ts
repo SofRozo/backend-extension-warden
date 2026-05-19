@@ -188,7 +188,8 @@ export const evaluateLecturaInformacion: UserRiskCategoryEvaluator = (
               ? 'La extensión declara acceso amplio a sitios web, pero no vimos que lo use para leer datos de los usuarios.'
               : 'No vimos señales de que esta extensión lea contenido de tus páginas.',
     [
-      networkFlow && 'Información leída de páginas viaja hacia servidores externos.',
+      networkFlow &&
+        'Información leída de páginas viaja hacia servidores externos.',
       context.broadHost &&
         !isSuspicious &&
         !isCritical &&
@@ -197,8 +198,10 @@ export const evaluateLecturaInformacion: UserRiskCategoryEvaluator = (
         'Inserta código propio dentro de las páginas que visitas — ese código puede leer todo lo que hay en ellas.',
       usesDom &&
         'Lee el contenido visible de las páginas (textos, formularios, elementos de la página).',
-      cookieRead && 'Accede a las cookies del sitio — ahí se guardan tus sesiones activas.',
-      storageRead && 'Lee datos guardados localmente en el navegador por los sitios que visitas.',
+      cookieRead &&
+        'Accede a las cookies del sitio — ahí se guardan tus sesiones activas.',
+      storageRead &&
+        'Lee datos guardados localmente en el navegador por los sitios que visitas.',
       formAccess && 'Puede leer el contenido de formularios web.',
       clipboardRead && 'Puede leer lo que tienes copiado en el portapapeles.',
       selectionRead && 'Puede leer el texto que seleccionas con el cursor.',

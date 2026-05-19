@@ -128,7 +128,9 @@ export class UserRiskSummaryService {
       puede_espiar_sin_saberlo:
         creds === 'critico' || keylog === 'critico' || lectura === 'critico'
           ? 'si'
-          : creds === 'sospechoso' || keylog === 'sospechoso' || lectura === 'sospechoso'
+          : creds === 'sospechoso' ||
+              keylog === 'sospechoso' ||
+              lectura === 'sospechoso'
             ? 'posible'
             : 'no_detectado',
       puede_leer_formularios: map(lectura),

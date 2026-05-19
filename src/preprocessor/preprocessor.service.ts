@@ -388,7 +388,10 @@ export class PreprocessorService {
     return key.replace(/_/g, ' ');
   }
 
-  private parseManifest(raw: Record<string, unknown>, extractPath: string): ManifestInfo {
+  private parseManifest(
+    raw: Record<string, unknown>,
+    extractPath: string,
+  ): ManifestInfo {
     const mv = (raw.manifest_version as number) ?? 2;
 
     const allPerms = (raw.permissions as string[]) ?? [];
@@ -467,16 +470,26 @@ export class PreprocessorService {
 
     return {
       manifestVersion: mv === 3 ? 3 : 2,
-      name: this.resolveManifestLocale((raw.name as string) ?? '', extractPath, raw),
+      name: this.resolveManifestLocale(
+        (raw.name as string) ?? '',
+        extractPath,
+        raw,
+      ),
       version: (raw.version as string) ?? '',
-      description: raw.description != null
-        ? this.resolveManifestLocale(raw.description as string, extractPath, raw)
-        : undefined,
-      author: typeof raw.author === 'string'
-        ? raw.author
-        : typeof (raw.author as Record<string, unknown>)?.name === 'string'
-          ? (raw.author as Record<string, unknown>).name as string
+      description:
+        raw.description != null
+          ? this.resolveManifestLocale(
+              raw.description as string,
+              extractPath,
+              raw,
+            )
           : undefined,
+      author:
+        typeof raw.author === 'string'
+          ? raw.author
+          : typeof (raw.author as Record<string, unknown>)?.name === 'string'
+            ? ((raw.author as Record<string, unknown>).name as string)
+            : undefined,
       apiPermissions,
       hostPermissions,
       optionalPermissions,
@@ -1383,85 +1396,181 @@ export class PreprocessorService {
   private extractGrepSignals(code: string): GrepSignal[] {
     const signals: GrepSignal[] = [];
     const checks: Array<{ re: RegExp; label: string }> = [
-      { re: /XMLHttpRequest\.prototype\.(open|send|setRequestHeader)\s*=/g,
-        label: '[CRITICAL] XHR prototype hook — intercepta todo el tráfico XHR' },
-      { re: /\bfetch\s*=\s*(?:async\s+)?function/g,
-        label: '[CRITICAL] window.fetch replacement — intercepta todo fetch()' },
-      { re: /chrome\.management\.getAll\s*\(/g,
-        label: '[HIGH] chrome.management.getAll() — lista extensiones instaladas' },
-      { re: /chrome\.management\.setEnabled\s*\(/g,
-        label: '[HIGH] chrome.management.setEnabled() — puede deshabilitar extensiones' },
-      { re: /navigator\.geolocation\.(getCurrentPosition|watchPosition)\s*=/g,
-        label: '[HIGH] Geolocation API hook — puede falsificar ubicación GPS' },
-      { re: /history\.(pushState|replaceState)\s*=/g,
-        label: '[HIGH] History API hook — monitorea navegación SPA' },
-      { re: /apiSecret\s*:\s*["'][A-Za-z0-9_\-]{8,}["']/g,
-        label: '[HIGH] Hardcoded apiSecret en código fuente' },
-      { re: /api_secret\s*[:=]\s*["'][A-Za-z0-9_\-]{8,}["']/g,
-        label: '[HIGH] Hardcoded api_secret en código fuente' },
-      { re: /["']G-[A-Z0-9]{8,}["']/g,
-        label: '[MEDIUM] Google Analytics 4 measurement ID hardcodeado' },
-      { re: /ecommerceEnabled|clickstreamEnabled|advertisementEnabled/g,
-        label: '[HIGH] Data sharing flags — monetización de datos de navegación' },
-      { re: /ECOMMERCE_TRACK|ECOMMERCE_HEART_BEAT|ECOMMERCE_SYNC_UP/g,
-        label: '[HIGH] E-commerce tracking events — telemetría periódica' },
-      { re: /DataSharingTypes\.(ecommerce|clickstream|advertisement)/g,
-        label: '[HIGH] DataSharingTypes explícitos en código' },
-      { re: /panalyticsId|panelist_?id/gi,
-        label: '[HIGH] Panelist persistent ID — seguimiento cross-session' },
-      { re: /bis_data|PANELOS_MESSAGE|posdMessageId/g,
-        label: '[HIGH] BIS/PANELOS framework — sistema de inyección de anuncios' },
-      { re: /SHOPIFY_DETECTED|ECOMMERCE_INIT_SHOPIFY|globalThis\.Shopify/g,
-        label: '[HIGH] Shopify detection — módulo de tracking de compras' },
-      { re: /geosurf\.io|luminati\.io|brightdata\.com|oxylabs\.io/g,
-        label: '[HIGH] Red de proxies residenciales — tráfico por dispositivos de terceros' },
-      { re: /tab\??\.url\b/g,
-        label: '[MEDIUM] Lectura de tab.url — acceso al historial de navegación' },
-      { re: /response\.clone\s*\(\)/g,
-        label: '[MEDIUM] response.clone() — lee body de respuestas HTTP' },
-      { re: /document\.createElement\s*\(\s*["']script["']\s*\)/g,
-        label: '[HIGH] Creación dinámica de elementos script' },
-      { re: /\bnew\s+Function\s*\(/g,
-        label: '[CRITICAL] new Function() — ejecución dinámica de código' },
-      { re: /\b(?:facebook|tiktok|twitter|x\.com|linkedin|pinterest|youtube|instagram|snapchat|reddit|twitch)\.com\b/gi,
-        label: '[MEDIUM] Social media platform domain — potential ad injection target' },
-      { re: /response\.clone\s*\(\)/g,
-        label: '[HIGH] response.clone() — duplicates HTTP responses to read body while forwarding (ad/data interception pattern)' },
-      { re: /\b(?:sponsored|ad_unit_id|adUnitId|adUnitCode|campaignId|impressionId|adId)\b/g,
-        label: '[HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses' },
+      {
+        re: /XMLHttpRequest\.prototype\.(open|send|setRequestHeader)\s*=/g,
+        label: '[CRITICAL] XHR prototype hook — intercepta todo el tráfico XHR',
+      },
+      {
+        re: /\bfetch\s*=\s*(?:async\s+)?function/g,
+        label: '[CRITICAL] window.fetch replacement — intercepta todo fetch()',
+      },
+      {
+        re: /chrome\.management\.getAll\s*\(/g,
+        label:
+          '[HIGH] chrome.management.getAll() — lista extensiones instaladas',
+      },
+      {
+        re: /chrome\.management\.setEnabled\s*\(/g,
+        label:
+          '[HIGH] chrome.management.setEnabled() — puede deshabilitar extensiones',
+      },
+      {
+        re: /navigator\.geolocation\.(getCurrentPosition|watchPosition)\s*=/g,
+        label: '[HIGH] Geolocation API hook — puede falsificar ubicación GPS',
+      },
+      {
+        re: /history\.(pushState|replaceState)\s*=/g,
+        label: '[HIGH] History API hook — monitorea navegación SPA',
+      },
+      {
+        re: /apiSecret\s*:\s*["'][A-Za-z0-9_\-]{8,}["']/g,
+        label: '[HIGH] Hardcoded apiSecret en código fuente',
+      },
+      {
+        re: /api_secret\s*[:=]\s*["'][A-Za-z0-9_\-]{8,}["']/g,
+        label: '[HIGH] Hardcoded api_secret en código fuente',
+      },
+      {
+        re: /["']G-[A-Z0-9]{8,}["']/g,
+        label: '[MEDIUM] Google Analytics 4 measurement ID hardcodeado',
+      },
+      {
+        re: /ecommerceEnabled|clickstreamEnabled|advertisementEnabled/g,
+        label:
+          '[HIGH] Data sharing flags — monetización de datos de navegación',
+      },
+      {
+        re: /ECOMMERCE_TRACK|ECOMMERCE_HEART_BEAT|ECOMMERCE_SYNC_UP/g,
+        label: '[HIGH] E-commerce tracking events — telemetría periódica',
+      },
+      {
+        re: /DataSharingTypes\.(ecommerce|clickstream|advertisement)/g,
+        label: '[HIGH] DataSharingTypes explícitos en código',
+      },
+      {
+        re: /panalyticsId|panelist_?id/gi,
+        label: '[HIGH] Panelist persistent ID — seguimiento cross-session',
+      },
+      {
+        re: /bis_data|PANELOS_MESSAGE|posdMessageId/g,
+        label:
+          '[HIGH] BIS/PANELOS framework — sistema de inyección de anuncios',
+      },
+      {
+        re: /SHOPIFY_DETECTED|ECOMMERCE_INIT_SHOPIFY|globalThis\.Shopify/g,
+        label: '[HIGH] Shopify detection — módulo de tracking de compras',
+      },
+      {
+        re: /geosurf\.io|luminati\.io|brightdata\.com|oxylabs\.io/g,
+        label:
+          '[HIGH] Red de proxies residenciales — tráfico por dispositivos de terceros',
+      },
+      {
+        re: /tab\??\.url\b/g,
+        label:
+          '[MEDIUM] Lectura de tab.url — acceso al historial de navegación',
+      },
+      {
+        re: /response\.clone\s*\(\)/g,
+        label: '[MEDIUM] response.clone() — lee body de respuestas HTTP',
+      },
+      {
+        re: /document\.createElement\s*\(\s*["']script["']\s*\)/g,
+        label: '[HIGH] Creación dinámica de elementos script',
+      },
+      {
+        re: /\bnew\s+Function\s*\(/g,
+        label: '[CRITICAL] new Function() — ejecución dinámica de código',
+      },
+      {
+        re: /\b(?:facebook|tiktok|twitter|x\.com|linkedin|pinterest|youtube|instagram|snapchat|reddit|twitch)\.com\b/gi,
+        label:
+          '[MEDIUM] Social media platform domain — potential ad injection target',
+      },
+      {
+        re: /response\.clone\s*\(\)/g,
+        label:
+          '[HIGH] response.clone() — duplicates HTTP responses to read body while forwarding (ad/data interception pattern)',
+      },
+      {
+        re: /\b(?:sponsored|ad_unit_id|adUnitId|adUnitCode|campaignId|impressionId|adId)\b/g,
+        label:
+          '[HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses',
+      },
       // ── Permission-usage signals for large bundled files ──────────────────────
       // These help the unused-permission detector recognise that a permission IS
       // exercised even when the `chrome.` prefix is aliased away by a bundler.
-      { re: /chrome\.proxy\.settings/g,
-        label: '[HIGH] chrome.proxy.settings — configura proxy del navegador' },
-      { re: /chrome\.webRequest\.onBefore(?:Request|SendHeaders)\b/g,
-        label: '[HIGH] chrome.webRequest.onBefore* — intercepta solicitudes de red' },
-      { re: /chrome\.webRequest\.onCompleted\b/g,
-        label: '[MEDIUM] chrome.webRequest.onCompleted — observa respuestas de red' },
-      { re: /chrome\.scripting\.executeScript\s*\(/g,
-        label: '[HIGH] chrome.scripting.executeScript() — inyección dinámica de código' },
-      { re: /chrome\.scripting\.insertCSS\s*\(/g,
-        label: '[MEDIUM] chrome.scripting.insertCSS() — inyección dinámica de estilos' },
-      { re: /chrome\.webNavigation\.onCommitted\b/g,
-        label: '[MEDIUM] chrome.webNavigation.onCommitted — observa navegación de páginas' },
-      { re: /chrome\.webNavigation\.onCompleted\b/g,
-        label: '[MEDIUM] chrome.webNavigation.onCompleted — observa carga de páginas' },
-      { re: /chrome\.offscreen\.createDocument\s*\(/g,
-        label: '[MEDIUM] chrome.offscreen.createDocument() — documento fuera de pantalla' },
-      { re: /chrome\.alarms\.create\s*\(/g,
-        label: '[MEDIUM] chrome.alarms.create() — tareas periódicas programadas' },
-      { re: /chrome\.cookies\.get(?:All)?\s*\(/g,
-        label: '[HIGH] chrome.cookies.get/getAll() — lectura de cookies del navegador' },
-      { re: /chrome\.tabs\.(?:query|get|update|create)\s*\(/g,
-        label: '[MEDIUM] chrome.tabs API — acceso a pestañas del navegador' },
-      { re: /chrome\.downloads\.download\s*\(/g,
-        label: '[HIGH] chrome.downloads.download() — descarga de archivos' },
-      { re: /chrome\.history\.(?:search|getVisits)\s*\(/g,
-        label: '[HIGH] chrome.history — acceso al historial de navegación' },
-      { re: /chrome\.privacy\.(?:network|services|websites)\b/g,
-        label: '[HIGH] chrome.privacy — modifica configuración de privacidad del navegador' },
-      { re: /chrome\.webRequestAuthProvider\b/g,
-        label: '[HIGH] chrome.webRequestAuthProvider — proveedor de autenticación de red' },
+      {
+        re: /chrome\.proxy\.settings/g,
+        label: '[HIGH] chrome.proxy.settings — configura proxy del navegador',
+      },
+      {
+        re: /chrome\.webRequest\.onBefore(?:Request|SendHeaders)\b/g,
+        label:
+          '[HIGH] chrome.webRequest.onBefore* — intercepta solicitudes de red',
+      },
+      {
+        re: /chrome\.webRequest\.onCompleted\b/g,
+        label:
+          '[MEDIUM] chrome.webRequest.onCompleted — observa respuestas de red',
+      },
+      {
+        re: /chrome\.scripting\.executeScript\s*\(/g,
+        label:
+          '[HIGH] chrome.scripting.executeScript() — inyección dinámica de código',
+      },
+      {
+        re: /chrome\.scripting\.insertCSS\s*\(/g,
+        label:
+          '[MEDIUM] chrome.scripting.insertCSS() — inyección dinámica de estilos',
+      },
+      {
+        re: /chrome\.webNavigation\.onCommitted\b/g,
+        label:
+          '[MEDIUM] chrome.webNavigation.onCommitted — observa navegación de páginas',
+      },
+      {
+        re: /chrome\.webNavigation\.onCompleted\b/g,
+        label:
+          '[MEDIUM] chrome.webNavigation.onCompleted — observa carga de páginas',
+      },
+      {
+        re: /chrome\.offscreen\.createDocument\s*\(/g,
+        label:
+          '[MEDIUM] chrome.offscreen.createDocument() — documento fuera de pantalla',
+      },
+      {
+        re: /chrome\.alarms\.create\s*\(/g,
+        label:
+          '[MEDIUM] chrome.alarms.create() — tareas periódicas programadas',
+      },
+      {
+        re: /chrome\.cookies\.get(?:All)?\s*\(/g,
+        label:
+          '[HIGH] chrome.cookies.get/getAll() — lectura de cookies del navegador',
+      },
+      {
+        re: /chrome\.tabs\.(?:query|get|update|create)\s*\(/g,
+        label: '[MEDIUM] chrome.tabs API — acceso a pestañas del navegador',
+      },
+      {
+        re: /chrome\.downloads\.download\s*\(/g,
+        label: '[HIGH] chrome.downloads.download() — descarga de archivos',
+      },
+      {
+        re: /chrome\.history\.(?:search|getVisits)\s*\(/g,
+        label: '[HIGH] chrome.history — acceso al historial de navegación',
+      },
+      {
+        re: /chrome\.privacy\.(?:network|services|websites)\b/g,
+        label:
+          '[HIGH] chrome.privacy — modifica configuración de privacidad del navegador',
+      },
+      {
+        re: /chrome\.webRequestAuthProvider\b/g,
+        label:
+          '[HIGH] chrome.webRequestAuthProvider — proveedor de autenticación de red',
+      },
     ];
     for (const { re, label } of checks) {
       re.lastIndex = 0;
@@ -1477,11 +1586,16 @@ export class PreprocessorService {
         // Extract a short snippet: the matched text + up to 60 chars of context
         const start = Math.max(0, m.index - 20);
         const end = Math.min(code.length, m.index + m[0].length + 60);
-        const snippet = code.slice(start, end).replace(/\n/g, ' ').trim().slice(0, 120);
+        const snippet = code
+          .slice(start, end)
+          .replace(/\n/g, ' ')
+          .trim()
+          .slice(0, 120);
         firstMatch = { label, line, snippet };
       }
       if (firstMatch) {
-        firstMatch.label = count > 1 ? `${firstMatch.label} (${count}x)` : firstMatch.label;
+        firstMatch.label =
+          count > 1 ? `${firstMatch.label} (${count}x)` : firstMatch.label;
         signals.push(firstMatch);
       }
     }

@@ -20,7 +20,7 @@ export class StaticAnalysisService {
     private readonly astParser: AstParserService,
     private readonly domainClassifier: DomainClassifierService,
     private readonly logger: StructuredLogger,
-  ) { }
+  ) {}
 
   /**
    * Mutates `preprocessed` to fill resultado1 / resultado2_priority /
@@ -464,8 +464,8 @@ export class StaticAnalysisService {
       jobId,
       'info',
       `Static analysis complete: ${preprocessed.resultado1.length} resultado1, ` +
-      `${preprocessed.resultado2_priority.length} priority domains, ` +
-      `${preprocessed.resultado2_unknown.length} unknown domains`,
+        `${preprocessed.resultado2_priority.length} priority domains, ` +
+        `${preprocessed.resultado2_unknown.length} unknown domains`,
       'StaticAnalysisService',
     );
   }
@@ -1009,17 +1009,17 @@ export class StaticAnalysisService {
         const sourceHost = this.extractHostFromLoosePattern(urlFilter);
         const redirectClass = redirectHost
           ? (this.domainClassifier.classify(
-            redirectHost,
-            preprocessed.manifest.name,
-            preprocessed.manifest.author,
-          ).category ?? 'desconocido')
+              redirectHost,
+              preprocessed.manifest.name,
+              preprocessed.manifest.author,
+            ).category ?? 'desconocido')
           : null;
         const sourceClass = sourceHost
           ? (this.domainClassifier.classify(
-            sourceHost,
-            preprocessed.manifest.name,
-            preprocessed.manifest.author,
-          ).category ?? 'desconocido')
+              sourceHost,
+              preprocessed.manifest.name,
+              preprocessed.manifest.author,
+            ).category ?? 'desconocido')
           : null;
 
         if (
@@ -1692,63 +1692,63 @@ export class StaticAnalysisService {
       platform: string;
       signals: string[];
     }> = [
-        {
-          platform: 'Facebook/Instagram',
-          signals: [
-            'facebook.com',
-            'graph.facebook.com',
-            'fbcdn.net',
-            'instagram.com',
-            'cdninstagram.com',
-          ],
-        },
-        {
-          platform: 'Twitter/X',
-          signals: [
-            'twitter.com',
-            'x.com',
-            'api.twitter.com',
-            'twimg.com',
-            '/i/api/',
-          ],
-        },
-        {
-          platform: 'TikTok',
-          signals: [
-            'tiktok.com',
-            'musical.ly',
-            'tiktokcdn.com',
-            'tiktokv.com',
-            '/api/aweme/',
-            'aweme.snssdk.com',
-            'musical_ly',
-          ],
-        },
-        {
-          platform: 'LinkedIn',
-          signals: ['linkedin.com', 'licdn.com', '/voyager/api/'],
-        },
-        {
-          platform: 'Pinterest',
-          signals: ['pinterest.com', 'pinimg.com', '/v3/pidgets/'],
-        },
-        {
-          platform: 'YouTube',
-          signals: ['youtube.com', 'ytimg.com', '/youtubei/v1/'],
-        },
-        {
-          platform: 'Snapchat',
-          signals: ['snapchat.com', 'sc-cdn.net', 'snap.com'],
-        },
-        {
-          platform: 'Reddit',
-          signals: ['reddit.com', 'redd.it', 'redditmedia.com'],
-        },
-        {
-          platform: 'Twitch',
-          signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'],
-        },
-      ];
+      {
+        platform: 'Facebook/Instagram',
+        signals: [
+          'facebook.com',
+          'graph.facebook.com',
+          'fbcdn.net',
+          'instagram.com',
+          'cdninstagram.com',
+        ],
+      },
+      {
+        platform: 'Twitter/X',
+        signals: [
+          'twitter.com',
+          'x.com',
+          'api.twitter.com',
+          'twimg.com',
+          '/i/api/',
+        ],
+      },
+      {
+        platform: 'TikTok',
+        signals: [
+          'tiktok.com',
+          'musical.ly',
+          'tiktokcdn.com',
+          'tiktokv.com',
+          '/api/aweme/',
+          'aweme.snssdk.com',
+          'musical_ly',
+        ],
+      },
+      {
+        platform: 'LinkedIn',
+        signals: ['linkedin.com', 'licdn.com', '/voyager/api/'],
+      },
+      {
+        platform: 'Pinterest',
+        signals: ['pinterest.com', 'pinimg.com', '/v3/pidgets/'],
+      },
+      {
+        platform: 'YouTube',
+        signals: ['youtube.com', 'ytimg.com', '/youtubei/v1/'],
+      },
+      {
+        platform: 'Snapchat',
+        signals: ['snapchat.com', 'sc-cdn.net', 'snap.com'],
+      },
+      {
+        platform: 'Reddit',
+        signals: ['reddit.com', 'redd.it', 'redditmedia.com'],
+      },
+      {
+        platform: 'Twitch',
+        signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'],
+      },
+    ];
 
     if (apiHookFindings.length > 0) {
       const xhrHookFilePaths = new Set<string>(
@@ -1840,9 +1840,10 @@ export class StaticAnalysisService {
     ];
     for (const f of allDomainFindings) {
       const resolved = this.domainClassifier.resolveEntity(f.domain);
-      const method = f.discoveryType === 'host_permission_manifest'
-        ? 'host_permissions'
-        : 'url_en_codigo';
+      const method =
+        f.discoveryType === 'host_permission_manifest'
+          ? 'host_permissions'
+          : 'url_en_codigo';
       upsert(resolved.entity, String(resolved.category), f.domain, method);
     }
 
@@ -1853,7 +1854,12 @@ export class StaticAnalysisService {
       if (!urlMatch) continue;
       const host = urlMatch[1].toLowerCase();
       const resolved = this.domainClassifier.resolveEntity(host);
-      upsert(resolved.entity, String(resolved.category), host, 'dom_href_injection');
+      upsert(
+        resolved.entity,
+        String(resolved.category),
+        host,
+        'dom_href_injection',
+      );
     }
 
     // Content script matches from manifest
@@ -1862,7 +1868,12 @@ export class StaticAnalysisService {
         const hostname = this.extractHostFromPattern(match);
         if (!hostname) continue;
         const resolved = this.domainClassifier.resolveEntity(hostname);
-        upsert(resolved.entity, String(resolved.category), hostname, 'content_scripts');
+        upsert(
+          resolved.entity,
+          String(resolved.category),
+          hostname,
+          'content_scripts',
+        );
       }
     }
 

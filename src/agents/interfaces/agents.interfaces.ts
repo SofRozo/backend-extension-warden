@@ -20,7 +20,10 @@ export interface Agent1Output {
     razones: string[];
   };
   hallazgos_propios?: AgentFinding[];
-  respuestas_usuario?: Record<string, { valor: 'si' | 'no_detectado' | 'posible'; razon: string }>;
+  respuestas_usuario?: Record<
+    string,
+    { valor: 'si' | 'no_detectado' | 'posible'; razon: string }
+  >;
 }
 
 /**

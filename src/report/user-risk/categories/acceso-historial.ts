@@ -117,19 +117,24 @@ export const evaluateAccesoHistorial: UserRiskCategoryEvaluator = (context) => {
             ? 'Puede ver la dirección y el título de las pestañas que tienes abiertas.'
             : 'No vimos que esta extensión acceda a tu historial de navegación.',
     [
-      perms.has('history') && 'Tiene permiso para leer tu historial de navegación.',
+      perms.has('history') &&
+        'Tiene permiso para leer tu historial de navegación.',
       perms.has('tabs') && 'Tiene permiso para ver tus pestañas abiertas.',
-      perms.has('webNavigation') && 'Tiene permiso para rastrear cada cambio de página.',
+      perms.has('webNavigation') &&
+        'Tiene permiso para rastrear cada cambio de página.',
       perms.has('bookmarks') && 'Tiene permiso para leer tus marcadores.',
-      perms.has('topSites') && 'Tiene permiso para ver los sitios que más visitas.',
-      perms.has('sessions') && 'Tiene permiso para ver sesiones recientes del navegador.',
+      perms.has('topSites') &&
+        'Tiene permiso para ver los sitios que más visitas.',
+      perms.has('sessions') &&
+        'Tiene permiso para ver sesiones recientes del navegador.',
       historyApi && 'Consulta activamente tu historial de navegación.',
       tabsListener &&
         'Se entera en tiempo real de cada página que abres o visitas.',
-      webNavListener &&
-        'Registra cada vez que cambias de página o URL.',
-      bookmarksApi && 'Lee tus marcadores, sitios favoritos o sesiones recientes.',
-      urlFlow && 'Las páginas que visitas o sus títulos viajan hacia servidores externos.',
+      webNavListener && 'Registra cada vez que cambias de página o URL.',
+      bookmarksApi &&
+        'Lee tus marcadores, sitios favoritos o sesiones recientes.',
+      urlFlow &&
+        'Las páginas que visitas o sus títulos viajan hacia servidores externos.',
     ],
     [
       '¿Puede leer mi historial de navegación?',

@@ -153,7 +153,10 @@ export class Agent1IntentionService {
         hallazgos_estaticos: this.summariseStatic(preprocessed.resultado1),
         entidades_detectadas: preprocessed.entidades_detectadas ?? [],
         ...(categoriasEvaluadas
-          ? { categorias_evaluadas: this.summariseCategories(categoriasEvaluadas) }
+          ? {
+              categorias_evaluadas:
+                this.summariseCategories(categoriasEvaluadas),
+            }
           : {}),
         ...this.summariseDomains([
           ...preprocessed.resultado2_priority,
@@ -239,7 +242,8 @@ export class Agent1IntentionService {
         tipo_hallazgo: f.discoveryType,
         detalle: f.detail,
         ocurrencias_similares: f.count ?? 1,
-        fragmento_codigo: f.codeSnippet?.slice(0, MAX_DET_FINDING_SNIPPET) ?? null,
+        fragmento_codigo:
+          f.codeSnippet?.slice(0, MAX_DET_FINDING_SNIPPET) ?? null,
       }));
 
     const omitted = grouped.size - ordered.length;
@@ -253,7 +257,10 @@ export class Agent1IntentionService {
   }
 
   private summariseDomains(findings: DomainFinding[]): Record<string, unknown> {
-    const PROPIOS: DomainCategory[] = ['propio_extension', 'infraestructura_tecnica'];
+    const PROPIOS: DomainCategory[] = [
+      'propio_extension',
+      'infraestructura_tecnica',
+    ];
     const propios = findings.filter((f) => PROPIOS.includes(f.category));
     const sensibles = findings.filter((f) => !PROPIOS.includes(f.category));
     return {
@@ -275,15 +282,21 @@ export class Agent1IntentionService {
     items: UserRiskSummaryItem[],
   ): Array<Record<string, unknown>> {
     return items
-      .filter((item) => (item.hallazgos_codigo?.length ?? 0) > 0 || item.evidencias.length > 0)
+      .filter(
+        (item) =>
+          (item.hallazgos_codigo?.length ?? 0) > 0 ||
+          item.evidencias.length > 0,
+      )
       .map((item) => {
-        const hallazgos = (item.hallazgos_codigo ?? []).slice(0, 3).map((h) => ({
-          archivo: h.filePath,
-          linea: h.line,
-          tipo_archivo: h.fileType,
-          descripcion: h.texto,
-          ...(h.codeSnippet ? { fragmento: h.codeSnippet } : {}),
-        }));
+        const hallazgos = (item.hallazgos_codigo ?? [])
+          .slice(0, 3)
+          .map((h) => ({
+            archivo: h.filePath,
+            linea: h.line,
+            tipo_archivo: h.fileType,
+            descripcion: h.texto,
+            ...(h.codeSnippet ? { fragmento: h.codeSnippet } : {}),
+          }));
         const entry: Record<string, unknown> = { categoria: item.id };
         if (hallazgos.length > 0) {
           entry.hallazgos_en_codigo = hallazgos;
@@ -291,9 +304,9 @@ export class Agent1IntentionService {
           // No code-level findings — evidence comes from manifest declarations only.
           entry.fuente = 'manifest_declaracion';
         }
-        const adicionales = item.evidencias.slice(0, 2).map((e) =>
-          e.length > 100 ? e.slice(0, 100) + '…' : e,
-        );
+        const adicionales = item.evidencias
+          .slice(0, 2)
+          .map((e) => (e.length > 100 ? e.slice(0, 100) + '…' : e));
         if (adicionales.length > 0) entry.evidencias_adicionales = adicionales;
         return entry;
       });
@@ -355,7 +368,8 @@ export class Agent1IntentionService {
         // so small readable files (executors, config scripts) are preferred first.
         if (f.isMinified) score -= 8;
         const lineCount = f.originalLineCount ?? 0;
-        if (lineCount > 1000) score -= 5; // bundles enormes son ilegibles para el LLM
+        if (lineCount > 1000)
+          score -= 5; // bundles enormes son ilegibles para el LLM
         else if (lineCount < 100) score += 3; // archivos pequeños son más reveladores
         return { file: f, score };
       })
@@ -419,9 +433,12 @@ export class Agent1IntentionService {
     for (const file of largeSkipped) {
       const signals = (file.grepSignals ?? []).slice(0, 3);
       const header = `\n// ─── ${file.path} [${file.role}, SIN AST] ───`;
-      const lines = signals.map((s) =>
-        `//   ⚠ [línea ~${s.line}] ${s.label}\n//     fragmento: ${s.snippet}`,
-      ).join('\n');
+      const lines = signals
+        .map(
+          (s) =>
+            `//   ⚠ [línea ~${s.line}] ${s.label}\n//     fragmento: ${s.snippet}`,
+        )
+        .join('\n');
       const block = `${header}\n${lines}`;
       parts.push(block);
       totalChars += block.length;
@@ -460,9 +477,12 @@ export class Agent1IntentionService {
       : 'medio';
 
     if (!VALID_VERDICTS.has(veredictoRaw)) {
-      this.logger.logWithJob(jobId, 'warn',
+      this.logger.logWithJob(
+        jobId,
+        'warn',
         `Agent 1 unexpected VEREDICTO="${veredictoRaw}", defaulting to "sospechosa"`,
-        'Agent1IntentionService');
+        'Agent1IntentionService',
+      );
     }
 
     // Extract RESPUESTAS JSON block (between "RESPUESTAS:" and end or next section)
@@ -470,34 +490,50 @@ export class Agent1IntentionService {
     let respuestas_usuario: Agent1Output['respuestas_usuario'];
     if (respuestasMatch) {
       try {
-        const parsed = JSON.parse(respuestasMatch[1]) as Record<string, unknown>;
+        const parsed = JSON.parse(respuestasMatch[1]) as Record<
+          string,
+          unknown
+        >;
         const VALID_VALUES = new Set(['si', 'no_detectado', 'posible']);
-        const validated: Record<string, { valor: 'si' | 'no_detectado' | 'posible'; razon: string }> = {};
+        const validated: Record<
+          string,
+          { valor: 'si' | 'no_detectado' | 'posible'; razon: string }
+        > = {};
         for (const [k, v] of Object.entries(parsed)) {
           if (v && typeof v === 'object' && 'valor' in v) {
             // New format: { valor: "si", razon: "..." }
             const entry = v as Record<string, unknown>;
-            const valor = typeof entry.valor === 'string' && VALID_VALUES.has(entry.valor)
-              ? (entry.valor as 'si' | 'no_detectado' | 'posible')
-              : 'no_detectado';
-            validated[k] = { valor, razon: typeof entry.razon === 'string' ? entry.razon : '' };
+            const valor =
+              typeof entry.valor === 'string' && VALID_VALUES.has(entry.valor)
+                ? (entry.valor as 'si' | 'no_detectado' | 'posible')
+                : 'no_detectado';
+            validated[k] = {
+              valor,
+              razon: typeof entry.razon === 'string' ? entry.razon : '',
+            };
           } else if (typeof v === 'string') {
             // Backwards compat: plain string value from older model output
-            const valor = VALID_VALUES.has(v) ? (v as 'si' | 'no_detectado' | 'posible') : 'no_detectado';
+            const valor = VALID_VALUES.has(v)
+              ? (v as 'si' | 'no_detectado' | 'posible')
+              : 'no_detectado';
             validated[k] = { valor, razon: '' };
           }
         }
         respuestas_usuario = validated;
       } catch {
-        this.logger.logWithJob(jobId, 'warn',
+        this.logger.logWithJob(
+          jobId,
+          'warn',
           'Agent 1 RESPUESTAS block could not be parsed as JSON — skipping',
-          'Agent1IntentionService');
+          'Agent1IntentionService',
+        );
       }
     }
 
     // Extract PROPOSITO line before stripping everything else
     const propositoMatch = raw.match(/^PROPOSITO\s*:\s*(.+)$/im);
-    const proposito = propositoMatch?.[1]?.trim().slice(0, 200) || 'Auditoría completada';
+    const proposito =
+      propositoMatch?.[1]?.trim().slice(0, 200) || 'Auditoría completada';
 
     // Strip PROPOSITO, VEREDICTO, RIESGO and RESPUESTAS block — rest is narrative
     const informeRaw = raw
@@ -509,14 +545,14 @@ export class Agent1IntentionService {
 
     // Strip Markdown formatting the model emits despite being told not to
     const informe = informeRaw
-      .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')   // **bold**, *italic*, ***both***
-      .replace(/^#{1,6}\s+/gm, '')                 // ## headings
-      .replace(/^[-*]\s+/gm, '')                   // bullet lists
-      .replace(/^>\s+/gm, '')                       // blockquotes
-      .replace(/`{1,3}[^`]*`{1,3}/g, '')           // inline code / fenced
-      .replace(/^-{3,}$/gm, '')                     // horizontal rules
-      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}✅⚠️🔴🟡🟢❌✓✗✔✕✖☑☒⬛⬜🔲🔳💡🔑🔒🛡️📌🔍🚨📋📊📝🎯⚡💣🚫⛔🔥💀☠️🏴‍☠️🤖📎📍🧩🧪🧬]/gu, '')           // all emojis and symbols
-      .replace(/\n{3,}/g, '\n\n')                  // collapse excess blank lines
+      .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1') // **bold**, *italic*, ***both***
+      .replace(/^#{1,6}\s+/gm, '') // ## headings
+      .replace(/^[-*]\s+/gm, '') // bullet lists
+      .replace(/^>\s+/gm, '') // blockquotes
+      .replace(/`{1,3}[^`]*`{1,3}/g, '') // inline code / fenced
+      .replace(/^-{3,}$/gm, '') // horizontal rules
+      .replace(/\p{Emoji}/gu, '') // all emojis and symbols
+      .replace(/\n{3,}/g, '\n\n') // collapse excess blank lines
       .trim();
 
     return {
@@ -529,4 +565,3 @@ export class Agent1IntentionService {
     };
   }
 }
-

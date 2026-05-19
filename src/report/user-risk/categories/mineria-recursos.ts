@@ -11,8 +11,7 @@ const WASM_RE =
   /WebAssembly\.(instantiate|compile|compileStreaming|instantiateStreaming)\b|new\s+WebAssembly\.Instance\b/i;
 
 // Web Workers for multi-threaded CPU abuse (miners always use workers)
-const WORKER_RE =
-  /new\s+Worker\s*\(|new\s+SharedWorker\s*\(/i;
+const WORKER_RE = /new\s+Worker\s*\(|new\s+SharedWorker\s*\(/i;
 
 // Known cryptomining pool domains or library signatures (current and legacy)
 const MINING_DOMAIN_RE =
@@ -97,7 +96,8 @@ export const mineriaRecursosStaticRules: UserRiskStaticRule[] = [
 ];
 
 export const evaluateMineriaRecursos: UserRiskCategoryEvaluator = (context) => {
-  const usesWasm = hasDetail(context, WASM_RE) || hasDetail(context, WASM_FILE_RE);
+  const usesWasm =
+    hasDetail(context, WASM_RE) || hasDetail(context, WASM_FILE_RE);
   const usesWorker = hasDetail(context, WORKER_RE);
   const miningDomain = hasDetail(context, MINING_DOMAIN_RE);
   const stealthPattern = hasDetail(context, STEALTH_MINE_RE);
@@ -151,9 +151,11 @@ export const evaluateMineriaRecursos: UserRiskCategoryEvaluator = (context) => {
             : 'No se detectaron señales de minería de recursos.',
     [
       usesWasm && 'Inicializa o carga módulos WebAssembly (.wasm).',
-      usesWorker && 'Crea Web Workers para ejecución paralela en segundo plano.',
+      usesWorker &&
+        'Crea Web Workers para ejecución paralela en segundo plano.',
       networkFlow && usesWasm && 'Combina WASM con envío de datos a la red.',
-      miningDomain && 'Referencia a dominio o librería de pool de minería conocido.',
+      miningDomain &&
+        'Referencia a dominio o librería de pool de minería conocido.',
       stratumSignal &&
         'Firmas del protocolo Stratum detectadas (mining.submit, mining.subscribe, job_id, blob, target).',
       stealthPattern &&

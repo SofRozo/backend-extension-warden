@@ -223,7 +223,8 @@ export const RISK_PATTERNS: RiskPattern[] = [
   {
     category: FindingCategory.FINGERPRINTING,
     severity: RiskLevel.MEDIUM,
-    description: 'Canvas pixel read — potential fingerprinting or screen capture',
+    description:
+      'Canvas pixel read — potential fingerprinting or screen capture',
     astPatterns: [
       { type: 'member', property: 'toDataURL' },
       { type: 'member', property: 'getImageData' },
@@ -234,7 +235,8 @@ export const RISK_PATTERNS: RiskPattern[] = [
   {
     category: FindingCategory.PRIVACY_RISK,
     severity: RiskLevel.HIGH,
-    description: 'WebRTC peer connection — can expose real IP bypassing proxies/VPNs',
+    description:
+      'WebRTC peer connection — can expose real IP bypassing proxies/VPNs',
     astPatterns: [{ type: 'call', callee: 'RTCPeerConnection' }],
   },
 
@@ -242,7 +244,8 @@ export const RISK_PATTERNS: RiskPattern[] = [
   {
     category: FindingCategory.INJECTION,
     severity: RiskLevel.MEDIUM,
-    description: 'Modifies current tab URL — potential forced redirect or affiliate hijacking',
+    description:
+      'Modifies current tab URL — potential forced redirect or affiliate hijacking',
     astPatterns: [{ type: 'call', callee: 'chrome.tabs.update' }],
   },
 
@@ -262,7 +265,11 @@ export const RISK_PATTERNS: RiskPattern[] = [
     astPatterns: [
       { type: 'member', object: 'WebAssembly', property: 'instantiate' },
       { type: 'member', object: 'WebAssembly', property: 'compile' },
-      { type: 'member', object: 'WebAssembly', property: 'instantiateStreaming' },
+      {
+        type: 'member',
+        object: 'WebAssembly',
+        property: 'instantiateStreaming',
+      },
     ],
   },
   {
@@ -319,7 +326,8 @@ export const RISK_PATTERNS: RiskPattern[] = [
   {
     category: FindingCategory.PRIVACY_RISK,
     severity: RiskLevel.HIGH,
-    description: 'E-commerce or clickstream data sharing — extension monetizes browsing behavior',
+    description:
+      'E-commerce or clickstream data sharing — extension monetizes browsing behavior',
     astPatterns: [
       { type: 'member', property: 'ecommerceEnabled' },
       { type: 'member', property: 'clickstreamEnabled' },
@@ -330,9 +338,7 @@ export const RISK_PATTERNS: RiskPattern[] = [
     category: FindingCategory.PRIVACY_RISK,
     severity: RiskLevel.HIGH,
     description: 'Reads active tab URL to build browsing history profile',
-    astPatterns: [
-      { type: 'member', object: 'tab', property: 'url' },
-    ],
+    astPatterns: [{ type: 'member', object: 'tab', property: 'url' }],
   },
 
   // Ad injection framework — accesses ad-platform data fields from intercepted
@@ -341,7 +347,8 @@ export const RISK_PATTERNS: RiskPattern[] = [
   {
     category: FindingCategory.INJECTION,
     severity: RiskLevel.HIGH,
-    description: 'Reads ad platform data fields (adId/adUnit/campaignId) — parses intercepted ad content',
+    description:
+      'Reads ad platform data fields (adId/adUnit/campaignId) — parses intercepted ad content',
     astPatterns: [
       { type: 'member', property: 'adId' },
       { type: 'member', property: 'adUnit' },

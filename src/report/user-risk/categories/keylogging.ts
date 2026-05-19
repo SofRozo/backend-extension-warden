@@ -118,13 +118,13 @@ export const evaluateKeylogging: UserRiskCategoryEvaluator = (context) => {
       keylogger && 'Está escuchando lo que escribes en el teclado.',
       hotkey &&
         'Detecta teclas específicas o combinaciones de teclas que presionas.',
-      pasteCopy &&
-        'Detecta cuando pegas (Ctrl+V) o copias (Ctrl+C) texto.',
+      pasteCopy && 'Detecta cuando pegas (Ctrl+V) o copias (Ctrl+C) texto.',
       ime &&
         'Captura texto mientras lo escribes con teclados de composición (útil para chino, japonés, coreano).',
       submitCapture &&
         'Puede leer el contenido de un formulario en el momento en que lo envías.',
-      networkFlow && 'También detectamos envío de datos hacia servidores externos.',
+      networkFlow &&
+        'También detectamos envío de datos hacia servidores externos.',
     ],
     [
       '¿Puede registrar teclas que escribo?',

@@ -38,5 +38,4 @@ export class AnalyzeRequestDto {
     typeof value === 'string' ? value.toLowerCase() === 'true' : Boolean(value),
   )
   demo?: boolean;
-
 }

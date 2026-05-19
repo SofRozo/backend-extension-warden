@@ -252,13 +252,15 @@ const ENTITY_PATTERNS: Array<{
   description: string;
 }> = [
   {
-    regex: /^amazon\.(com|co\.uk|co\.jp|de|fr|es|it|in|ca|com\.mx|com\.br|com\.au|sg|ae|nl|se|pl|com\.tr|eg|sa)$/i,
+    regex:
+      /^amazon\.(com|co\.uk|co\.jp|de|fr|es|it|in|ca|com\.mx|com\.br|com\.au|sg|ae|nl|se|pl|com\.tr|eg|sa)$/i,
     entity: 'Amazon',
     category: 'infraestructura_tecnica',
     description: 'Amazon e-commerce platform (regional variant)',
   },
   {
-    regex: /^(smile\.amazon|sellercentral\.amazon|images-amazon|media-amazon|ssl-images-amazon|completion\.amazon|ecx\.images-amazon|assoc-amazon)\.(com|co\.uk|co\.jp|de|fr|es|it|in|ca)$/i,
+    regex:
+      /^(smile\.amazon|sellercentral\.amazon|images-amazon|media-amazon|ssl-images-amazon|completion\.amazon|ecx\.images-amazon|assoc-amazon)\.(com|co\.uk|co\.jp|de|fr|es|it|in|ca)$/i,
     entity: 'Amazon',
     category: 'infraestructura_tecnica',
     description: 'Amazon infrastructure subdomain',
@@ -270,13 +272,15 @@ const ENTITY_PATTERNS: Array<{
     description: 'Amazon advertising / tracking system',
   },
   {
-    regex: /^(www\.)?google\.(com|co\.uk|co\.jp|de|fr|es|it|ca|com\.au|com\.br|com\.mx|co\.in|com\.ar)$/i,
+    regex:
+      /^(www\.)?google\.(com|co\.uk|co\.jp|de|fr|es|it|ca|com\.au|com\.br|com\.mx|co\.in|com\.ar)$/i,
     entity: 'Google',
     category: 'infraestructura_tecnica',
     description: 'Google search engine (regional variant)',
   },
   {
-    regex: /^(www\.)?facebook\.(com|co\.uk|de|fr|es)$|^(www\.)?instagram\.com$|^fbcdn\.net$|^cdninstagram\.com$/i,
+    regex:
+      /^(www\.)?facebook\.(com|co\.uk|de|fr|es)$|^(www\.)?instagram\.com$|^fbcdn\.net$|^cdninstagram\.com$/i,
     entity: 'Meta',
     category: 'sensible_redes_sociales',
     description: 'Meta platform (Facebook / Instagram)',
@@ -336,7 +340,8 @@ export class DomainClassifierService {
     if (parts.length <= 2) return d;
 
     // Common two-label eTLDs: co.uk, com.au, com.br, co.jp, org.uk, net.au…
-    const TWO_LABEL_ETLD = /^(co|com|org|net|gov|edu|ac|sch|me|ne|or)\.[a-z]{2}$/;
+    const TWO_LABEL_ETLD =
+      /^(co|com|org|net|gov|edu|ac|sch|me|ne|or)\.[a-z]{2}$/;
     const lastTwo = parts.slice(-2).join('.');
     if (TWO_LABEL_ETLD.test(lastTwo)) {
       // e.g. api.amazon.co.uk → parts = [api, amazon, co, uk] → take last 3
@@ -369,7 +374,11 @@ export class DomainClassifierService {
     // 1. Curated patterns (Amazon, Meta, 10xProfit, etc.)
     for (const p of ENTITY_PATTERNS) {
       if (p.regex.test(dNoWww)) {
-        return { entity: p.entity, category: p.category, description: p.description };
+        return {
+          entity: p.entity,
+          category: p.category,
+          description: p.description,
+        };
       }
     }
 

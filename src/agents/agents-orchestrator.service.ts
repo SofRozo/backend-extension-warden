@@ -28,11 +28,19 @@ export class AgentsOrchestratorService {
         'Agent 1 skipped: no LLM configured (set USAR_OLLAMA=true or GOOGLE_API_KEY)',
         'AgentsOrchestrator',
       );
-      return { agent1: null, ranSuccessfully: false, errors: ['No LLM configured'] };
+      return {
+        agent1: null,
+        ranSuccessfully: false,
+        errors: ['No LLM configured'],
+      };
     }
 
     try {
-      const agent1 = await this.agent1.analyze(preprocessed, jobId, categoriasEvaluadas);
+      const agent1 = await this.agent1.analyze(
+        preprocessed,
+        jobId,
+        categoriasEvaluadas,
+      );
       this.logger.logWithJob(
         jobId,
         'info',
