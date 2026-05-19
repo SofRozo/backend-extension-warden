@@ -17,6 +17,7 @@ import type {
   DependencyGraph,
   DependencyEdge,
   NestedArchiveFinding,
+  GrepSignal,
 } from '../common/interfaces/analysis.interfaces.js';
 
 const PERMISSION_RISK_WEIGHTS: Record<
@@ -1379,8 +1380,8 @@ export class PreprocessorService {
     };
   }
 
-  private extractGrepSignals(code: string): string[] {
-    const signals: string[] = [];
+  private extractGrepSignals(code: string): GrepSignal[] {
+    const signals: GrepSignal[] = [];
     const checks: Array<{ re: RegExp; label: string }> = [
       { re: /XMLHttpRequest\.prototype\.(open|send|setRequestHeader)\s*=/g,
         label: '[CRITICAL] XHR prototype hook — intercepta todo el tráfico XHR' },
@@ -1428,11 +1429,61 @@ export class PreprocessorService {
         label: '[HIGH] response.clone() — duplicates HTTP responses to read body while forwarding (ad/data interception pattern)' },
       { re: /\b(?:sponsored|ad_unit_id|adUnitId|adUnitCode|campaignId|impressionId|adId)\b/g,
         label: '[HIGH] Ad platform data fields (sponsored/adUnitId/campaignId) — extension parses ad content from intercepted responses' },
+      // ── Permission-usage signals for large bundled files ──────────────────────
+      // These help the unused-permission detector recognise that a permission IS
+      // exercised even when the `chrome.` prefix is aliased away by a bundler.
+      { re: /chrome\.proxy\.settings/g,
+        label: '[HIGH] chrome.proxy.settings — configura proxy del navegador' },
+      { re: /chrome\.webRequest\.onBefore(?:Request|SendHeaders)\b/g,
+        label: '[HIGH] chrome.webRequest.onBefore* — intercepta solicitudes de red' },
+      { re: /chrome\.webRequest\.onCompleted\b/g,
+        label: '[MEDIUM] chrome.webRequest.onCompleted — observa respuestas de red' },
+      { re: /chrome\.scripting\.executeScript\s*\(/g,
+        label: '[HIGH] chrome.scripting.executeScript() — inyección dinámica de código' },
+      { re: /chrome\.scripting\.insertCSS\s*\(/g,
+        label: '[MEDIUM] chrome.scripting.insertCSS() — inyección dinámica de estilos' },
+      { re: /chrome\.webNavigation\.onCommitted\b/g,
+        label: '[MEDIUM] chrome.webNavigation.onCommitted — observa navegación de páginas' },
+      { re: /chrome\.webNavigation\.onCompleted\b/g,
+        label: '[MEDIUM] chrome.webNavigation.onCompleted — observa carga de páginas' },
+      { re: /chrome\.offscreen\.createDocument\s*\(/g,
+        label: '[MEDIUM] chrome.offscreen.createDocument() — documento fuera de pantalla' },
+      { re: /chrome\.alarms\.create\s*\(/g,
+        label: '[MEDIUM] chrome.alarms.create() — tareas periódicas programadas' },
+      { re: /chrome\.cookies\.get(?:All)?\s*\(/g,
+        label: '[HIGH] chrome.cookies.get/getAll() — lectura de cookies del navegador' },
+      { re: /chrome\.tabs\.(?:query|get|update|create)\s*\(/g,
+        label: '[MEDIUM] chrome.tabs API — acceso a pestañas del navegador' },
+      { re: /chrome\.downloads\.download\s*\(/g,
+        label: '[HIGH] chrome.downloads.download() — descarga de archivos' },
+      { re: /chrome\.history\.(?:search|getVisits)\s*\(/g,
+        label: '[HIGH] chrome.history — acceso al historial de navegación' },
+      { re: /chrome\.privacy\.(?:network|services|websites)\b/g,
+        label: '[HIGH] chrome.privacy — modifica configuración de privacidad del navegador' },
+      { re: /chrome\.webRequestAuthProvider\b/g,
+        label: '[HIGH] chrome.webRequestAuthProvider — proveedor de autenticación de red' },
     ];
     for (const { re, label } of checks) {
       re.lastIndex = 0;
-      const m = code.match(re);
-      if (m) signals.push(`${label} (${m.length}x)`);
+      let m: RegExpExecArray | null;
+      let firstMatch: GrepSignal | null = null;
+      let count = 0;
+      while ((m = re.exec(code)) !== null) {
+        count++;
+        if (firstMatch) continue;
+        // Compute approximate line number from match offset
+        const beforeMatch = code.slice(0, m.index);
+        const line = beforeMatch.split('\n').length;
+        // Extract a short snippet: the matched text + up to 60 chars of context
+        const start = Math.max(0, m.index - 20);
+        const end = Math.min(code.length, m.index + m[0].length + 60);
+        const snippet = code.slice(start, end).replace(/\n/g, ' ').trim().slice(0, 120);
+        firstMatch = { label, line, snippet };
+      }
+      if (firstMatch) {
+        firstMatch.label = count > 1 ? `${firstMatch.label} (${count}x)` : firstMatch.label;
+        signals.push(firstMatch);
+      }
     }
     return signals;
   }

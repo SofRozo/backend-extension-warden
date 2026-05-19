@@ -76,6 +76,14 @@ export const keyloggingStaticRules: UserRiskStaticRule[] = [
     evidence: (finding) =>
       `Captura el formulario justo antes del envío (submit/beforeunload) en ${finding.filePath}:${finding.line}.`,
   },
+  {
+    ruleId: 'keylog.network_exfil',
+    label: 'Flujo de datos de teclado hacia red',
+    id: 'keylogging',
+    matches: (finding) => finding.discoveryType === 'flujo_datos_a_red',
+    evidence: (finding) =>
+      `Datos capturados del usuario viajan hacia un servidor externo (${finding.filePath}:${finding.line}).`,
+  },
 ];
 
 export const evaluateKeylogging: UserRiskCategoryEvaluator = (context) => {

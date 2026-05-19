@@ -32,7 +32,7 @@ export const capturaCredencialesStaticRules: UserRiskStaticRule[] = [
     id: 'captura_credenciales',
     matches: (finding) =>
       finding.discoveryType === 'flujo_datos_a_red' &&
-      /cookie|password|credential|token|bearer|privatekey|seed phrase|mnemonic/i.test(
+      /cookie|password|credential|token|bearer|privatekey|seed phrase|mnemonic|sessionStorage|localStorage|chrome\.storage/i.test(
         finding.detail,
       ),
     evidence: (finding) =>

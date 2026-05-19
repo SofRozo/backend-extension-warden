@@ -127,6 +127,7 @@ export function makeItem(
         line: finding.line,
         fileType: FILE_TYPE_LABEL[finding.fileType] ?? finding.fileType,
         texto,
+        codeSnippet: finding.codeSnippet?.slice(0, 120) ?? undefined,
       });
     }
   }

@@ -112,6 +112,12 @@ export interface UrlClassification {
   reasons: string[];
 }
 
+export interface GrepSignal {
+  label: string;
+  line: number;
+  snippet: string;
+}
+
 export interface ProcessedFile {
   path: string;
   role: FileRole;
@@ -141,7 +147,7 @@ export interface ProcessedFile {
   usesXHR: boolean;
   usesEval: boolean;
   usesDomManipulation: boolean;
-  grepSignals?: string[];
+  grepSignals?: GrepSignal[];
   skippedAst?: boolean;
 }
 
@@ -416,6 +422,7 @@ export interface HallazgoCodigo {
   line: number;
   fileType: string;
   texto: string;
+  codeSnippet?: string;
 }
 
 export interface UserRiskSummaryItem {

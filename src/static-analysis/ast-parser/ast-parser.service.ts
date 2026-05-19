@@ -42,6 +42,8 @@ const traverse =
 
 @Injectable()
 export class AstParserService {
+  private readonly parseFailedFiles = new Set<string>();
+
   constructor(private readonly logger: StructuredLogger) {}
 
   parseFile(
@@ -694,10 +696,13 @@ export class AstParserService {
         errorRecovery: true,
       });
     } catch (err) {
-      this.logger.warn(
-        `AST parse failed for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
-        'AstParserService',
-      );
+      if (!this.parseFailedFiles.has(filename)) {
+        this.parseFailedFiles.add(filename);
+        this.logger.warn(
+          `AST parse failed for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
+          'AstParserService',
+        );
+      }
       return null;
     }
   }

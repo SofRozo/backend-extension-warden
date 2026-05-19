@@ -72,9 +72,9 @@ export class LlmClientService {
         think: false,
         ...(format === 'json' ? { format: 'json' } : {}),
         options: {
-          num_ctx: 8192,
+          num_ctx: 12288,
           temperature: 0,
-          num_predict: format === 'text' ? 900 : 1024,
+          num_predict: format === 'text' ? 1200 : 1024,
         },
       },
       { timeout: this.timeoutMs },

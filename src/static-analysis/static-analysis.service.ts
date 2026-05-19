@@ -20,7 +20,7 @@ export class StaticAnalysisService {
     private readonly astParser: AstParserService,
     private readonly domainClassifier: DomainClassifierService,
     private readonly logger: StructuredLogger,
-  ) {}
+  ) { }
 
   /**
    * Mutates `preprocessed` to fill resultado1 / resultado2_priority /
@@ -152,18 +152,36 @@ export class StaticAnalysisService {
         );
       }
 
-      if (!file.cleanCode) continue;
-
       // 2a. chrome.* API calls — only used internally to detect declared-but-unused
       // permissions. We do NOT emit these as findings: every meaningful extension
       // uses chrome.* APIs and surfacing them is noise. The real signal comes from
       // permission combinations (correlateRisks) and AST patterns (2b/2c).
+      // NOTE: this runs BEFORE the cleanCode gate so that large files
+      // (skippedAst: true) — which have chromeApis extracted via regex but no
+      // cleanCode — still register their permissions as used.
       for (const api of file.chromeApis) {
         const root = api.api.replace(/^chrome\./, '').split('.')[0];
         if (declaredPermissions.has(root)) {
           usedManifestPermissions.add(root);
         }
       }
+
+      // 2a-bis. For skippedAst files, also infer used permissions from grepSignals.
+      // In bundled/minified code, chrome.* APIs are often accessed via aliased
+      // variables (e.g. `const n=chrome; n.proxy.settings.set(...)`) which
+      // extractChromeApis misses. The grepSignals contain human-readable labels
+      // like "chrome.management.getAll()" that we can parse to recover the
+      // permission root as a second safety net.
+      if (file.skippedAst && file.grepSignals?.length) {
+        for (const signal of file.grepSignals) {
+          const apiMatch = /chrome\.([a-zA-Z]+)\./.exec(signal.label);
+          if (apiMatch && declaredPermissions.has(apiMatch[1])) {
+            usedManifestPermissions.add(apiMatch[1]);
+          }
+        }
+      }
+
+      if (!file.cleanCode) continue;
 
       // 2b. AST-driven dangerous JS patterns
       try {
@@ -395,15 +413,16 @@ export class StaticAnalysisService {
             fileType: roleByPath.get(file.path) ?? file.role,
             filePath: file.path,
             discoveryType: 'grep_signal_large_file',
-            detail: signal,
-            line: 1,
+            detail: signal.label,
+            line: signal.line,
+            codeSnippet: signal.snippet,
             confidence: 0.85,
-            severity: signal.startsWith('[CRITICAL]')
+            severity: signal.label.startsWith('[CRITICAL]')
               ? 'critical'
-              : signal.startsWith('[HIGH]')
+              : signal.label.startsWith('[HIGH]')
                 ? 'high'
                 : 'medium',
-            why: `Señal detectada por análisis regex en archivo grande (AST omitido): ${signal}`,
+            why: `Señal detectada por análisis regex en archivo grande (AST omitido): ${signal.label}`,
           }),
         );
       }
@@ -445,8 +464,8 @@ export class StaticAnalysisService {
       jobId,
       'info',
       `Static analysis complete: ${preprocessed.resultado1.length} resultado1, ` +
-        `${preprocessed.resultado2_priority.length} priority domains, ` +
-        `${preprocessed.resultado2_unknown.length} unknown domains`,
+      `${preprocessed.resultado2_priority.length} priority domains, ` +
+      `${preprocessed.resultado2_unknown.length} unknown domains`,
       'StaticAnalysisService',
     );
   }
@@ -990,17 +1009,17 @@ export class StaticAnalysisService {
         const sourceHost = this.extractHostFromLoosePattern(urlFilter);
         const redirectClass = redirectHost
           ? (this.domainClassifier.classify(
-              redirectHost,
-              preprocessed.manifest.name,
-              preprocessed.manifest.author,
-            ).category ?? 'desconocido')
+            redirectHost,
+            preprocessed.manifest.name,
+            preprocessed.manifest.author,
+          ).category ?? 'desconocido')
           : null;
         const sourceClass = sourceHost
           ? (this.domainClassifier.classify(
-              sourceHost,
-              preprocessed.manifest.name,
-              preprocessed.manifest.author,
-            ).category ?? 'desconocido')
+            sourceHost,
+            preprocessed.manifest.name,
+            preprocessed.manifest.author,
+          ).category ?? 'desconocido')
           : null;
 
         if (
@@ -1673,63 +1692,63 @@ export class StaticAnalysisService {
       platform: string;
       signals: string[];
     }> = [
-      {
-        platform: 'Facebook/Instagram',
-        signals: [
-          'facebook.com',
-          'graph.facebook.com',
-          'fbcdn.net',
-          'instagram.com',
-          'cdninstagram.com',
-        ],
-      },
-      {
-        platform: 'Twitter/X',
-        signals: [
-          'twitter.com',
-          'x.com',
-          'api.twitter.com',
-          'twimg.com',
-          '/i/api/',
-        ],
-      },
-      {
-        platform: 'TikTok',
-        signals: [
-          'tiktok.com',
-          'musical.ly',
-          'tiktokcdn.com',
-          'tiktokv.com',
-          '/api/aweme/',
-          'aweme.snssdk.com',
-          'musical_ly',
-        ],
-      },
-      {
-        platform: 'LinkedIn',
-        signals: ['linkedin.com', 'licdn.com', '/voyager/api/'],
-      },
-      {
-        platform: 'Pinterest',
-        signals: ['pinterest.com', 'pinimg.com', '/v3/pidgets/'],
-      },
-      {
-        platform: 'YouTube',
-        signals: ['youtube.com', 'ytimg.com', '/youtubei/v1/'],
-      },
-      {
-        platform: 'Snapchat',
-        signals: ['snapchat.com', 'sc-cdn.net', 'snap.com'],
-      },
-      {
-        platform: 'Reddit',
-        signals: ['reddit.com', 'redd.it', 'redditmedia.com'],
-      },
-      {
-        platform: 'Twitch',
-        signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'],
-      },
-    ];
+        {
+          platform: 'Facebook/Instagram',
+          signals: [
+            'facebook.com',
+            'graph.facebook.com',
+            'fbcdn.net',
+            'instagram.com',
+            'cdninstagram.com',
+          ],
+        },
+        {
+          platform: 'Twitter/X',
+          signals: [
+            'twitter.com',
+            'x.com',
+            'api.twitter.com',
+            'twimg.com',
+            '/i/api/',
+          ],
+        },
+        {
+          platform: 'TikTok',
+          signals: [
+            'tiktok.com',
+            'musical.ly',
+            'tiktokcdn.com',
+            'tiktokv.com',
+            '/api/aweme/',
+            'aweme.snssdk.com',
+            'musical_ly',
+          ],
+        },
+        {
+          platform: 'LinkedIn',
+          signals: ['linkedin.com', 'licdn.com', '/voyager/api/'],
+        },
+        {
+          platform: 'Pinterest',
+          signals: ['pinterest.com', 'pinimg.com', '/v3/pidgets/'],
+        },
+        {
+          platform: 'YouTube',
+          signals: ['youtube.com', 'ytimg.com', '/youtubei/v1/'],
+        },
+        {
+          platform: 'Snapchat',
+          signals: ['snapchat.com', 'sc-cdn.net', 'snap.com'],
+        },
+        {
+          platform: 'Reddit',
+          signals: ['reddit.com', 'redd.it', 'redditmedia.com'],
+        },
+        {
+          platform: 'Twitch',
+          signals: ['twitch.tv', 'twitchsvc.net', 'jtvnw.net'],
+        },
+      ];
 
     if (apiHookFindings.length > 0) {
       const xhrHookFilePaths = new Set<string>(
@@ -1741,7 +1760,7 @@ export class StaticAnalysisService {
         if (!file.skippedAst) continue;
         if (
           (file.grepSignals ?? []).some((s) =>
-            /XHR prototype hook|fetch replacement/i.test(s),
+            /XHR prototype hook|fetch replacement/i.test(s.label),
           )
         ) {
           xhrHookFilePaths.add(file.path);

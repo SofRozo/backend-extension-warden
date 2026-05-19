@@ -107,7 +107,7 @@ export const evaluateAccesoGeneralNavegador: UserRiskCategoryEvaluator = (
     (hasBackground || hasContentScript) && noUiSurface;
 
   // Critico: <all_urls> + scripting.executeScript REAL en background → inyecta
-  // código arbitrario en TODA página visitada. Es lo que hace Happy Dog.
+  // código en TODA página visitada desde un proceso invisible al usuario.
   const isCritical =
     broadHost &&
     usesScriptingExecute &&
