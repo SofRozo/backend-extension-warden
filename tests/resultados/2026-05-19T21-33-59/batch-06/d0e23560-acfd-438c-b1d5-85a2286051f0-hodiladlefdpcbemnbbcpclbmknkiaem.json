@@ -1,0 +1,1305 @@
+{
+  "jobId": "d0e23560-acfd-438c-b1d5-85a2286051f0",
+  "agente1": {
+    "categoria": "Accessibility",
+    "proposito": "Extensión que mejora la experiencia en Google Meet con efectos visuales como pantallas verdes, desenfoque, pixelación y filtros 3D.",
+    "explicacion": "La extensión Google Meet Enhanced Experience está diseñada para mejorar la experiencia en videollamadas con efectos visuales. Sin embargo, detectamos que puede leer el contenido visible de las páginas que visitas, incluyendo textos y elementos de la interfaz. Además, envía esta información a servidores externos, como www.shadertoy.com, lo cual va más allá de lo esperado para una herramienta de mejora visual. También modifica el contenido de las páginas web, lo cual es parte de su función principal, pero combinado con el envío de datos a servidores externos, representa un riesgo para la privacidad del usuario.\n\nRecomendación: Desinstala esta extensión y evita usar herramientas que envían datos a servidores externos sin una justificación clara.",
+    "veredicto_global": "sospechosa",
+    "respuestas_usuario": {
+      "puede_ver_historial": {
+        "razon": "No se encontró acceso a historial de navegación",
+        "valor": "no_detectado"
+      },
+      "puede_leer_formularios": {
+        "razon": "No se encontró acceso directo a campos de formulario en el código",
+        "valor": "no_detectado"
+      },
+      "puede_registrar_teclas": {
+        "razon": "No se detectaron listeners de teclado",
+        "valor": "no_detectado"
+      },
+      "puede_modificar_paginas": {
+        "razon": "Modifica el contenido de las páginas web",
+        "valor": "si"
+      },
+      "puede_espiar_sin_saberlo": {
+        "razon": "Envía información leída a servidores externos como www.shadertoy.com",
+        "valor": "si"
+      },
+      "puede_interceptar_trafico": {
+        "razon": "No se detectó interceptación de tráfico de red",
+        "valor": "no_detectado"
+      },
+      "codigo_oculto_o_sospechoso": {
+        "razon": "Envía información a servidores externos sin justificación clara",
+        "valor": "si"
+      },
+      "puede_capturar_contrasenas": {
+        "razon": "No se detectó captura de contraseñas activa",
+        "valor": "no_detectado"
+      },
+      "puede_ver_paginas_visitadas": {
+        "razon": "Lee el contenido visible de las páginas que visitas",
+        "valor": "si"
+      },
+      "puede_afectar_otras_extensiones": {
+        "razon": "No se encontró uso de APIs de gestión de extensiones",
+        "valor": "no_detectado"
+      }
+    },
+    "nivel_riesgo_inicial": "medio"
+  },
+  "crxHash": "b3216f8e6fb806119ac5a7d2fedde6790a453e3c88bff2ed480818d09cecafb6",
+  "estructura": {
+    "resultado1": [
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 14,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://meet.google.com/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "GoogleMeetOptics.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "OpticElement.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "OpticMenu.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/Logger.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/LoopDetector.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/LoopPlaybackControl.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/RollingVideoBuffer.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/blur.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/body-pix.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/dependen.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/donation.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/paint.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/pbar.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/tfjs.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "line": 1,
+        "razon": "The script exists in the package but is not reachable from the constructed dependency graph.",
+        "detail": "JavaScript file is not reachable from manifest, HTML, imports, workers, or script injection graph",
+        "category": "normalization",
+        "filePath": "dependencies/three.js",
+        "fileType": "unknown",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.35,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_huerfano"
+      },
+      {
+        "why": "Uses setInterval with potential long periods",
+        "line": 1,
+        "razon": "Uses setInterval with potential long periods",
+        "detail": "setInterval",
+        "category": "persistence",
+        "filePath": "GoogleMeetOptics.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{OpticMenu}from\"./OpticMenu.js\";import{Logger}from\"./dependencies/Logger\";import{RollingVideoBuffer}from\"./dependencies/RollingVideoBuffer\";export class GoogleMeetOptics{constructor(e=1){console.log(\"%c Visual Effects %c for Google Me",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 1,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "GoogleMeetOptics.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{OpticMenu}from\"./OpticMenu.js\";import{Logger}from\"./dependencies/Logger\";import{RollingVideoBuffer}from\"./dependencies/RollingVideoBuffer\";export class GoogleMeetOptics{constructor(e=1){console.log(\"%c Visual Effects %c for Google Me",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "?.getImageData",
+        "category": "fingerprinting",
+        "filePath": "GoogleMeetOptics.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{OpticMenu}from\"./OpticMenu.js\";import{Logger}from\"./dependencies/Logger\";import{RollingVideoBuffer}from\"./dependencies/RollingVideoBuffer\";export class GoogleMeetOptics{constructor(e=1){console.log(\"%c Visual Effects %c for Google Me",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "i.getImageData",
+        "category": "fingerprinting",
+        "filePath": "GoogleMeetOptics.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{OpticMenu}from\"./OpticMenu.js\";import{Logger}from\"./dependencies/Logger\";import{RollingVideoBuffer}from\"./dependencies/RollingVideoBuffer\";export class GoogleMeetOptics{constructor(e=1){console.log(\"%c Visual Effects %c for Google Me",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reacts to user input (e.g., for shortcuts or chat)",
+        "line": 1,
+        "razon": "Reacts to user input (e.g., for shortcuts or chat)",
+        "detail": "change",
+        "category": "keylogger",
+        "filePath": "OpticElement.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "codeSnippet": "import{Logger}from\"./dependencies/Logger\";export class OpticElement{constructor(t,e){this.parentElem=document.querySelector(e.parent||\".optic-menu\"),this.type=t,this.options=e,this.listeners=this.options.listeners||[],this.createElem(),this",
+        "scoreImpact": 2,
+        "discoveryType": "listener_teclado"
+      },
+      {
+        "why": "Network sink window.postMessage can exfiltrate extension or page data",
+        "line": 1,
+        "razon": "Network sink window.postMessage can exfiltrate extension or page data",
+        "detail": "window.postMessage",
+        "category": "exfiltration",
+        "filePath": "OpticMenu.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{Logger}from\"./dependencies/Logger\";import{OpticElement}from\"./OpticElement\";import{COMMON_STORAGE_KEYS}from\"../src/consts/storage\";import{POST_MESSAGE_NAMES}from\"../src/consts/message\";import{muteMicButton}from\"./dependencies/LoopPla",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses setInterval with potential long periods",
+        "line": 1,
+        "razon": "Uses setInterval with potential long periods",
+        "detail": "setInterval",
+        "category": "persistence",
+        "filePath": "OpticMenu.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{Logger}from\"./dependencies/Logger\";import{OpticElement}from\"./OpticElement\";import{COMMON_STORAGE_KEYS}from\"../src/consts/storage\";import{POST_MESSAGE_NAMES}from\"../src/consts/message\";import{muteMicButton}from\"./dependencies/LoopPla",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "The file is minified; line numbers are retained, but dense code can hide behavior.",
+        "line": 1,
+        "razon": "The file is minified; line numbers are retained, but dense code can hide behavior.",
+        "detail": "archivo minificado; line mappings preserved but findings may be dense",
+        "category": "normalization",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_minificado"
+      },
+      {
+        "why": "Creates executable code dynamically",
+        "line": 2,
+        "razon": "Creates executable code dynamically",
+        "detail": "new Function",
+        "category": "injection",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.75,
+        "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringTag:void 0;t.exports=function(t){return null==t?void 0===t?\"[object Undefined]\":\"[object Null]\":a&&a in Object(t)?o(t):i(",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 2,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringTag:void 0;t.exports=function(t){return null==t?void 0===t?\"[object Undefined]\":\"[object Null]\":a&&a in Object(t)?o(t):i(",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 2,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.sync.set",
+        "category": "persistence",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringTag:void 0;t.exports=function(t){return null==t?void 0===t?\"[object Undefined]\":\"[object Null]\":a&&a in Object(t)?o(t):i(",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "line": 2,
+        "razon": "Extension messaging sink chrome.runtime.sendMessage can move page data into privileged contexts",
+        "detail": "chrome.runtime.sendMessage",
+        "category": "exfiltration",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringTag:void 0;t.exports=function(t){return null==t?void 0===t?\"[object Undefined]\":\"[object Null]\":a&&a in Object(t)?o(t):i(",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "DOM read r.value viaja hacia extension message sink chrome.runtime.sendMessage (mensajería interna que puede mover datos desde un content script al background)",
+        "line": 2,
+        "razon": "DOM read r.value viaja hacia extension message sink chrome.runtime.sendMessage (mensajería interna que puede mover datos desde un content script al background)",
+        "detail": "DOM read r.value viaja hacia extension message sink chrome.runtime.sendMessage (mensajería interna que puede mover datos desde un content script al background)",
+        "category": "exfiltration",
+        "filePath": "background.js",
+        "fileType": "background",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringTag:void 0;t.exports=function(t){return null==t?void 0===t?\"[object Undefined]\":\"[object Null]\":a&&a in Object(t)?o(t):i(",
+        "scoreImpact": 10,
+        "discoveryType": "flujo_datos_a_red"
+      },
+      {
+        "why": "The file is minified; line numbers are retained, but dense code can hide behavior.",
+        "line": 1,
+        "razon": "The file is minified; line numbers are retained, but dense code can hide behavior.",
+        "detail": "archivo minificado; line mappings preserved but findings may be dense",
+        "category": "normalization",
+        "filePath": "content/injectScripts.js",
+        "fileType": "content_script",
+        "severity": "low",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "scoreImpact": 1,
+        "discoveryType": "archivo_minificado"
+      },
+      {
+        "why": "Uses chrome.storage for local persistence",
+        "line": 2,
+        "razon": "Uses chrome.storage for local persistence",
+        "detail": "chrome.storage.local.set",
+        "category": "persistence",
+        "filePath": "content/injectScripts.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var t={633:(t,e,n)=>{var r=n(738).default;function o(){\"use strict\";t.exports=o=function(){return e},t.exports.__esModule=!0,t.exports.default=t.exports;var e={},n=Object.prototype,i=n.hasOwnProperty,c=Object.defineProperty||function(",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Creates script elements dynamically",
+        "line": 2,
+        "razon": "Creates script elements dynamically",
+        "detail": "document.createElement",
+        "category": "injection",
+        "filePath": "content/injectScripts.js",
+        "fileType": "content_script",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.7,
+        "codeSnippet": "(()=>{var t={633:(t,e,n)=>{var r=n(738).default;function o(){\"use strict\";t.exports=o=function(){return e},t.exports.__esModule=!0,t.exports.default=t.exports;var e={},n=Object.prototype,i=n.hasOwnProperty,c=Object.defineProperty||function(",
+        "scoreImpact": 7,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Reacts to user input (e.g., for shortcuts or chat)",
+        "line": 2,
+        "razon": "Reacts to user input (e.g., for shortcuts or chat)",
+        "detail": "change",
+        "category": "keylogger",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.45,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "listener_teclado"
+      },
+      {
+        "why": "Network sink window.postMessage can exfiltrate extension or page data",
+        "line": 2,
+        "razon": "Network sink window.postMessage can exfiltrate extension or page data",
+        "detail": "window.postMessage",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Uses setInterval with potential long periods",
+        "line": 2,
+        "razon": "Uses setInterval with potential long periods",
+        "detail": "setInterval",
+        "category": "persistence",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 2,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "C.getImageData",
+        "category": "fingerprinting",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 2,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 2,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "?.getImageData",
+        "category": "fingerprinting",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 2,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "t.ctx.getImageData",
+        "category": "fingerprinting",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 2,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "t.FX.Two.GreenScreen.ctx.getImageData",
+        "category": "fingerprinting",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 2,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "f.getImageData",
+        "category": "fingerprinting",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 2,
+        "razon": "Reads page text content",
+        "detail": "t.innerText",
+        "category": "data_theft",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Executes code from a string at runtime (eval)",
+        "line": 2,
+        "razon": "Executes code from a string at runtime (eval)",
+        "detail": "eval",
+        "category": "evasion",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.75,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Reads page text content",
+        "line": 2,
+        "razon": "Reads page text content",
+        "detail": "e.textContent",
+        "category": "data_theft",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "DOM selection via document.querySelector viaja hacia extension message sink window.postMessage (mensajería interna que puede mover datos desde un content script al background)",
+        "line": 2,
+        "razon": "DOM selection via document.querySelector viaja hacia extension message sink window.postMessage (mensajería interna que puede mover datos desde un content script al background)",
+        "detail": "DOM selection via document.querySelector viaja hacia extension message sink window.postMessage (mensajería interna que puede mover datos desde un content script al background)",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 10,
+        "discoveryType": "flujo_datos_a_red"
+      },
+      {
+        "why": "DOM selection via document.querySelector viaja hacia network sink fetch (servidor en Internet)",
+        "line": 2,
+        "razon": "DOM selection via document.querySelector viaja hacia network sink fetch (servidor en Internet)",
+        "detail": "DOM selection via document.querySelector viaja hacia network sink fetch (servidor en Internet)",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "unknown",
+        "severity": "critical",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.length)&&(t=e.length);for(var i=0,r=new Array(t);i<t;i++)r[i]=e[i];return r}function a(e){return function(e){if(Array.isAr",
+        "scoreImpact": 10,
+        "discoveryType": "flujo_datos_a_red"
+      },
+      {
+        "why": "Uses setInterval with potential long periods",
+        "line": 1,
+        "razon": "Uses setInterval with potential long periods",
+        "detail": "setInterval",
+        "category": "persistence",
+        "filePath": "dependencies/RollingVideoBuffer.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{Logger}from\"./Logger\";import{LoopDetector}from\"./LoopDetector\";import{showOrHideSubtitleOverlay}from\"./LoopPlaybackControl\";export class RollingVideoBuffer{constructor({editStream:e,minParticipants:t=5}){this.chunks=[],this.editStrea",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "l.getImageData",
+        "category": "fingerprinting",
+        "filePath": "dependencies/RollingVideoBuffer.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "import{Logger}from\"./Logger\";import{LoopDetector}from\"./LoopDetector\";import{showOrHideSubtitleOverlay}from\"./LoopPlaybackControl\";export class RollingVideoBuffer{constructor({editStream:e,minParticipants:t=5}){this.chunks=[],this.editStrea",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "g.getImageData",
+        "category": "fingerprinting",
+        "filePath": "dependencies/blur.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var mul_table=[1,57,41,21,203,34,97,73,227,91,149,62,105,45,39,137,241,107,3,173,39,71,65,238,219,101,187,87,81,151,141,133,249,117,221,209,197,187,177,169,5,153,73,139,133,127,243,233,223,107,103,99,191,23,177,171,165,159,77,149,9,139,135,",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "i.toDataURL",
+        "category": "fingerprinting",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var JEELIZFACEFILTER=(window.JEELIZFACEFILTERGEN=function(){function e(e){var t=null,n=null,a=null,r=0,i=this,u=null;this.A=function(){this.Fe(u.ab),a.kg({Ib:u.Ib,Ac:u.Ac,Hb:u.Hb})},this.qf=function(e){return t[e]},this.Tb=function(e){[\"s32",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "u.toDataURL",
+        "category": "fingerprinting",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var JEELIZFACEFILTER=(window.JEELIZFACEFILTERGEN=function(){function e(e){var t=null,n=null,a=null,r=0,i=this,u=null;this.A=function(){this.Fe(u.ab),a.kg({Ib:u.Ib,Ac:u.Ac,Hb:u.Hb})},this.qf=function(e){return t[e]},this.Tb=function(e){[\"s32",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "R.toDataURL",
+        "category": "fingerprinting",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var JEELIZFACEFILTER=(window.JEELIZFACEFILTERGEN=function(){function e(e){var t=null,n=null,a=null,r=0,i=this,u=null;this.A=function(){this.Fe(u.ab),a.kg({Ib:u.Ib,Ac:u.Ac,Hb:u.Hb})},this.qf=function(e){return t[e]},this.Tb=function(e){[\"s32",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Network sink g.port.postMessage can exfiltrate extension or page data",
+        "line": 1,
+        "razon": "Network sink g.port.postMessage can exfiltrate extension or page data",
+        "detail": "g.port.postMessage",
+        "category": "exfiltration",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "high",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var JEELIZFACEFILTER=(window.JEELIZFACEFILTERGEN=function(){function e(e){var t=null,n=null,a=null,r=0,i=this,u=null;this.A=function(){this.Fe(u.ab),a.kg({Ib:u.Ib,Ac:u.Ac,Hb:u.Hb})},this.qf=function(e){return t[e]},this.Tb=function(e){[\"s32",
+        "scoreImpact": 5,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Spawns Web Workers (often used for parallel mining)",
+        "line": 1,
+        "razon": "Spawns Web Workers (often used for parallel mining)",
+        "detail": "new Worker",
+        "category": "evasion",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var JEELIZFACEFILTER=(window.JEELIZFACEFILTERGEN=function(){function e(e){var t=null,n=null,a=null,r=0,i=this,u=null;this.A=function(){this.Fe(u.ab),a.kg({Ib:u.Ib,Ac:u.Ac,Hb:u.Hb})},this.qf=function(e){return t[e]},this.Tb=function(e){[\"s32",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Spawns Web Workers (often used for parallel mining)",
+        "line": 1,
+        "razon": "Spawns Web Workers (often used for parallel mining)",
+        "detail": "new SharedWorker",
+        "category": "evasion",
+        "filePath": "dependencies/jeelizFaceFilter.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "var JEELIZFACEFILTER=(window.JEELIZFACEFILTERGEN=function(){function e(e){var t=null,n=null,a=null,r=0,i=this,u=null;this.A=function(){this.Fe(u.ab),a.kg({Ib:u.Ib,Ac:u.Ac,Hb:u.Hb})},this.qf=function(e){return t[e]},this.Tb=function(e){[\"s32",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Canvas pixel read — potential fingerprinting or screen capture",
+        "line": 1,
+        "razon": "Canvas pixel read — potential fingerprinting or screen capture",
+        "detail": "t.getImageData",
+        "category": "fingerprinting",
+        "filePath": "dependencies/paint.js",
+        "fileType": "unknown",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.55,
+        "codeSnippet": "function applyInsane(t){let a=t.canvas,i=[],l=t.getImageData(0,0,a.width,a.height),o=l.data,e=o.length;for(var h=0;h<e;h+=Math.floor(40))if((h+4)/4%a.width!=0){let t=Math.floor(o[h]+o[h+1]+o[h+2])/3;i.push({x:h/4%a.width,y:Math.floor(h/4/a.",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "line": 22,
+        "razon": "Multiple suspicious signals co-occur in a way that materially increases malware likelihood.",
+        "detail": "web_accessible_resources exposes executable resources (dependencies/*, content.js, main.css, img/*, assets/*) to broad page matches (*://*/*)",
+        "category": "correlation",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "high",
+        "veredicto": "positivo",
+        "confidence": 0.78,
+        "scoreImpact": 8,
+        "discoveryType": "correlacion_riesgo"
+      }
+    ],
+    "resultado2_unknown": [
+      {
+        "line": 1,
+        "razon": "Dominio desconocido referenciado por la extensión (aparece en código)",
+        "domain": "www.shadertoy.com",
+        "category": "desconocido",
+        "filePath": "dependencies/tfjs.js",
+        "fileType": "unknown",
+        "priority": 7,
+        "veredicto": "positivo",
+        "discoveryType": "url_en_codigo"
+      }
+    ],
+    "resultado2_priority": []
+  },
+  "extensionId": "upload-1779247635182-hodiladlefdpcbemnbbcpclbmknkiaem",
+  "extensionName": "Google Meet Enhanced Experience",
+  "resumen_usuario": [
+    {
+      "id": "lectura_informacion",
+      "estado": "critico",
+      "titulo": "Lectura de información en páginas",
+      "resumen": "Detectamos que la extensión lee información de las páginas que visitas y la envía a un servidor externo.",
+      "evidencias": [
+        "Información leída de páginas viaja hacia servidores externos.",
+        "Lee el contenido visible de las páginas (textos, formularios, elementos de la página).",
+        "Los content scripts pueden leer o inspeccionar el DOM de las páginas donde corren.",
+        "Información leída de la página viaja hacia un servidor externo (background.js:2).",
+        "Puede leer el texto y contenido visible de las páginas que visitas (background.js:2)."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 2,
+          "texto": "Información leída de la página viaja hacia un servidor externo (background.js:2).",
+          "filePath": "background.js",
+          "fileType": "background",
+          "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringT"
+        },
+        {
+          "line": 2,
+          "texto": "Puede leer el texto y contenido visible de las páginas que visitas (background.js:2).",
+          "filePath": "background.js",
+          "fileType": "background",
+          "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringT"
+        },
+        {
+          "line": 2,
+          "texto": "Información leída de la página se transfiere hacia otras partes de la extensión con más permisos (background.js:2).",
+          "filePath": "background.js",
+          "fileType": "background",
+          "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringT"
+        },
+        {
+          "line": 2,
+          "texto": "Información leída de la página viaja hacia un servidor externo (content.js:2).",
+          "filePath": "content.js",
+          "fileType": "archivo",
+          "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.le"
+        },
+        {
+          "line": 2,
+          "texto": "Puede leer el texto y contenido visible de las páginas que visitas (content.js:2).",
+          "filePath": "content.js",
+          "fileType": "archivo",
+          "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.le"
+        },
+        {
+          "line": 2,
+          "texto": "Información leída de la página se transfiere hacia otras partes de la extensión con más permisos (content.js:2).",
+          "filePath": "content.js",
+          "fileType": "archivo",
+          "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.le"
+        }
+      ],
+      "reglas_activadas": [
+        "read_info.sensitive_flow",
+        "read_info.dom_selectors",
+        "read_info.page_message_bridge"
+      ],
+      "preguntas_responde": [
+        "¿Puede leer texto dentro de páginas web?",
+        "¿Puede leer mensajes, correos o documentos abiertos en el navegador?",
+        "¿Puede leer contenido escrito en formularios?",
+        "¿Puede inspeccionar información sensible mostrada en pantalla?",
+        "¿Puede acceder al contenido completo de una página?"
+      ]
+    },
+    {
+      "id": "modificacion_paginas",
+      "estado": "sospechoso",
+      "titulo": "Modificación de páginas",
+      "resumen": "La extensión puede modificar el aspecto o contenido de las páginas web que visitas.",
+      "evidencias": [
+        "Detectamos que modifica el contenido de páginas web.",
+        "Modificación/inyección de DOM o script en content/injectScripts.js:2."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 2,
+          "texto": "Modificación/inyección de DOM o script en content/injectScripts.js:2.",
+          "filePath": "content/injectScripts.js",
+          "fileType": "content script",
+          "codeSnippet": "(()=>{var t={633:(t,e,n)=>{var r=n(738).default;function o(){\"use strict\";t.exports=o=function(){return e},t.exports.__e"
+        }
+      ],
+      "reglas_activadas": [
+        "page_mod.dom_injection"
+      ],
+      "preguntas_responde": [
+        "¿Puede modificar el contenido de una página web?",
+        "¿Puede insertar elementos invisibles dentro de sitios?",
+        "¿Puede cambiar botones, formularios o enlaces?",
+        "¿Puede reemplazar anuncios o resultados de búsqueda?",
+        "¿Puede alterar lo que veo en redes sociales o bancos?",
+        "¿Puede superponer interfaces falsas sobre páginas reales?"
+      ]
+    },
+    {
+      "id": "seguimiento_privacidad",
+      "estado": "sospechoso",
+      "titulo": "Seguimiento y privacidad",
+      "resumen": "La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios.",
+      "evidencias": [
+        "Se comunica con estos sitios externos: www.shadertoy.com.",
+        "Hay envío o movimiento de datos detectado (background.js:2).",
+        "Hay envío o movimiento de datos detectado (content.js:2).",
+        "Contacta www.shadertoy.com (desconocido)."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 2,
+          "texto": "Hay envío o movimiento de datos detectado (background.js:2).",
+          "filePath": "background.js",
+          "fileType": "background",
+          "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringT"
+        },
+        {
+          "line": 2,
+          "texto": "Hay envío o movimiento de datos detectado (content.js:2).",
+          "filePath": "content.js",
+          "fileType": "archivo",
+          "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.le"
+        }
+      ],
+      "reglas_activadas": [
+        "privacy.data_flow"
+      ],
+      "preguntas_responde": [
+        "¿Rastrea mi actividad de navegación?",
+        "¿Crea perfiles sobre mis hábitos?",
+        "¿Comparte mis datos con terceros?",
+        "¿Recolecta métricas de uso?",
+        "¿Utiliza analytics ocultos?",
+        "¿Almacena identificadores persistentes?",
+        "¿Puede seguirme entre múltiples sitios web?"
+      ]
+    },
+    {
+      "id": "keylogging",
+      "estado": "capacidad",
+      "titulo": "Keylogging y captura de teclado",
+      "resumen": "No vimos señales de que esta extensión registre lo que escribes.",
+      "evidencias": [
+        "También detectamos envío de datos hacia servidores externos.",
+        "Datos capturados del usuario viajan hacia un servidor externo (background.js:2).",
+        "Datos capturados del usuario viajan hacia un servidor externo (content.js:2)."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 2,
+          "texto": "Datos capturados del usuario viajan hacia un servidor externo (background.js:2).",
+          "filePath": "background.js",
+          "fileType": "background",
+          "codeSnippet": "(()=>{var t={873:(t,e,r)=>{var n=r(325).Symbol;t.exports=n},552:(t,e,r)=>{var n=r(873),o=r(659),i=r(350),a=n?n.toStringT"
+        },
+        {
+          "line": 2,
+          "texto": "Datos capturados del usuario viajan hacia un servidor externo (content.js:2).",
+          "filePath": "content.js",
+          "fileType": "archivo",
+          "codeSnippet": "(()=>{var __webpack_modules__={122:(e,t,i)=>{\"use strict\";i.d(t,{J:()=>k});var r=i(922);function n(e,t){(null==t||t>e.le"
+        }
+      ],
+      "reglas_activadas": [
+        "keylog.network_exfil"
+      ],
+      "preguntas_responde": [
+        "¿Puede registrar teclas que escribo?",
+        "¿Escucha todos los eventos del teclado?",
+        "¿Puede capturar texto antes de enviarlo?",
+        "¿Puede detectar combinaciones de teclas o atajos?"
+      ]
+    },
+    {
+      "id": "acceso_general_navegador",
+      "estado": "capacidad",
+      "titulo": "Acceso general al navegador",
+      "resumen": "La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente.",
+      "evidencias": [
+        "Se ejecuta automáticamente en las páginas que visitas.",
+        "Tiene content scripts que pueden ejecutarse automáticamente al visitar páginas."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver todas las páginas que visito?",
+        "¿Puede actuar en bancos o correos?",
+        "¿Realmente necesita acceso a todos los sitios web?",
+        "¿Puede ejecutarse automáticamente sin que yo haga clic?"
+      ]
+    },
+    {
+      "id": "captura_credenciales",
+      "estado": "no_detectado",
+      "titulo": "Contraseñas, tokens y sesiones",
+      "resumen": "No vimos señales de que esta extensión capture contraseñas o credenciales.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede capturar contraseñas?",
+        "¿Puede leer usuarios y sesiones activas?",
+        "¿Puede interceptar formularios antes de ser enviados?",
+        "¿Puede capturar tokens de autenticación?",
+        "¿Puede acceder a cookies de sesión?"
+      ]
+    },
+    {
+      "id": "manipulacion_trafico",
+      "estado": "no_detectado",
+      "titulo": "Manipulación de tráfico",
+      "resumen": "No vimos permisos fuertes de manipulación de tráfico.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede interceptar solicitudes web?",
+        "¿Puede modificar respuestas HTTP?",
+        "¿Puede redirigirme a otras páginas?",
+        "¿Puede alterar descargas o recursos cargados?",
+        "¿Puede vigilar mi tráfico de red en todas las páginas?"
+      ]
+    },
+    {
+      "id": "abuso_management",
+      "estado": "no_detectado",
+      "titulo": "Abuso de APIs de administración",
+      "resumen": "No se detectó uso de APIs de administración de extensiones.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver qué otras extensiones tengo instaladas?",
+        "¿Puede desactivar mi bloqueador de anuncios o antivirus?",
+        "¿Puede desinstalarse a sí misma para borrar evidencia?",
+        "¿Puede deshabilitar extensiones de seguridad antes de operar?"
+      ]
+    },
+    {
+      "id": "fingerprinting_severo",
+      "estado": "no_detectado",
+      "titulo": "Fingerprinting severo",
+      "resumen": "No se detectaron técnicas de fingerprinting severo.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede identificarme de forma única sin cookies?",
+        "¿Puede rastrearme entre diferentes sitios web?",
+        "¿Crea un perfil permanente de mi dispositivo?",
+        "¿Vende o comparte mi huella digital con terceros?",
+        "¿Viola mi privacidad incluso en modo incógnito?"
+      ]
+    },
+    {
+      "id": "mineria_recursos",
+      "estado": "no_detectado",
+      "titulo": "Minería de recursos / Cryptojacking",
+      "resumen": "No se detectaron señales de minería de recursos.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede usar mi CPU para minar criptomonedas?",
+        "¿Puede ralentizar mi computador con cómputo oculto?",
+        "¿Carga código binario externo que no puedo inspeccionar?",
+        "¿Opera en segundo plano cuando no la estoy usando?"
+      ]
+    },
+    {
+      "id": "acceso_historial",
+      "estado": "no_detectado",
+      "titulo": "Historial de navegación",
+      "resumen": "No vimos que esta extensión acceda a tu historial de navegación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer mi historial de navegación?",
+        "¿Almacena o transmite las páginas que visito?",
+        "¿Analiza patrones de comportamiento basados en historial?"
+      ]
+    },
+    {
+      "id": "descargas_archivos",
+      "estado": "no_detectado",
+      "titulo": "Descargas y archivos",
+      "resumen": "No vimos permiso fuerte para gestionar descargas.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede descargar archivos automáticamente?",
+        "¿Puede generar archivos en mi equipo?",
+        "¿Puede abrir o modificar descargas?",
+        "¿Puede actuar como un downloader de malware?"
+      ]
+    },
+    {
+      "id": "ofuscacion_transparencia",
+      "estado": "no_detectado",
+      "titulo": "Ofuscación y transparencia",
+      "resumen": "No vimos señales fuertes de ofuscación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿El código está ofuscado?",
+        "¿El comportamiento de la extensión es entendible?",
+        "¿Existen partes imposibles de auditar fácilmente?",
+        "¿Usa técnicas anti-debugging?"
+      ]
+    }
+  ],
+  "analysisDuration": 330116,
+  "extensionVersion": "4.0.0",
+  "analysisTimestamp": "2026-05-20T03:32:45.313Z",
+  "puntuacion_riesgo": {
+    "level": "MEDIUM",
+    "score": 55,
+    "reasons": [
+      "funcion_javascript_riesgosa: new Function",
+      "flujo_datos_a_red: DOM read r.value viaja hacia extension message sink chrome.runtime.sendMessage (mensajería interna que puede mover datos desde un content script al background)",
+      "inyeccion_dom: document.createElement",
+      "funcion_javascript_riesgosa: eval",
+      "flujo_datos_a_red: DOM selection via document.querySelector viaja hacia extension message sink window.postMessage (mensajería interna que puede mover datos desde un content script al background)",
+      "flujo_datos_a_red: DOM selection via document.querySelector viaja hacia network sink fetch (servidor en Internet)",
+      "correlacion_riesgo: web_accessible_resources exposes executable resources (dependencies/*, content.js, main.css, img/*, assets/*) to broad page matches (*://*/*)"
+    ]
+  },
+  "veredicto_usuario": {
+    "nivel": "medio",
+    "razones": [
+      "Lectura de información en páginas: Detectamos que la extensión lee información de las páginas que visitas y la envía a un servidor externo. Evidencia: Información leída de páginas viaja hacia servidores externos.",
+      "Modificación de páginas: La extensión puede modificar el aspecto o contenido de las páginas web que visitas. Evidencia: Detectamos que modifica el contenido de páginas web.",
+      "Seguimiento y privacidad: La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios. Evidencia: Se comunica con estos sitios externos: www.shadertoy.com."
+    ],
+    "resumen": "Detectamos 1 señal(es) crítica(s): Lectura de información en páginas; 2 señal(es) sospechosa(s): Modificación de páginas, Seguimiento y privacidad; 2 capacidad(es) relevante(s): Keylogging y captura de teclado, Acceso general al navegador.",
+    "veredicto": "sospechosa"
+  },
+  "permisos_no_usados": [],
+  "hallazgos_estaticos_positivos": [
+    "En el background (background.js, línea 2) detectamos que la extensión está extrayendo información desde una página o almacenamiento del navegador y pasándola a otro contexto de la extensión (DOM read r.value -> extension message sink chrome.runtime.sendMessage (mensajería interna que puede mover datos desde un content script al background)). Motivo: DOM read r.value viaja hacia extension message sink chrome.runtime.sendMessage (mensajería interna que puede mover datos desde un content script al background) Contexto: Este es el \"cerebro invisible\" de la extensión. Corre en segundo plano todo el tiempo en tu navegador sin que te des cuenta, comunicándose con servidores en Internet y procesando datos. Confianza: 92%.",
+    "En el archivo (content.js, línea 2) detectamos que la extensión está extrayendo información desde una página o almacenamiento del navegador y pasándola a otro contexto de la extensión (datos leídos del DOM con document.querySelector -> extension message sink window.postMessage (mensajería interna que puede mover datos desde un content script al background)). Motivo: DOM selection via document.querySelector viaja hacia extension message sink window.postMessage (mensajería interna que puede mover datos desde un content script al background) Contexto: Este archivo está suelto dentro de la extensión y no sabemos en qué momento exacto se ejecuta. Confianza: 92%.",
+    "En el archivo (content.js, línea 2) detectamos que la extensión está enviando información leída desde la página o el navegador hacia una salida de red (datos leídos del DOM con document.querySelector -> network sink fetch (servidor en Internet)). Motivo: DOM selection via document.querySelector viaja hacia network sink fetch (servidor en Internet) Contexto: Este archivo está suelto dentro de la extensión y no sabemos en qué momento exacto se ejecuta. Confianza: 92%.",
+    "En el manifest (manifest.json, línea 22) detectamos una combinación de señales que aumenta el riesgo: web_accessible_resources exposes executable resources (dependencies/*, content.js, main.css, img/*, assets/*) to broad page matches (*://*/*). Motivo: varias señales aparecen juntas, lo que aumenta la probabilidad de abuso real. Contexto: Este es el archivo de configuración donde la extensión le pide los permisos iniciales a Chrome. Confianza: 78%.",
+    "En el content script (content/injectScripts.js, línea 2) detectamos inyección o modificación de DOM/script (document.createElement); esto puede alterar páginas o ejecutar código adicional. Motivo: Creates script elements dynamically Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 70%.",
+    "En el background (background.js, línea 2) detectamos uso de una función sensible (new Function); el riesgo depende de los datos que procesa y del destino. Motivo: Creates executable code dynamically Contexto: Este es el \"cerebro invisible\" de la extensión. Corre en segundo plano todo el tiempo en tu navegador sin que te des cuenta, comunicándose con servidores en Internet y procesando datos. Confianza: 75%.",
+    "En el archivo (content.js, línea 2) detectamos uso de una función sensible (eval); el riesgo depende de los datos que procesa y del destino. Motivo: Executes code from a string at runtime (eval) Contexto: Este archivo está suelto dentro de la extensión y no sabemos en qué momento exacto se ejecuta. Confianza: 75%.",
+    "En el archivo (dependencies/tfjs.js, línea 1) encontramos el dominio www.shadertoy.com, contactado por el código, clasificado como desconocido. Dominio desconocido referenciado por la extensión (aparece en código)"
+  ]
+}

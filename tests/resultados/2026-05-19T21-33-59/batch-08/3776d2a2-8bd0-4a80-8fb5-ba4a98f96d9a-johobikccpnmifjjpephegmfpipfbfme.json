@@ -1,0 +1,832 @@
+{
+  "jobId": "3776d2a2-8bd0-4a80-8fb5-ba4a98f96d9a",
+  "agente1": {
+    "categoria": "Accessibility",
+    "proposito": "Extensión que verifica el stock de productos en Amazon usando un método específico para ver la cantidad disponible.",
+    "explicacion": "La extensión Amazon Stock Checker &  Trick inyecta un elemento visual en las páginas de Amazon para mostrar información sobre el stock. Este comportamiento es esperado, ya que su función es mostrar datos sobre la disponibilidad de productos. No detectamos lectura de contraseñas, envío de datos sensibles a servidores externos ni rastreo de actividad del usuario. La modificación de la página para mostrar el elemento es parte de su función principal. No hay evidencia de que acceda a datos que no estén relacionados con el stock o la visualización de productos.\n\nRecomendación: La extensión funciona como promete y no presenta riesgos para tu privacidad. Puedes mantenerla instalada si confías en su propósito declarado.",
+    "veredicto_global": "benigna",
+    "respuestas_usuario": {
+      "puede_ver_historial": {
+        "razon": "Sin uso de API de historial",
+        "valor": "no_detectado"
+      },
+      "puede_leer_formularios": {
+        "razon": "No se encontró acceso a campos de formulario en el código",
+        "valor": "no_detectado"
+      },
+      "puede_registrar_teclas": {
+        "razon": "Sin listeners de teclado detectados",
+        "valor": "no_detectado"
+      },
+      "puede_modificar_paginas": {
+        "razon": "Inyecta un elemento visual para mostrar el stock — función declarada",
+        "valor": "si"
+      },
+      "puede_espiar_sin_saberlo": {
+        "razon": "Sin rastreo ni envío de datos del usuario a servidores externos",
+        "valor": "no_detectado"
+      },
+      "puede_interceptar_trafico": {
+        "razon": "Sin permisos de red ni interceptación de peticiones",
+        "valor": "no_detectado"
+      },
+      "codigo_oculto_o_sospechoso": {
+        "razon": "Código limpio, sin ofuscación ni scripts remotos",
+        "valor": "no_detectado"
+      },
+      "puede_capturar_contrasenas": {
+        "razon": "Sin acceso a campos de contraseña ni patrones de captura",
+        "valor": "no_detectado"
+      },
+      "puede_ver_paginas_visitadas": {
+        "razon": "Necesita conocer el dominio activo para mostrar la información del stock",
+        "valor": "si"
+      },
+      "puede_afectar_otras_extensiones": {
+        "razon": "Sin uso de APIs de gestión de extensiones",
+        "valor": "no_detectado"
+      }
+    },
+    "nivel_riesgo_inicial": "bajo"
+  },
+  "crxHash": "895c3232f1fe680e7dd1fc48a9763ddc1550f009f568c224aaaf768513734add",
+  "estructura": {
+    "resultado1": [
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 9,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 10,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.ca/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 11,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.co.uk/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 12,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.de/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 13,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.fr/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 14,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.it/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 15,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.es/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 16,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.co.jp/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 17,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.in/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 18,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.br/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 19,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.mx/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 20,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.com.au/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 21,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.nl/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 22,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.se/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 23,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.tr/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 24,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.ae/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 25,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.sa/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "line": 26,
+        "razon": "The manifest declares a permission that grants sensitive browser or host capability.",
+        "detail": "*://*.amazon.sg/* (medium, weight=2, hostSensitive=true, host_permissions)",
+        "category": "manifest",
+        "filePath": "manifest.json",
+        "fileType": "manifest",
+        "severity": "medium",
+        "veredicto": "falso_positivo",
+        "confidence": 0.15,
+        "scoreImpact": 2,
+        "discoveryType": "permiso_chrome_manifest_riesgoso"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 29,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "container.innerHTML = `",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 80,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = maxDropdown > 0",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Communicates with external servers",
+        "line": 92,
+        "razon": "Communicates with external servers",
+        "detail": "fetch",
+        "category": "exfiltration",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.8,
+        "codeSnippet": "const response = await fetch(targetUrl, {",
+        "scoreImpact": 2,
+        "discoveryType": "funcion_javascript_riesgosa"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 112,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = `<span style=\"color:#007600; font-weight:bold; font-size: 16px;\">${extractedStock}</span> units left`;",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 117,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#007600; font-weight:bold;\">30+ units available</span>';",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 120,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#007600;\">999+ Available</span>';",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 122,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#d00;\">Out of Stock</span>';",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 126,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = `<span style=\"color:#e68a00;\">At least ${maxDropdown} available</span>`;",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 128,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#555;\">Check manually</span>';",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      },
+      {
+        "why": "Modifies page content or UI (may be used for pet/theme features)",
+        "line": 135,
+        "razon": "Modifies page content or UI (may be used for pet/theme features)",
+        "detail": "innerHTML",
+        "category": "injection",
+        "filePath": "content.js",
+        "fileType": "content_script",
+        "severity": "medium",
+        "veredicto": "positivo",
+        "confidence": 0.92,
+        "codeSnippet": "resultDisplay.innerHTML = maxDropdown > 0",
+        "scoreImpact": 2,
+        "discoveryType": "inyeccion_dom"
+      }
+    ],
+    "resultado2_unknown": [],
+    "resultado2_priority": []
+  },
+  "extensionId": "upload-1779253816404-johobikccpnmifjjpephegmfpipfbfme",
+  "extensionName": "Amazon Stock Checker & 999 Trick",
+  "resumen_usuario": [
+    {
+      "id": "modificacion_paginas",
+      "estado": "sospechoso",
+      "titulo": "Modificación de páginas",
+      "resumen": "La extensión puede modificar el aspecto o contenido de las páginas web que visitas.",
+      "evidencias": [
+        "Detectamos que modifica el contenido de páginas web.",
+        "Modificación/inyección de DOM o script en content.js:29.",
+        "Señal de inserción/modificación visual en content.js:29.",
+        "Modificación/inyección de DOM o script en content.js:80.",
+        "Señal de inserción/modificación visual en content.js:80."
+      ],
+      "hallazgos_codigo": [
+        {
+          "line": 29,
+          "texto": "Modificación/inyección de DOM o script en content.js:29.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "container.innerHTML = `"
+        },
+        {
+          "line": 29,
+          "texto": "Señal de inserción/modificación visual en content.js:29.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "container.innerHTML = `"
+        },
+        {
+          "line": 80,
+          "texto": "Modificación/inyección de DOM o script en content.js:80.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = maxDropdown > 0"
+        },
+        {
+          "line": 80,
+          "texto": "Señal de inserción/modificación visual en content.js:80.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = maxDropdown > 0"
+        },
+        {
+          "line": 112,
+          "texto": "Modificación/inyección de DOM o script en content.js:112.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = `<span style=\"color:#007600; font-weight:bold; font-size: 16px;\">${extractedStock}</span> unit"
+        },
+        {
+          "line": 112,
+          "texto": "Señal de inserción/modificación visual en content.js:112.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = `<span style=\"color:#007600; font-weight:bold; font-size: 16px;\">${extractedStock}</span> unit"
+        },
+        {
+          "line": 117,
+          "texto": "Modificación/inyección de DOM o script en content.js:117.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#007600; font-weight:bold;\">30+ units available</span>';"
+        },
+        {
+          "line": 117,
+          "texto": "Señal de inserción/modificación visual en content.js:117.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#007600; font-weight:bold;\">30+ units available</span>';"
+        },
+        {
+          "line": 120,
+          "texto": "Modificación/inyección de DOM o script en content.js:120.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#007600;\">999+ Available</span>';"
+        },
+        {
+          "line": 120,
+          "texto": "Señal de inserción/modificación visual en content.js:120.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#007600;\">999+ Available</span>';"
+        },
+        {
+          "line": 122,
+          "texto": "Modificación/inyección de DOM o script en content.js:122.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#d00;\">Out of Stock</span>';"
+        },
+        {
+          "line": 122,
+          "texto": "Señal de inserción/modificación visual en content.js:122.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#d00;\">Out of Stock</span>';"
+        },
+        {
+          "line": 126,
+          "texto": "Modificación/inyección de DOM o script en content.js:126.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = `<span style=\"color:#e68a00;\">At least ${maxDropdown} available</span>`;"
+        },
+        {
+          "line": 126,
+          "texto": "Señal de inserción/modificación visual en content.js:126.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = `<span style=\"color:#e68a00;\">At least ${maxDropdown} available</span>`;"
+        },
+        {
+          "line": 128,
+          "texto": "Modificación/inyección de DOM o script en content.js:128.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#555;\">Check manually</span>';"
+        },
+        {
+          "line": 128,
+          "texto": "Señal de inserción/modificación visual en content.js:128.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = '<span style=\"color:#555;\">Check manually</span>';"
+        },
+        {
+          "line": 135,
+          "texto": "Modificación/inyección de DOM o script en content.js:135.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = maxDropdown > 0"
+        },
+        {
+          "line": 135,
+          "texto": "Señal de inserción/modificación visual en content.js:135.",
+          "filePath": "content.js",
+          "fileType": "content script",
+          "codeSnippet": "resultDisplay.innerHTML = maxDropdown > 0"
+        }
+      ],
+      "reglas_activadas": [
+        "page_mod.dom_injection",
+        "page_mod.html_or_frame_injection"
+      ],
+      "preguntas_responde": [
+        "¿Puede modificar el contenido de una página web?",
+        "¿Puede insertar elementos invisibles dentro de sitios?",
+        "¿Puede cambiar botones, formularios o enlaces?",
+        "¿Puede reemplazar anuncios o resultados de búsqueda?",
+        "¿Puede alterar lo que veo en redes sociales o bancos?",
+        "¿Puede superponer interfaces falsas sobre páginas reales?"
+      ]
+    },
+    {
+      "id": "acceso_general_navegador",
+      "estado": "capacidad",
+      "titulo": "Acceso general al navegador",
+      "resumen": "La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente.",
+      "evidencias": [
+        "Se ejecuta automáticamente en las páginas que visitas.",
+        "Puede abrir nuevas pestañas o redirigirte a otras páginas desde código.",
+        "Tiene content scripts que pueden ejecutarse automáticamente al visitar páginas."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver todas las páginas que visito?",
+        "¿Puede actuar en bancos o correos?",
+        "¿Realmente necesita acceso a todos los sitios web?",
+        "¿Puede ejecutarse automáticamente sin que yo haga clic?"
+      ]
+    },
+    {
+      "id": "captura_credenciales",
+      "estado": "no_detectado",
+      "titulo": "Contraseñas, tokens y sesiones",
+      "resumen": "No vimos señales de que esta extensión capture contraseñas o credenciales.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede capturar contraseñas?",
+        "¿Puede leer usuarios y sesiones activas?",
+        "¿Puede interceptar formularios antes de ser enviados?",
+        "¿Puede capturar tokens de autenticación?",
+        "¿Puede acceder a cookies de sesión?"
+      ]
+    },
+    {
+      "id": "keylogging",
+      "estado": "no_detectado",
+      "titulo": "Keylogging y captura de teclado",
+      "resumen": "No vimos señales de que esta extensión registre lo que escribes.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede registrar teclas que escribo?",
+        "¿Escucha todos los eventos del teclado?",
+        "¿Puede capturar texto antes de enviarlo?",
+        "¿Puede detectar combinaciones de teclas o atajos?"
+      ]
+    },
+    {
+      "id": "lectura_informacion",
+      "estado": "no_detectado",
+      "titulo": "Lectura de información en páginas",
+      "resumen": "No vimos señales de que esta extensión lea contenido de tus páginas.",
+      "evidencias": [
+        "Los content scripts pueden leer o inspeccionar el DOM de las páginas donde corren."
+      ],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer texto dentro de páginas web?",
+        "¿Puede leer mensajes, correos o documentos abiertos en el navegador?",
+        "¿Puede leer contenido escrito en formularios?",
+        "¿Puede inspeccionar información sensible mostrada en pantalla?",
+        "¿Puede acceder al contenido completo de una página?"
+      ]
+    },
+    {
+      "id": "manipulacion_trafico",
+      "estado": "no_detectado",
+      "titulo": "Manipulación de tráfico",
+      "resumen": "No vimos permisos fuertes de manipulación de tráfico.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede interceptar solicitudes web?",
+        "¿Puede modificar respuestas HTTP?",
+        "¿Puede redirigirme a otras páginas?",
+        "¿Puede alterar descargas o recursos cargados?",
+        "¿Puede vigilar mi tráfico de red en todas las páginas?"
+      ]
+    },
+    {
+      "id": "seguimiento_privacidad",
+      "estado": "no_detectado",
+      "titulo": "Seguimiento y privacidad",
+      "resumen": "No vimos señales de que esta extensión rastree tu actividad.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Rastrea mi actividad de navegación?",
+        "¿Crea perfiles sobre mis hábitos?",
+        "¿Comparte mis datos con terceros?",
+        "¿Recolecta métricas de uso?",
+        "¿Utiliza analytics ocultos?",
+        "¿Almacena identificadores persistentes?",
+        "¿Puede seguirme entre múltiples sitios web?"
+      ]
+    },
+    {
+      "id": "abuso_management",
+      "estado": "no_detectado",
+      "titulo": "Abuso de APIs de administración",
+      "resumen": "No se detectó uso de APIs de administración de extensiones.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede ver qué otras extensiones tengo instaladas?",
+        "¿Puede desactivar mi bloqueador de anuncios o antivirus?",
+        "¿Puede desinstalarse a sí misma para borrar evidencia?",
+        "¿Puede deshabilitar extensiones de seguridad antes de operar?"
+      ]
+    },
+    {
+      "id": "fingerprinting_severo",
+      "estado": "no_detectado",
+      "titulo": "Fingerprinting severo",
+      "resumen": "No se detectaron técnicas de fingerprinting severo.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede identificarme de forma única sin cookies?",
+        "¿Puede rastrearme entre diferentes sitios web?",
+        "¿Crea un perfil permanente de mi dispositivo?",
+        "¿Vende o comparte mi huella digital con terceros?",
+        "¿Viola mi privacidad incluso en modo incógnito?"
+      ]
+    },
+    {
+      "id": "mineria_recursos",
+      "estado": "no_detectado",
+      "titulo": "Minería de recursos / Cryptojacking",
+      "resumen": "No se detectaron señales de minería de recursos.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede usar mi CPU para minar criptomonedas?",
+        "¿Puede ralentizar mi computador con cómputo oculto?",
+        "¿Carga código binario externo que no puedo inspeccionar?",
+        "¿Opera en segundo plano cuando no la estoy usando?"
+      ]
+    },
+    {
+      "id": "acceso_historial",
+      "estado": "no_detectado",
+      "titulo": "Historial de navegación",
+      "resumen": "No vimos que esta extensión acceda a tu historial de navegación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede leer mi historial de navegación?",
+        "¿Almacena o transmite las páginas que visito?",
+        "¿Analiza patrones de comportamiento basados en historial?"
+      ]
+    },
+    {
+      "id": "descargas_archivos",
+      "estado": "no_detectado",
+      "titulo": "Descargas y archivos",
+      "resumen": "No vimos permiso fuerte para gestionar descargas.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿Puede descargar archivos automáticamente?",
+        "¿Puede generar archivos en mi equipo?",
+        "¿Puede abrir o modificar descargas?",
+        "¿Puede actuar como un downloader de malware?"
+      ]
+    },
+    {
+      "id": "ofuscacion_transparencia",
+      "estado": "no_detectado",
+      "titulo": "Ofuscación y transparencia",
+      "resumen": "No vimos señales fuertes de ofuscación.",
+      "evidencias": [],
+      "hallazgos_codigo": [],
+      "reglas_activadas": [],
+      "preguntas_responde": [
+        "¿El código está ofuscado?",
+        "¿El comportamiento de la extensión es entendible?",
+        "¿Existen partes imposibles de auditar fácilmente?",
+        "¿Usa técnicas anti-debugging?"
+      ]
+    }
+  ],
+  "analysisDuration": 211249,
+  "extensionVersion": "3.0.1",
+  "analysisTimestamp": "2026-05-20T05:13:47.664Z",
+  "puntuacion_riesgo": {
+    "level": "LOW",
+    "score": 20,
+    "reasons": []
+  },
+  "veredicto_usuario": {
+    "nivel": "bajo",
+    "razones": [
+      "Modificación de páginas: La extensión puede modificar el aspecto o contenido de las páginas web que visitas. Evidencia: Detectamos que modifica el contenido de páginas web.",
+      "Acceso general al navegador: La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente. Evidencia: Se ejecuta automáticamente en las páginas que visitas."
+    ],
+    "resumen": "Detectamos 1 señal(es) sospechosa(s): Modificación de páginas; 1 capacidad(es) relevante(s): Acceso general al navegador.",
+    "veredicto": "benigna"
+  },
+  "permisos_no_usados": [],
+  "hallazgos_estaticos_positivos": [
+    "En el content script (content.js, línea 29) detectamos inyección o modificación de DOM/script (innerHTML); esto puede alterar páginas o ejecutar código adicional. Motivo: Modifies page content or UI (may be used for pet/theme features) Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 92%. Encontramos 8 ocurrencia(s) similar(es), agrupadas para que el reporte sea legible.",
+    "En el content script (content.js, línea 92) detectamos uso de una función sensible (fetch); el riesgo depende de los datos que procesa y del destino. Motivo: Communicates with external servers Contexto: Esto significa que este archivo se inyecta y vive directamente adentro de las páginas web que visitas (como tu correo o tus redes sociales), por lo que puede leer o modificar todo lo que ves y escribes en la pantalla. Confianza: 80%."
+  ]
+}
