@@ -1,0 +1,260 @@
+[
+  {
+    "batch": "batch-01",
+    "chromeExtensionId": "eggegjdejilddmnlglakcaigefefcdaf",
+    "crxFile": "eggegjdejilddmnlglakcaigefefcdaf.crx",
+    "extensionName": "InteractiveFics",
+    "extensionVersion": "1.0.4",
+    "jobId": "d9415ea3-f15d-4b5c-a4fe-9b7a2b638ceb",
+    "uploadId": "upload-1779229574547-eggegjdejilddmnlglakcaigefefcdaf",
+    "crxHash": "430851b9f9282c6c7c0ab64af3c90eea3d2d12d297373aa7a51729e0331862b1",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 3 señal(es) sospechosa(s): Modificación de páginas, Seguimiento y privacidad, Acceso general al navegador; 2 capacidad(es) relevante(s): Contraseñas, tokens y sesiones, Lectura de información en páginas.",
+    "razones": [
+      "Modificación de páginas: La extensión puede modificar el aspecto o contenido de las páginas web que visitas. Evidencia: Detectamos que modifica el contenido de páginas web.",
+      "Seguimiento y privacidad: La extensión usa APIs del navegador para observar activamente qué páginas visitas. Evidencia: Puede correlacionar tu actividad en múltiples sitios web distintos.",
+      "Acceso general al navegador: La extensión accede activamente a información de tus pestañas y páginas — no solo lo declara, sino que lo usa en su código. Evidencia: Tiene permiso para operar en todos los sitios web que visitas."
+    ],
+    "risk_score": 6,
+    "risk_level": "LOW",
+    "analysisDuration_s": 217.9,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-01/d9415ea3-f15d-4b5c-a4fe-9b7a2b638ceb-eggegjdejilddmnlglakcaigefefcdaf.json"
+  },
+  {
+    "batch": "batch-02",
+    "chromeExtensionId": "eheagnmidghfknkcaehacggccfiidhik",
+    "crxFile": "eheagnmidghfknkcaehacggccfiidhik.crx",
+    "extensionName": "Email checker - verify email address in 1-click",
+    "extensionVersion": "2.6",
+    "jobId": "554ffd6b-fcec-4025-b04a-6200410e2157",
+    "uploadId": "upload-1779230193096-eheagnmidghfknkcaehacggccfiidhik",
+    "crxHash": "d4b84bc071a8850e2c638942467c9c5fa5b962f08f187b3e2c1fbd3183f0aa17",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "No se detectaron señales de riesgo significativas en esta extensión.",
+    "razones": [
+      "No se detectaron capacidades críticas ni comportamiento sospechoso."
+    ],
+    "analysisDuration_s": 202.2,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-02/554ffd6b-fcec-4025-b04a-6200410e2157-eheagnmidghfknkcaehacggccfiidhik.json"
+  },
+  {
+    "batch": "batch-04",
+    "chromeExtensionId": "giaooddllfkkkblpaedgkhfmhocponbo",
+    "crxFile": "giaooddllfkkkblpaedgkhfmhocponbo.crx",
+    "extensionName": "DeepSeek v3",
+    "extensionVersion": "1.11",
+    "jobId": "27409f61-295b-4ba5-8865-8fdd0f2c651e",
+    "uploadId": "upload-1779240615152-giaooddllfkkkblpaedgkhfmhocponbo",
+    "crxHash": "b4727f6c2b5e777c979ec10b9b230b8a151e48a9df6f81dd0b621ecf54293729",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 2 señal(es) sospechosa(s): Seguimiento y privacidad, Acceso general al navegador.",
+    "razones": [
+      "Seguimiento y privacidad: La extensión usa APIs del navegador para observar activamente qué páginas visitas.",
+      "Acceso general al navegador: La extensión accede activamente a información de tus pestañas y páginas — no solo lo declara, sino que lo usa en su código. Evidencia: Monitorea activamente las pestañas que abres y los sitios que visitas."
+    ],
+    "risk_score": 4,
+    "risk_level": "LOW",
+    "analysisDuration_s": 244.7,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-04/27409f61-295b-4ba5-8865-8fdd0f2c651e-giaooddllfkkkblpaedgkhfmhocponbo.json"
+  },
+  {
+    "batch": "batch-04",
+    "chromeExtensionId": "glckmpfajbjppappjlnhhlofhdhlcgaj",
+    "crxFile": "glckmpfajbjppappjlnhhlofhdhlcgaj.crx",
+    "extensionName": "Good Tab",
+    "extensionVersion": "1.0.5",
+    "jobId": "868d68dc-11ec-4f1f-936e-4381d409d2f2",
+    "uploadId": "upload-1779242197316-glckmpfajbjppappjlnhhlofhdhlcgaj",
+    "crxHash": "001c7c379752194472fca9ef1b1bf36d27f518ac64147a4e88907277f35b9755",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "No se detectaron señales de riesgo significativas en esta extensión.",
+    "razones": [
+      "No se detectaron capacidades críticas ni comportamiento sospechoso."
+    ],
+    "risk_score": 2,
+    "risk_level": "LOW",
+    "analysisDuration_s": 202.5,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-04/868d68dc-11ec-4f1f-936e-4381d409d2f2-glckmpfajbjppappjlnhhlofhdhlcgaj.json"
+  },
+  {
+    "batch": "batch-05",
+    "chromeExtensionId": "goiffchdhlcehhgdpdbocefkohlhmlom",
+    "crxFile": "goiffchdhlcehhgdpdbocefkohlhmlom.crx",
+    "extensionName": "股票提醒助手",
+    "extensionVersion": "3.8.0",
+    "jobId": "1a027c08-98af-4618-a9b8-793c3083dc7a",
+    "uploadId": "upload-1779243277932-goiffchdhlcehhgdpdbocefkohlhmlom",
+    "crxHash": "8638a4fed6bda1a2da8c543d52e41a677ef7a925fd495c0ee5c73b1b2e7035b3",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "No se detectaron señales de riesgo significativas en esta extensión.",
+    "razones": [
+      "No se detectaron capacidades críticas ni comportamiento sospechoso."
+    ],
+    "risk_score": 5,
+    "risk_level": "LOW",
+    "analysisDuration_s": 267.8,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-05/1a027c08-98af-4618-a9b8-793c3083dc7a-goiffchdhlcehhgdpdbocefkohlhmlom.json"
+  },
+  {
+    "batch": "batch-05",
+    "chromeExtensionId": "goikoilmhcgfidolicnbgggdpckdcoam",
+    "crxFile": "goikoilmhcgfidolicnbgggdpckdcoam.crx",
+    "extensionName": "Amazon Character Count & Seller Tools",
+    "extensionVersion": "3.0.1",
+    "jobId": "41d6f2c2-7339-472b-b182-68d45c084626",
+    "uploadId": "upload-1779243550658-goikoilmhcgfidolicnbgggdpckdcoam",
+    "crxHash": "762459ff3adc0ba03c0dfe13b4a2c273c30f7ff8480c3b25c3754a941e96b237",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 2 señal(es) sospechosa(s): Seguimiento y privacidad, Acceso general al navegador.",
+    "razones": [
+      "Seguimiento y privacidad: La extensión usa APIs del navegador para observar activamente qué páginas visitas.",
+      "Acceso general al navegador: La extensión accede activamente a información de tus pestañas y páginas — no solo lo declara, sino que lo usa en su código. Evidencia: Monitorea activamente las pestañas que abres y los sitios que visitas."
+    ],
+    "risk_score": 2,
+    "risk_level": "LOW",
+    "analysisDuration_s": 277.8,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-05/41d6f2c2-7339-472b-b182-68d45c084626-goikoilmhcgfidolicnbgggdpckdcoam.json"
+  },
+  {
+    "batch": "batch-05",
+    "chromeExtensionId": "hafhkoalnlpoifpidohfjlmeemfifndi",
+    "crxFile": "hafhkoalnlpoifpidohfjlmeemfifndi.crx",
+    "extensionName": "Grok AI",
+    "extensionVersion": "3.1.0",
+    "jobId": "7e8838e8-caa6-4375-97e9-7dff21673904",
+    "uploadId": "upload-1779244558981-hafhkoalnlpoifpidohfjlmeemfifndi",
+    "crxHash": "109c745de4aada9e28995f8e29125f2229dcd5bb785e3f681de87111286355e7",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 1 señal(es) sospechosa(s): Seguimiento y privacidad; 1 capacidad(es) relevante(s): Modificación de páginas.",
+    "razones": [
+      "Seguimiento y privacidad: La extensión se comunica con dominios externos que podrían estar relacionados con el rastreo de usuarios. Evidencia: Se comunica con estos sitios externos: chatgpt-5.easytool.dev, grok-ai.easytool.dev, grok-3.easytool.dev.",
+      "Modificación de páginas: La extensión tiene permiso para modificar páginas, pero no vimos que lo use activamente. Evidencia: Tiene permiso para insertar código en páginas, pero no vimos que lo use."
+    ],
+    "analysisDuration_s": 282.2,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-05/7e8838e8-caa6-4375-97e9-7dff21673904-hafhkoalnlpoifpidohfjlmeemfifndi.json"
+  },
+  {
+    "batch": "batch-06",
+    "chromeExtensionId": "hkhmodcdjhcidbcncgmnknjppphcpgmh",
+    "crxFile": "hkhmodcdjhcidbcncgmnknjppphcpgmh.crx",
+    "extensionName": "Amazon Sticky Notes",
+    "extensionVersion": "3.0.1",
+    "jobId": "f85236de-8fd3-4dca-b53d-d9ab9c7a1751",
+    "uploadId": "upload-1779246887394-hkhmodcdjhcidbcncgmnknjppphcpgmh",
+    "crxHash": "3cfb07bde42ed9d952af6a6c8d422b57412a5bf39efc4cb49ef411734a4136d6",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 1 señal(es) sospechosa(s): Modificación de páginas; 1 capacidad(es) relevante(s): Acceso general al navegador.",
+    "razones": [
+      "Modificación de páginas: La extensión puede modificar el aspecto o contenido de las páginas web que visitas. Evidencia: Detectamos que modifica el contenido de páginas web.",
+      "Acceso general al navegador: La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente. Evidencia: Se ejecuta automáticamente en las páginas que visitas."
+    ],
+    "risk_score": 10,
+    "risk_level": "LOW",
+    "analysisDuration_s": 316.2,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-06/f85236de-8fd3-4dca-b53d-d9ab9c7a1751-hkhmodcdjhcidbcncgmnknjppphcpgmh.json"
+  },
+  {
+    "batch": "batch-06",
+    "chromeExtensionId": "hodafefeincjlgijbiabbmaffambjeaa",
+    "crxFile": "hodafefeincjlgijbiabbmaffambjeaa.crx",
+    "extensionName": "Grok Sidebar",
+    "extensionVersion": "1.0",
+    "jobId": "2fc48943-f5ff-4649-9c5c-b5efb6c116ad",
+    "uploadId": "upload-1779247472681-hodafefeincjlgijbiabbmaffambjeaa",
+    "crxHash": "86ad5129a4a44279c62f3cd07543a1e857e0fda22dc462e81b2516865ceb6993",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "No se detectaron señales de riesgo significativas en esta extensión.",
+    "razones": [
+      "No se detectaron capacidades críticas ni comportamiento sospechoso."
+    ],
+    "risk_score": 2,
+    "risk_level": "LOW",
+    "analysisDuration_s": 158,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-06/2fc48943-f5ff-4649-9c5c-b5efb6c116ad-hodafefeincjlgijbiabbmaffambjeaa.json"
+  },
+  {
+    "batch": "batch-06",
+    "chromeExtensionId": "hpkfkbmcphnigepfjmapkdaedglohgjg",
+    "crxFile": "hpkfkbmcphnigepfjmapkdaedglohgjg.crx",
+    "extensionName": "Flappy Birdie (Night farm mode)",
+    "extensionVersion": "1.5.3",
+    "jobId": "12c4330e-8457-4362-b71a-a034dc268a05",
+    "uploadId": "upload-1779247968183-hpkfkbmcphnigepfjmapkdaedglohgjg",
+    "crxHash": "ce8183cf16906d936e662391f26758eadd46a78dabfa1403671935bda6a00072",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 2 capacidad(es) relevante(s): Lectura de información en páginas, Acceso general al navegador.",
+    "razones": [
+      "Lectura de información en páginas: La extensión declara acceso amplio a sitios web, pero no vimos que lo use para leer datos de los usuarios. Evidencia: Tiene permiso para acceder a todos los sitios web, aunque no vimos que lea datos.",
+      "Acceso general al navegador: La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente. Evidencia: Tiene permiso para operar en todos los sitios web que visitas."
+    ],
+    "analysisDuration_s": 241.5,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-06/12c4330e-8457-4362-b71a-a034dc268a05-hpkfkbmcphnigepfjmapkdaedglohgjg.json"
+  },
+  {
+    "batch": "batch-06",
+    "chromeExtensionId": "iclckldkfemlnecocpphinnplnmijkol",
+    "crxFile": "iclckldkfemlnecocpphinnplnmijkol.crx",
+    "extensionName": "SQLite browser",
+    "extensionVersion": "1.4",
+    "jobId": "dd52b799-1091-4aef-9cb8-be506543b09f",
+    "uploadId": "upload-1779248513512-iclckldkfemlnecocpphinnplnmijkol",
+    "crxHash": "5c663ebdf249a022ec9df552b8e06a8a75e262df58fb3db1a69af295615a1d4c",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "No se detectaron señales de riesgo significativas en esta extensión.",
+    "razones": [
+      "No se detectaron capacidades críticas ni comportamiento sospechoso."
+    ],
+    "analysisDuration_s": 248.3,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-06/dd52b799-1091-4aef-9cb8-be506543b09f-iclckldkfemlnecocpphinnplnmijkol.json"
+  },
+  {
+    "batch": "batch-07",
+    "chromeExtensionId": "ihdnbohcfnegemgomjcpckmpnkdgopon",
+    "crxFile": "ihdnbohcfnegemgomjcpckmpnkdgopon.crx",
+    "extensionName": "AI Sentence Rewriter",
+    "extensionVersion": "2.1",
+    "jobId": "2c0846d7-98a8-4822-9ff7-06352e3f800f",
+    "uploadId": "upload-1779250683263-ihdnbohcfnegemgomjcpckmpnkdgopon",
+    "crxHash": "4b0d07a01886e46ce4a128dd251c606d9d4f7174526929584b1334e71d101941",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "No se detectaron señales de riesgo significativas en esta extensión.",
+    "razones": [
+      "No se detectaron capacidades críticas ni comportamiento sospechoso."
+    ],
+    "analysisDuration_s": 210.6,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-07/2c0846d7-98a8-4822-9ff7-06352e3f800f-ihdnbohcfnegemgomjcpckmpnkdgopon.json"
+  },
+  {
+    "batch": "batch-08",
+    "chromeExtensionId": "johobikccpnmifjjpephegmfpipfbfme",
+    "crxFile": "johobikccpnmifjjpephegmfpipfbfme.crx",
+    "extensionName": "Amazon Stock Checker & 999 Trick",
+    "extensionVersion": "3.0.1",
+    "jobId": "3776d2a2-8bd0-4a80-8fb5-ba4a98f96d9a",
+    "uploadId": "upload-1779253816404-johobikccpnmifjjpephegmfpipfbfme",
+    "crxHash": "895c3232f1fe680e7dd1fc48a9763ddc1550f009f568c224aaaf768513734add",
+    "veredicto": "benigna",
+    "nivel": "bajo",
+    "resumen": "Detectamos 1 señal(es) sospechosa(s): Modificación de páginas; 1 capacidad(es) relevante(s): Acceso general al navegador.",
+    "razones": [
+      "Modificación de páginas: La extensión puede modificar el aspecto o contenido de las páginas web que visitas. Evidencia: Detectamos que modifica el contenido de páginas web.",
+      "Acceso general al navegador: La extensión tiene permiso para acceder a todas las páginas web, pero no vimos que lo use activamente. Evidencia: Se ejecuta automáticamente en las páginas que visitas."
+    ],
+    "risk_score": 20,
+    "risk_level": "LOW",
+    "analysisDuration_s": 211.2,
+    "reportFile": "resultados/2026-05-19T21-33-59/batch-08/3776d2a2-8bd0-4a80-8fb5-ba4a98f96d9a-johobikccpnmifjjpephegmfpipfbfme.json"
+  }
+]
